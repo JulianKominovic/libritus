@@ -1,0 +1,23 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Capability for the main window",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"opener:default",
+		"core:path:default",
+		"core:path:allow-join",
+		"core:webview:allow-set-webview-zoom",
+		"core:window:allow-start-dragging",
+		"fs:default",
+		"fs:allow-appdata-write-recursive",
+		"fs:allow-appdata-read-recursive",
+		"fs:allow-appdata-meta-recursive",
+		"fs:allow-applocaldata-write-recursive",
+		"fs:allow-applocaldata-read-recursive",
+		"fs:allow-applocaldata-meta-recursive",
+		"fs:allow-write",
+		"fs:allow-write-file"
+	]
+}
