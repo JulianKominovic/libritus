@@ -363,12 +363,12 @@ const IconPicker = React.forwardRef<
                 <div
                   key={virtualItem.key}
                   style={itemStyle}
-                  className="top-0 bg-background z-10"
+                  className="top-0 bg-morphing-50 z-10"
                 >
                   <h3 className="font-medium text-sm capitalize">
                     {categorizedIcons[item.categoryIndex].name}
                   </h3>
-                  <div className="h-[1px] bg-foreground/10 w-full" />
+                  <div className="h-[1px] bg-morphing-100 w-full" />
                 </div>
               );
             }

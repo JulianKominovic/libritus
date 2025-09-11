@@ -27,7 +27,7 @@ export type ColorPalette = {
 };
 export function createColorPalette(hexColor: string): ColorPalette {
   const [h, s, l] = chroma(hexColor).hsl();
-  const maxLightness = 0.4;
+  const maxLightness = 0.3;
   const minLightness = 0.1;
   const balancedColor = chroma.hsl(
     h,

@@ -1,4 +1,4 @@
-import { ChevronDown, SettingsIcon, User2Icon } from "lucide-react";
+import { DynamicIcon } from "lucide-react/dynamic";
 import { type ReactNode, useMemo } from "react";
 import { Fragment } from "react/jsx-runtime";
 import { Link, useRoute } from "wouter";
@@ -9,7 +9,6 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLang } from "@/i18n/lang-context";
 import { usePdfs } from "@/stores/categories";
-import { DynamicIcon } from "lucide-react/dynamic";
 
 type Segment =
   | ("home" | "category" | "pdf" | "settings" | "profile")
@@ -28,6 +26,9 @@ function Navbar() {
   const [isHome, params] = useRoute("/");
   const [isCategory, params2] = useRoute("/category/:categoryId");
   const [isPdf, params3] = useRoute("/category/:categoryId/:pdfId");
+  const [isSettings] = useRoute("/settings");
+  const [isTrash] = useRoute("/trash");
+  const [isInfo] = useRoute("/info");
   console.log("location", location);
 
   const categories = usePdfs((s) => s.categories);
@@ -38,13 +39,22 @@ function Navbar() {
       suggestions: { id?: string; name?: string | ReactNode; href: string }[];
     }[]
   >(() => {
+    if (isSettings) {
+      return [{ name: "settings", href: "/settings", suggestions: [] }];
+    }
+    if (isTrash) {
+      return [{ name: "trash", href: "/trash", suggestions: [] }];
+    }
+    if (isInfo) {
+      return [{ name: "info", href: "/info", suggestions: [] }];
+    }
     if (isHome) {
-      return [{ name: "home", href: "", suggestions: [] }];
+      return [{ name: "home", href: "/", suggestions: [] }];
     }
     if (isCategory) {
       const category = categories.find((c) => c.id === params2.categoryId);
       return [
-        { name: "home", href: "", suggestions: [] },
+        { name: "home", href: "/", suggestions: [] },
         {
           name: category?.name || "",
           href: `/category/${category?.id}`,
@@ -72,7 +82,7 @@ function Navbar() {
       const pdf = category?.pdfs.find((p) => p.id === params3.pdfId);
       const pdfs = category?.pdfs || [];
       return [
-        { name: "home", href: "", suggestions: [] },
+        { name: "home", href: "/", suggestions: [] },
         {
           name: category?.name || "",
           href: `/category/${category?.id}`,
@@ -104,11 +114,14 @@ function Navbar() {
         },
       ];
     }
-    return [{ name: "home", href: "", suggestions: [] }];
+    return [{ name: "home", href: "/", suggestions: [] }];
   }, [
     isHome,
     isCategory,
     isPdf,
+    isSettings,
+    isTrash,
+    isInfo,
     params2?.categoryId,
     params3?.categoryId,
     params3?.pdfId,
@@ -131,7 +144,8 @@ function Navbar() {
                     {suggestions?.length > 0 ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-2 ">
-                          {name} <ChevronDown className="size-4" />
+                          {name}{" "}
+                          <DynamicIcon name="chevron-down" className="size-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
                           {suggestions.map(({ href, id, name }) => (
@@ -153,14 +167,6 @@ function Navbar() {
             })}
           </BreadcrumbList>
         </Breadcrumb>
-      </div>
-      <div>
-        <Button variant="ghost" size="icon" className="rounded-[50%]">
-          <SettingsIcon />
-        </Button>
-        <Button variant="ghost" size="icon" className="rounded-[50%]">
-          <User2Icon />
-        </Button>
       </div>
     </nav>
   );

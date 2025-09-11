@@ -1,5 +1,4 @@
 import chroma from "chroma-js";
-import { PlusIcon } from "lucide-react";
 import { useLayoutEffect } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Link, Redirect, useParams } from "wouter";
@@ -131,7 +130,7 @@ function Category() {
           htmlFor={`pdf-upload-${categoryId}`}
           className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-52 bg-morphing-100 hover:bg-morphing-200 transition-colors"
         >
-          <PlusIcon className="size-10 text-morphing-600" />
+          <DynamicIcon name="plus" className="size-10 text-morphing-600" />
           <p className="text-morphing-800 text-lg font-medium">Upload a PDF</p>
           <p className="text-sm text-morphing-800">or drop it here</p>
           <input

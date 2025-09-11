@@ -11,7 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "@anaralabs/lector";
-import { Loader2 } from "lucide-react";
+import { DynamicIcon } from "lucide-react/dynamic";
 import { useLayoutEffect } from "react";
 import { Redirect, useParams } from "wouter";
 import { resetGlobalTheme, setGlobalTheme } from "@/lib/app-theme";
@@ -48,7 +48,10 @@ function PdfPage() {
             <p className="text-lg text-morphing-700 font-medium text-center mb-2">
               Loading PDF...
             </p>
-            <Loader2 className="size-8 animate-spin text-morphing-700 mx-auto" />
+            <DynamicIcon
+              name="loader-2"
+              className="size-8 animate-spin text-morphing-700 mx-auto"
+            />
           </div>
         }
       >

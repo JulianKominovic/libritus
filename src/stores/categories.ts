@@ -1,7 +1,7 @@
+import type { IconName } from "lucide-react/dynamic";
 import { create } from "zustand";
 import { readFile, writeFile } from "@/integrations/fs";
 import { getPdfMetadata } from "@/lib/pdf";
-import { IconName } from "lucide-react/dynamic";
 
 export type Pdf = {
   id: string;
@@ -53,6 +53,7 @@ export type PdfsStore = {
     categoryId: string,
     category: Partial<Category>
   ) => Promise<void>;
+  deleteCategory: (categoryId: string) => Promise<void>;
 };
 
 export const usePdfs = create<PdfsStore>((set, get) => ({
@@ -166,6 +167,13 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       return cat;
     });
 
+    await get().setCategories(categories);
+  },
+  deleteCategory: async (categoryId: string) => {
+    if (categoryId === "default") return;
+    const categories = [...get().categories].filter(
+      (cat) => cat.id !== categoryId
+    );
     await get().setCategories(categories);
   },
 }));

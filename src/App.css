@@ -111,16 +111,16 @@
 }
 
 @theme {
-  --color-morphing-50: oklch(0.985 0 0);
-  --color-morphing-100: oklch(0.97 0 0);
-  --color-morphing-200: oklch(0.922 0 0);
-  --color-morphing-300: oklch(0.87 0 0);
-  --color-morphing-400: oklch(0.708 0 0);
-  --color-morphing-500: oklch(0.556 0 0);
-  --color-morphing-600: oklch(0.439 0 0);
-  --color-morphing-700: oklch(0.371 0 0);
-  --color-morphing-800: oklch(0.269 0 0);
-  --color-morphing-900: oklch(0.205 0 0);
+  --color-morphing-50: rgb(235 235 235);
+  --color-morphing-100: rgb(216 216 216);
+  --color-morphing-200: rgb(196 196 196);
+  --color-morphing-300: rgb(178 178 178);
+  --color-morphing-400: rgb(159 159 159);
+  --color-morphing-500: rgb(141 141 141);
+  --color-morphing-600: rgb(120 120 120);
+  --color-morphing-700: rgb(94 94 94);
+  --color-morphing-800: rgb(70 70 70);
+  --color-morphing-900: rgb(47 47 47);
 }
 
 @layer base {
