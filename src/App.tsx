@@ -1,24 +1,37 @@
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
 import { Redirect, Route, Switch } from "wouter";
 import "./App.css";
+import { motion } from "motion/react";
+import { cn } from "./lib/utils";
 import Category from "./pages/category";
 import HomePage from "./pages/home";
 import PdfPage from "./pages/pdf";
+import { useSettings } from "./stores/settings";
 import DragAndDropZone from "./templates/drag-and-drop";
 import Navbar from "./templates/navbar";
 import Sidebar from "./templates/sidebar";
 
 function App() {
+  const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar);
   return (
     <>
       <Navbar />
-      <div
+      <motion.div
         onDragStart={(e) => e.preventDefault()}
         onDragEnd={(e) => e.preventDefault()}
         onDragOver={(e) => e.preventDefault()}
         onDragLeave={(e) => e.preventDefault()}
         onDrop={(e) => e.preventDefault()}
-        className="grid grid-cols-[260px_1fr] gap-12 h-full bg-morphing-50 text-morphing-900"
+        className={cn("grid gap-12 h-full bg-morphing-50 text-morphing-900")}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: 1,
+          gridTemplateColumns: showNavigationSidebar ? "260px 1fr" : "0px 1fr",
+        }}
+        exit={{ opacity: 0 }}
+        transition={{
+          duration: 0.3,
+        }}
+        layout="position"
       >
         <Sidebar />
         <Switch>
@@ -45,7 +58,7 @@ function App() {
             <Redirect to="/" />
           </Route>
         </Switch>
-      </div>
+      </motion.div>
     </>
   );
 }

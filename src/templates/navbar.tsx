@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLang } from "@/i18n/lang-context";
 import { usePdfs } from "@/stores/categories";
+import { Button } from "@/components/ui/button";
+import { useSettings } from "@/stores/settings";
 
 type Segment =
   | ("home" | "category" | "pdf" | "settings" | "profile")
@@ -127,20 +129,35 @@ function Navbar() {
     params3?.pdfId,
     categories,
   ]);
+  const setShowNavigationSidebar = useSettings(
+    (s) => s.setShowNavigationSidebar
+  );
+  const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar);
+  const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline);
+  const showPdfOutline = useSettings((s) => s.showPdfOutline);
   return (
     <nav
       data-tauri-drag-region
-      className="w-full h-[50px] flex items-center justify-between px-4 pl-24"
+      className="w-full h-[50px] flex items-center justify-between px-4 pl-20"
     >
-      <div>
-        <Breadcrumb>
-          <BreadcrumbList>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          className="!p-2 aspect-square !size-8 text-muted-foreground"
+          onClick={() => setShowNavigationSidebar(!showNavigationSidebar)}
+        >
+          <DynamicIcon
+            name={showNavigationSidebar ? "panel-left" : "panel-left-open"}
+          />
+        </Button>
+        <Breadcrumb className="overflow-x-auto">
+          <BreadcrumbList className="flex-nowrap">
             {segments.map(({ name, suggestions, href }, index) => {
               const isLast = index === segments.length - 1;
 
               return (
                 <Fragment key={name + "seg" + index.toString()}>
-                  <BreadcrumbItem>
+                  <BreadcrumbItem className="flex-shrink-0">
                     {suggestions?.length > 0 ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-2 ">
@@ -156,17 +173,30 @@ function Navbar() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
-                      <BreadcrumbLink asChild>
+                      <BreadcrumbLink asChild className="flex-shrink-0">
                         <Link to={href}>{name}</Link>
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
-                  {!isLast && <BreadcrumbSeparator />}
+                  {!isLast && <BreadcrumbSeparator className="flex-shrink-0" />}
                 </Fragment>
               );
             })}
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="flex items-center gap-2">
+        {isPdf && (
+          <Button
+            variant="ghost"
+            className="!p-2 aspect-square !size-8 text-muted-foreground"
+            onClick={() => setShowPdfOutline(!showPdfOutline)}
+          >
+            <DynamicIcon
+              name={showPdfOutline ? "panel-right" : "panel-right-open"}
+            />
+          </Button>
+        )}
       </div>
     </nav>
   );

@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useSettings } from "@/stores/settings";
 
 const PdfSidebarItem = ({
   pdf,
@@ -100,7 +101,7 @@ function SidebarItem({
           >
             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 cursor-pointer w-full">
               <DynamicIcon name={category.icon} size={16} />
-              <p className="text-sm cursor-pointer truncate w-full overflow-auto">
+              <p className="text-sm cursor-pointer truncate w-full overflow-hidden">
                 {category.name}
               </p>
               <p className="text-xs text-morphing-500 shrink-0 inline-block w-fit">
@@ -210,78 +211,94 @@ function Sidebar() {
   const [isTrash] = useRoute("/trash");
   const [isSettings] = useRoute("/settings");
   const [isInfo] = useRoute("/info");
+  const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar);
   return (
-    <aside className="px-4 overflow-x-hidden grid grid-rows-[auto_1fr_auto] h-[calc(100%-50px)] gap-2 content-between">
-      <Link
-        to="/"
-        className={(isActive) =>
-          cn(
-            buttonVariants({ variant: "none" }),
-            "w-full justify-start !p-0 mb-0",
-            isActive ? "font-semibold" : ""
-          )
-        }
-      >
-        <DynamicIcon name="home" /> {t("home")}
-      </Link>
-      <div className="overflow-y-auto h-full">
-        <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-500">
-          <strong className="font-medium">{t("categories")} </strong>
-          <span>{pdfsCount} pdfs</span>
-        </p>
-        <motion.ul className="h-full">
-          {categories.map((category) => {
-            return (
-              <SidebarItem
-                key={category.id}
-                category={category}
-                categoryId={category.id}
-              ></SidebarItem>
-            );
-          })}
-          <motion.li className="h-auto cursor-pointer">
-            <Button
-              variant={"none"}
-              className="!p-0 h-12"
-              onClick={() => {
-                createCategory().then((category) => {
-                  navigate(`/category/${category.id}`, { replace: true });
-                });
-              }}
-            >
-              <DynamicIcon name="plus" />
-              Create new category
-            </Button>
-          </motion.li>
-        </motion.ul>
+    <motion.aside
+      layout="position"
+      initial={{ opacity: 0, width: 0 }}
+      animate={{
+        opacity: showNavigationSidebar ? 1 : 0,
+        width: showNavigationSidebar ? "260px" : "0px",
+      }}
+      transition={{
+        duration: 0.3,
+        opacity: { duration: showNavigationSidebar ? 0.3 : 0.15 },
+      }}
+      className="overflow-hidden h-[calc(100%-50px)]"
+      style={{ minWidth: 0 }}
+    >
+      <div className="px-4 w-[260px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">
+        <Link
+          to="/"
+          className={(isActive) =>
+            cn(
+              buttonVariants({ variant: "none" }),
+              "w-full justify-start !p-0 mb-0",
+              isActive ? "font-semibold" : ""
+            )
+          }
+        >
+          <DynamicIcon name="home" /> {t("home")}
+        </Link>
+        <div className="overflow-y-auto h-full min-h-0">
+          <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-500">
+            <strong className="font-medium">{t("categories")} </strong>
+            <span>{pdfsCount} pdfs</span>
+          </p>
+          <motion.ul className="h-full">
+            {categories.map((category) => {
+              return (
+                <SidebarItem
+                  key={category.id}
+                  category={category}
+                  categoryId={category.id}
+                ></SidebarItem>
+              );
+            })}
+            <motion.li className="h-auto cursor-pointer">
+              <Button
+                variant={"none"}
+                className="!p-0 h-9"
+                onClick={() => {
+                  createCategory().then((category) => {
+                    navigate(`/category/${category.id}`, { replace: true });
+                  });
+                }}
+              >
+                <DynamicIcon name="plus" />
+                Create new category
+              </Button>
+            </motion.li>
+          </motion.ul>
+        </div>
+        <footer className="flex items-center gap-4 pb-4 pt-1">
+          <Link to="/settings">
+            <DynamicIcon
+              size={18}
+              fill={isSettings ? "var(--color-morphing-100)" : "none"}
+              className={isSettings ? "text-morphing-900" : "text-morphing-400"}
+              name="settings"
+            />
+          </Link>
+          <Link to="/trash">
+            <DynamicIcon
+              size={18}
+              fill={isTrash ? "var(--color-morphing-100)" : "none"}
+              className={isTrash ? "text-morphing-900" : "text-morphing-400"}
+              name="trash"
+            />
+          </Link>
+          <Link to="/info">
+            <DynamicIcon
+              size={18}
+              fill={isInfo ? "var(--color-morphing-100)" : "none"}
+              className={isInfo ? "text-morphing-900" : "text-morphing-400"}
+              name="info"
+            />
+          </Link>
+        </footer>
       </div>
-      <footer className="flex items-center gap-4 pb-4 pt-1">
-        <Link to="/settings">
-          <DynamicIcon
-            size={20}
-            fill={isSettings ? "var(--color-morphing-100)" : "none"}
-            className={isSettings ? "text-morphing-900" : "text-morphing-400"}
-            name="settings"
-          />
-        </Link>
-        <Link to="/trash">
-          <DynamicIcon
-            size={20}
-            fill={isTrash ? "var(--color-morphing-100)" : "none"}
-            className={isTrash ? "text-morphing-900" : "text-morphing-400"}
-            name="trash"
-          />
-        </Link>
-        <Link to="/info">
-          <DynamicIcon
-            size={20}
-            fill={isInfo ? "var(--color-morphing-100)" : "none"}
-            className={isInfo ? "text-morphing-900" : "text-morphing-400"}
-            name="info"
-          />
-        </Link>
-      </footer>
-    </aside>
+    </motion.aside>
   );
 }
 

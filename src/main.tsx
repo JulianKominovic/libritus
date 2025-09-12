@@ -4,8 +4,8 @@ import App from "./App";
 import { LangProvider } from "./i18n/lang-context";
 import "pdfjs-dist/web/pdf_viewer.css";
 
-import { scan } from "react-scan";
-scan({ enabled: true });
+// import { scan } from "react-scan";
+// scan({ enabled: true });
 
 // Set up the worker
 GlobalWorkerOptions.workerSrc = new URL(

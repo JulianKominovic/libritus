@@ -52,7 +52,7 @@ function Category() {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pt-4">
         <div
           className={cn(
             "cursor-pointer size-8 rounded-[50%] overflow-hidden aspect-square border-morphing-600 border transition-transform flex-shrink-0",
