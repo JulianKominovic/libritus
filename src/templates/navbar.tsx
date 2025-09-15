@@ -9,23 +9,18 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLang } from "@/i18n/lang-context";
 import { usePdfs } from "@/stores/categories";
-import { Button } from "@/components/ui/button";
 import { useSettings } from "@/stores/settings";
 
-type Segment =
-  | ("home" | "category" | "pdf" | "settings" | "profile")
-  | (string & {});
 function Navbar() {
-  const { t } = useLang();
-  const [isHome, params] = useRoute("/");
+  const [isHome] = useRoute("/");
   const [isCategory, params2] = useRoute("/category/:categoryId");
   const [isPdf, params3] = useRoute("/category/:categoryId/:pdfId");
   const [isSettings] = useRoute("/settings");

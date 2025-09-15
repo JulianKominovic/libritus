@@ -25,6 +25,7 @@ function App() {
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,
+          gap: showNavigationSidebar ? 48 : 0,
           gridTemplateColumns: showNavigationSidebar ? "260px 1fr" : "0px 1fr",
         }}
         exit={{ opacity: 0 }}

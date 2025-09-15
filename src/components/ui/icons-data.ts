@@ -1,3 +1,4 @@
+//@ts-nocheck
 import type { IconName } from "lucide-react/dynamic";
 
 export enum IconCategory {

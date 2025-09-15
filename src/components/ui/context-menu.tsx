@@ -1,8 +1,8 @@
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
+import { cva } from "class-variance-authority";
 import { DynamicIcon } from "lucide-react/dynamic";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
-import { cva } from "class-variance-authority";
 
 function ContextMenu({
   ...props
@@ -183,7 +183,7 @@ function ContextMenuRadioItem({
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
         <ContextMenuPrimitive.ItemIndicator>
-          <CircleIcon className="size-2 fill-current" />
+          <DynamicIcon name="circle" className="size-2 fill-current" />
         </ContextMenuPrimitive.ItemIndicator>
       </span>
       {children}

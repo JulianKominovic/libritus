@@ -1,8 +1,6 @@
 import { motion } from "motion/react";
-import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/i18n/lang-context";
-import { usePdfs } from "@/stores/categories";
 
 function fadeInOut(order = 0) {
   return {
@@ -15,13 +13,7 @@ function fadeInOut(order = 0) {
 
 function HomePage() {
   const { t } = useLang();
-  const categories = usePdfs((s) => s.categories);
-  const pdfsCount = useMemo(() => {
-    return Array.from(categories.values()).reduce(
-      (acc, category) => acc + category.pdfs.length,
-      0
-    );
-  }, [categories]);
+
   return (
     <motion.main className="p-4 mx-auto max-w-4xl select-none cursor-default">
       <motion.h1

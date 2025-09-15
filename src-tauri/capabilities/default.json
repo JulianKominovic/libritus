@@ -19,6 +19,10 @@
     "fs:allow-write",
     "fs:allow-write-file",
     "os:default",
-    "os:allow-platform"
+    "os:allow-platform",
+    "sql:default",
+    "sql:allow-load",
+    "sql:allow-select",
+    "opener:allow-default-urls"
   ]
 }
