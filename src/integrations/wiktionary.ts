@@ -1,16 +1,5 @@
 import wtf from "wtf_wikipedia";
 
-// Esto es wikictionary
-// const response = await fetch(`https://en.wiktionary.org/w/api.php?action=query&format=json&formatversion=2&prop=extracts&exsentences=10&explaintext=1&titles=${title}`);
-// const data = await response.json();
-// return data.query.pages[0].extract;
-
-// No ----> Hago busqueda https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={title}&utf8=&format=json&srlimit=1&srprop= -----
-
-// Hago busqueda https://en.wikipedia.org/w/api.php?action=opensearch&search=Hampi&limit=1&namespace=0&format=json
-
-// Me quedo con el primer resultado y ahi busco
-
 type WikipediaOpenSearchResult = [
   // The term you are searching for
   string,

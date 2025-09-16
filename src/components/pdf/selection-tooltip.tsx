@@ -30,7 +30,7 @@ export const SelectionTooltip = ({ children }: SelectionTooltipProps) => {
     onOpenChange: setIsOpen,
     strategy: "fixed",
     whileElementsMounted: autoUpdate,
-    middleware: [offset(10), shift({ padding: 8 })],
+    middleware: [offset(8), shift({ padding: 8 })],
   });
 
   const dismiss = useDismiss(context);
@@ -73,6 +73,7 @@ export const SelectionTooltip = ({ children }: SelectionTooltipProps) => {
     }
   }, [refs]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = document.getSelection();
