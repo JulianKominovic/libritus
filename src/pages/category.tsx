@@ -1,18 +1,20 @@
 import chroma from "chroma-js";
+import { DynamicIcon } from "lucide-react/dynamic";
 import { useLayoutEffect } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Link, Redirect, useParams } from "wouter";
-import { resetGlobalTheme, setGlobalTheme } from "@/lib/app-theme";
-import { createColorPalette } from "@/lib/colors";
-import { cn } from "@/lib/utils";
-import { usePdfs } from "@/stores/categories";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { IconPicker } from "@/components/ui/icon-picker";
-import { DynamicIcon } from "lucide-react/dynamic";
+import { setGlobalTheme } from "@/lib/app-theme";
+import { createColorPalette } from "@/lib/colors";
+import { cn } from "@/lib/utils";
+import { usePdfs } from "@/stores/categories";
+import DragAndDropZone from "@/templates/drag-and-drop";
+
 const DEBOUNCE_TIME = 300;
 
 function Category() {
@@ -39,9 +41,6 @@ function Category() {
 
   useLayoutEffect(() => {
     setGlobalTheme(createColorPalette(category?.color || "#555"));
-    return () => {
-      resetGlobalTheme();
-    };
   }, [category?.color]);
 
   if (!category || !categoryId) {
@@ -51,7 +50,7 @@ function Category() {
   const isDefault = categoryId === "default";
 
   return (
-    <>
+    <DragAndDropZone>
       <div className="flex items-center gap-2 pt-4">
         <div
           className={cn(
@@ -148,7 +147,7 @@ function Category() {
           />
         </label>
       </div>
-    </>
+    </DragAndDropZone>
   );
 }
 

@@ -3,6 +3,20 @@
 version = 4
 
 [[package]]
+name = "Libritus"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-os",
+ "tauri-plugin-sql",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2091,20 +2105,6 @@ dependencies = [
  "bitflags 2.9.4",
  "libc",
  "redox_syscall",
-]
-
-[[package]]
-name = "libritus"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-os",
- "tauri-plugin-sql",
 ]
 
 [[package]]

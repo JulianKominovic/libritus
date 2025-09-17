@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLang } from "@/i18n/lang-context";
 import { usePdfs } from "@/stores/categories";
 import { useSettings } from "@/stores/settings";
 
@@ -27,7 +28,7 @@ function Navbar() {
   const [isTrash] = useRoute("/trash");
   const [isInfo] = useRoute("/info");
   console.log("location", location);
-
+  const { t } = useLang();
   const categories = usePdfs((s) => s.categories);
   const segments = useMemo<
     {
@@ -37,21 +38,21 @@ function Navbar() {
     }[]
   >(() => {
     if (isSettings) {
-      return [{ name: "settings", href: "/settings", suggestions: [] }];
+      return [{ name: t("settings"), href: "/settings", suggestions: [] }];
     }
     if (isTrash) {
-      return [{ name: "trash", href: "/trash", suggestions: [] }];
+      return [{ name: t("trash"), href: "/trash", suggestions: [] }];
     }
     if (isInfo) {
-      return [{ name: "info", href: "/info", suggestions: [] }];
+      return [{ name: t("info"), href: "/info", suggestions: [] }];
     }
     if (isHome) {
-      return [{ name: "home", href: "/", suggestions: [] }];
+      return [{ name: t("home"), href: "/", suggestions: [] }];
     }
     if (isCategory) {
       const category = categories.find((c) => c.id === params2.categoryId);
       return [
-        { name: "home", href: "/", suggestions: [] },
+        { name: t("home"), href: "/", suggestions: [] },
         {
           name: category?.name || "",
           href: `/category/${category?.id}`,
@@ -79,7 +80,7 @@ function Navbar() {
       const pdf = category?.pdfs.find((p) => p.id === params3.pdfId);
       const pdfs = category?.pdfs || [];
       return [
-        { name: "home", href: "/", suggestions: [] },
+        { name: t("home"), href: "/", suggestions: [] },
         {
           name: category?.name || "",
           href: `/category/${category?.id}`,
@@ -111,7 +112,7 @@ function Navbar() {
         },
       ];
     }
-    return [{ name: "home", href: "/", suggestions: [] }];
+    return [{ name: t("home"), href: "/", suggestions: [] }];
   }, [
     isHome,
     isCategory,
@@ -123,6 +124,7 @@ function Navbar() {
     params3?.categoryId,
     params3?.pdfId,
     categories,
+    t,
   ]);
   const setShowNavigationSidebar = useSettings(
     (s) => s.setShowNavigationSidebar

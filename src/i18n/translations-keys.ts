@@ -1,5 +1,8 @@
 export type TranslationsKeys =
-	| "home"
-	| "categories"
-	| "home_welcome"
-	| "home_welcome_description";
+  | "home"
+  | "categories"
+  | "settings"
+  | "trash"
+  | "info"
+  | "home_welcome"
+  | "home_welcome_description";

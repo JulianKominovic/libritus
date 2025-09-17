@@ -78,6 +78,12 @@ export type PdfsStore = {
     pdfId: string,
     pdf: Partial<Pdf>
   ) => Promise<void>;
+  deletePdf: (categoryId: string, pdfId: string) => Promise<void>;
+  movePdf: (
+    sourceCategoryId: string,
+    pdfId: string,
+    destinationCategoryId: string
+  ) => Promise<void>;
   updateCategory: (
     categoryId: string,
     category: Partial<Category>
@@ -157,12 +163,42 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       ]);
     }
   },
+
   setCategories: async (categories) => {
     await writeFile(
       "categories.json",
       new TextEncoder().encode(JSON.stringify(categories))
     );
     set({ categories });
+  },
+  movePdf: async (
+    sourceCategoryId: string,
+    pdfId: string,
+    destinationCategoryId: string
+  ) => {
+    let sourceCategory: Category | undefined;
+    let destinationCategory: Category | undefined;
+    let pdf: Pdf | undefined;
+    const categories = [...get().categories];
+    for (const category of categories) {
+      if (sourceCategory && destinationCategory && pdf) break;
+      if (category.id === sourceCategoryId) {
+        sourceCategory = category;
+        const pdfFound = category.pdfs.find((p) => p.id === pdfId);
+        if (pdfFound) {
+          pdf = pdfFound;
+        }
+      }
+      if (category.id === destinationCategoryId) {
+        destinationCategory = category;
+      }
+    }
+
+    if (sourceCategory && destinationCategory && pdf) {
+      sourceCategory.pdfs = sourceCategory.pdfs.filter((p) => p.id !== pdfId);
+      destinationCategory.pdfs = [...destinationCategory.pdfs, pdf];
+      await get().setCategories(categories);
+    }
   },
   uploadPdf: async (categoryId = "default", data: File) => {
     if (data.type !== "application/pdf") throw new Error("Invalid file type");
@@ -218,6 +254,15 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
           ...cat,
           pdfs: cat.pdfs.map((p) => (p.id === pdfId ? { ...p, ...pdf } : p)),
         };
+      }
+      return cat;
+    });
+    await get().setCategories(categories);
+  },
+  deletePdf: async (categoryId: string, pdfId: string) => {
+    const categories = [...get().categories].map((cat) => {
+      if (cat.id === categoryId) {
+        return { ...cat, pdfs: cat.pdfs.filter((p) => p.id !== pdfId) };
       }
       return cat;
     });

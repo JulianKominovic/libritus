@@ -8,10 +8,14 @@ import { usePdfs } from "@/stores/categories";
 
 function DragAndDropZone({
   children,
+  forceCategoryId,
   ...props
-}: { children: React.ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
-  const { categoryId } = useParams();
-  const safeCategoryId = categoryId || "default";
+}: {
+  children: React.ReactNode;
+  forceCategoryId?: string;
+} & React.HTMLAttributes<HTMLDivElement>) {
+  const { categoryId } = useParams<{ categoryId: string | undefined }>();
+  const safeCategoryId = forceCategoryId || categoryId || "default";
   const uploadPdf = usePdfs((p) => p.uploadPdf);
   const [dragging, setDragging] = useState(false);
   const [draggingValidFile, setDraggingValidFile] = useState(true);

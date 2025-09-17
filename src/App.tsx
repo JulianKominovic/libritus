@@ -45,9 +45,9 @@ function App() {
             <Redirect to="/" />
           </Route>
           <Route path="/category/:categoryId" key={"category-page"}>
-            <DragAndDropZone className="overflow-y-auto pb-48 px-8">
+            <div className="overflow-y-auto pb-48 px-8">
               <Category />
-            </DragAndDropZone>
+            </div>
           </Route>
           <Route path="/category/:categoryId/:pdfId" key={"pdf-page"}>
             <PdfPage />

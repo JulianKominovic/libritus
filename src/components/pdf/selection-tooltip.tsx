@@ -25,12 +25,15 @@ export const SelectionTooltip = ({ children }: SelectionTooltipProps) => {
   const viewportRef = usePdf((state) => state.viewportRef);
 
   const { refs, floatingStyles, context } = useFloating({
-    placement: "bottom",
     open: isOpen,
     onOpenChange: setIsOpen,
     strategy: "fixed",
     whileElementsMounted: autoUpdate,
-    middleware: [offset(8), shift({ padding: 8 })],
+    middleware: [
+      offset(8),
+      shift({ padding: 8 }),
+      // autoPlacement({ allowedPlacements: ["bottom", "top"] }),
+    ],
   });
 
   const dismiss = useDismiss(context);

@@ -1,12 +1,12 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: Shut up 🔥🚒🧨 */
 
-import { SelectionTooltip, useSelectionDimensions } from "@anaralabs/lector";
+import { useSelectionDimensions } from "@anaralabs/lector";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { DynamicIcon } from "lucide-react/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useDebounceCallback } from "usehooks-ts";
+import { SelectionTooltip } from "@/components/pdf/selection-tooltip";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   type DictionaryApiResponse,
   WikiClient,
@@ -167,34 +167,34 @@ function DictionaryEntry({
   );
 }
 
-function AddNote({ back }: { back: () => void }) {
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const note = formData.get("note") as string;
-    console.log(note);
-  };
-  return (
-    <div
-      className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl text-sm max-w-sm p-2 flex-wrap w-fit"
-      data-annotation-tooltip
-    >
-      <header className="flex items-center gap-2 pr-2 mb-2 w-full">
-        <Button
-          variant={"ghost"}
-          className="!px-2 !text-xs rounded-lg aspect-square size-8"
-          onClick={back}
-        >
-          <DynamicIcon name="chevron-left" className="size-4" />
-        </Button>
-        <h4 className="text-morphing-900 font-semibold text-end">Add note</h4>
-      </header>
-      <form onSubmit={handleSubmit}>
-        <Textarea tabIndex={0} placeholder="Write your note here..." />
-      </form>
-    </div>
-  );
-}
+// function AddNote({ back }: { back: () => void }) {
+//   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+//     e.preventDefault();
+//     const formData = new FormData(e.target as HTMLFormElement);
+//     const note = formData.get("note") as string;
+//     console.log(note);
+//   };
+//   return (
+//     <div
+//       className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl text-sm max-w-sm p-2 flex-wrap w-fit"
+//       data-annotation-tooltip
+//     >
+//       <header className="flex items-center gap-2 pr-2 mb-2 w-full">
+//         <Button
+//           variant={"ghost"}
+//           className="!px-2 !text-xs rounded-lg aspect-square size-8"
+//           onClick={back}
+//         >
+//           <DynamicIcon name="chevron-left" className="size-4" />
+//         </Button>
+//         <h4 className="text-morphing-900 font-semibold text-end">Add note</h4>
+//       </header>
+//       <form onSubmit={handleSubmit}>
+//         <Textarea tabIndex={0} placeholder="Write your note here..." />
+//       </form>
+//     </div>
+//   );
+// }
 
 export default function SelectionMenu({
   categoryId,
@@ -205,9 +205,6 @@ export default function SelectionMenu({
 }) {
   const selectionDimensions = useSelectionDimensions();
   const [definition, setDefinition] = useState<DefinitionState | null>(null);
-  const [shape, setShape] = useState<
-    "add-note" | "chat-with-ai" | "what-does-this-mean" | null
-  >(null);
 
   const abortController = useRef<AbortController | null>(null);
   const debouncedFetchDefinition = useDebounceCallback(async (word: string) => {
@@ -249,22 +246,24 @@ export default function SelectionMenu({
   }, 1000);
   const addHighlight = usePdfs((s) => s.addHighlightToPdf);
 
-  function handleHighlight(color: HighlightColorEnum) {
+  async function handleHighlight(color: HighlightColorEnum) {
     const dimension = selectionDimensions.getDimension();
     if (dimension && !dimension.isCollapsed) {
       const filteredHighlightRects = dimension.highlights.filter(
         (rect) => rect.left > 0 && rect.top > 0
       );
-      addHighlight(categoryId, pdfId, {
+      const id = crypto.randomUUID();
+      await addHighlight(categoryId, pdfId, {
         color,
         createdAt: new Date(),
         updatedAt: new Date(),
         text: dimension.text,
         rects: filteredHighlightRects,
-        id: crypto.randomUUID(),
+        id,
         comments: [],
       });
       window.getSelection()?.removeAllRanges();
+      return id;
     }
   }
 
@@ -302,62 +301,65 @@ export default function SelectionMenu({
 
   return (
     <SelectionTooltip>
-      {shape === "add-note" ? (
-        <AddNote back={() => setShape(null)} />
-      ) : (
-        <>
-          <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl text-sm max-w-sm p-1 flex items-center gap-2 flex-wrap w-fit pl-3">
-            <button
-              type="button"
-              className="rounded-[50%] size-5 cursor-pointer bg-fuchsia-500"
-              onClick={() => handleHighlight(HighlightColorEnum.Fuchsia)}
-            ></button>
-            <button
-              type="button"
-              className="rounded-[50%] size-5 cursor-pointer bg-lime-500"
-              onClick={() => handleHighlight(HighlightColorEnum.Lime)}
-            ></button>
-            <button
-              type="button"
-              className="rounded-[50%] size-5 cursor-pointer bg-cyan-500"
-              onClick={() => handleHighlight(HighlightColorEnum.Cyan)}
-            ></button>
-            <Button
-              variant={"ghost"}
-              className="!px-2 !text-xs rounded-lg"
-              onClick={() => setShape("add-note")}
-            >
-              <DynamicIcon name="pencil" className="size-4" />
-              <p>Add note</p>
-            </Button>
-          </div>
-          {definition && (
-            <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl max-w-sm p-3">
-              {definition.loading ? (
-                <div className="animate-pulse bg-morphing-100 rounded-md h-4 w-full"></div>
-              ) : (
-                <DictionaryEntry {...definition} />
-              )}
-            </div>
+      <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl text-sm max-w-sm p-1 flex items-center gap-2 flex-wrap w-fit pl-3">
+        <button
+          type="button"
+          className="rounded-[50%] size-5 cursor-pointer bg-fuchsia-500"
+          onClick={() => handleHighlight(HighlightColorEnum.Fuchsia)}
+        ></button>
+        <button
+          type="button"
+          className="rounded-[50%] size-5 cursor-pointer bg-lime-500"
+          onClick={() => handleHighlight(HighlightColorEnum.Lime)}
+        ></button>
+        <button
+          type="button"
+          className="rounded-[50%] size-5 cursor-pointer bg-cyan-500"
+          onClick={() => handleHighlight(HighlightColorEnum.Cyan)}
+        ></button>
+        <Button
+          variant={"ghost"}
+          className="!px-2 !text-xs rounded-lg"
+          onClick={async () => {
+            const id = await handleHighlight(HighlightColorEnum.Fuchsia);
+            const highlight = document.querySelector(
+              `[data-highlight-id="${id}"]`
+            ) as HTMLButtonElement | null;
+            if (highlight) {
+              highlight.focus();
+              highlight.click();
+            }
+          }}
+        >
+          <DynamicIcon name="pencil" className="size-4" />
+          <p>Add note</p>
+        </Button>
+      </div>
+      {definition && (
+        <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl max-w-sm p-3">
+          {definition.loading ? (
+            <div className="animate-pulse bg-morphing-100 rounded-md h-4 w-full"></div>
+          ) : (
+            <DictionaryEntry {...definition} />
           )}
-          <div className="bg-gradient-to-tr from-white via-violet-50 to-white border border-violet-300 shadow-lg shadow-violet-900/20 mb-2 rounded-xl max-w-sm p-1 flex items-center flex-wrap w-fit">
-            <Button
-              variant={"ghost"}
-              className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
-            >
-              <DynamicIcon name="bot-message-square" className="size-4" />
-              <p>Chat with AI</p>
-            </Button>
-            <Button
-              variant={"ghost"}
-              className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
-            >
-              <DynamicIcon name="help-circle" className="size-4" />
-              <p>What does this mean?</p>
-            </Button>
-          </div>
-        </>
+        </div>
       )}
+      <div className="bg-gradient-to-tr from-white via-violet-50 to-white border border-violet-300 shadow-lg shadow-violet-900/20 mb-2 rounded-xl max-w-sm p-1 flex items-center flex-wrap w-fit">
+        <Button
+          variant={"ghost"}
+          className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
+        >
+          <DynamicIcon name="bot-message-square" className="size-4" />
+          <p>Chat with AI</p>
+        </Button>
+        <Button
+          variant={"ghost"}
+          className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
+        >
+          <DynamicIcon name="help-circle" className="size-4" />
+          <p>What does this mean?</p>
+        </Button>
+      </div>
     </SelectionTooltip>
   );
 }

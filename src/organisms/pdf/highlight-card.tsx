@@ -77,7 +77,7 @@ function HighlightCardsTemplate({
                 className="w-full"
                 data-highlight-id={highlight.id}
                 type="button"
-                onClick={(e) => {
+                onClick={() => {
                   jumpToHighlightRects(highlight.rects, "pixels", "start");
                   setSelectedHighlight(highlight);
                 }}

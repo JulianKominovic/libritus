@@ -11,12 +11,10 @@ import {
   usePdf,
 } from "@anaralabs/lector";
 import { DynamicIcon } from "lucide-react/dynamic";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Redirect, useParams } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDebounceFunction } from "@/hooks/use-debounce-function";
-import { resetGlobalTheme, setGlobalTheme } from "@/lib/app-theme";
-import { createColorPalette } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import CustomHighlightLayer from "@/organisms/pdf/custom-highlight-layer";
 import HighlightCardsTemplate from "@/organisms/pdf/highlight-card";
@@ -53,9 +51,6 @@ function CustomOutline({
         <TabsTrigger value="chats">
           <DynamicIcon name="bot-message-square" className="size-4" />
         </TabsTrigger>
-        <TabsTrigger value="q&a">
-          <DynamicIcon name="help-circle" className="size-4" />
-        </TabsTrigger>
         <TabsTrigger value="outline">
           <DynamicIcon name="list" className="size-4" />
         </TabsTrigger>
@@ -76,7 +71,6 @@ function CustomOutline({
         />
       </TabsContent>
       <TabsContent value="chats">chats.</TabsContent>
-      <TabsContent value="q&a">q&a.</TabsContent>
       <TabsContent value="outline" className="h-full">
         <Outline
           className={cn(
@@ -166,12 +160,12 @@ function PdfPage() {
   const { debounce: debouncedUpdatePdfProgress } = useDebounceFunction(1000);
 
   const showPdfOutline = useSettings((s) => s.showPdfOutline);
-  useLayoutEffect(() => {
-    setGlobalTheme(createColorPalette(pdf?.hexColor || "#555"));
-    return () => {
-      resetGlobalTheme();
-    };
-  }, [pdf?.hexColor]);
+  // useLayoutEffect(() => {
+  //   setGlobalTheme(createColorPalette(pdf?.hexColor || "#555"));
+  //   return () => {
+  //     resetGlobalTheme();
+  //   };
+  // }, [pdf?.hexColor]);
 
   if (!pdf || !categoryId || !pdfId) {
     return <Redirect to="/" />;
@@ -227,7 +221,7 @@ function PdfPage() {
         >
           <Page data-pdf-page>
             <CanvasLayer background={"transparent"} />
-            <TextLayer />
+            <TextLayer className="bg-morphing-50 mix-blend-multiply" />
             <AnnotationLayer />
             <CustomHighlightLayer
               highlights={pdf.highlights}
