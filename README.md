@@ -1,5 +1,5 @@
 
-<p align="center"><img src="https://github.com/user-attachments/assets/71eaaa65-8031-4e59-8a39-adcd4f5d1b79" width="96" height="96"/></p>
+<p align="center"><img src="./app-icon.png" width="256" height="256"/></p>
 <h1 align="center">
   Libritus
 </h1>
@@ -7,7 +7,14 @@
 Modern reading app designed to make reading simple, elegant, and enjoyable. Clean interface for exploring texts, highlighting key parts, and managing your reading experience without distractions. Built for curious minds. AI powered.
 </p>
 
-![Screenshot 2025-09-11 at 11 38 59 PM (1)](https://github.com/user-attachments/assets/33159d74-f42e-415b-a46d-60cfc23d3a16)
+<img width="1840" height="1191" alt="Screenshot 2025-09-16 at 10 12 20 PM" src="https://github.com/user-attachments/assets/77b35121-e2fd-4d7d-8350-a3fca917dfb0" />
+<img width="1840" height="1191" alt="Screenshot 2025-09-16 at 8 34 31 PM" src="https://github.com/user-attachments/assets/1f412e7a-4547-44e4-84ee-d04097078e50" />
+<img width="1840" height="1191" alt="wikipedia-definitions" src="https://github.com/user-attachments/assets/34391e7e-14a2-49e1-ab86-6843d3ebc857" />
+<img width="1840" height="1191" alt="Screenshot 2025-09-16 at 8 36 31 PM" src="https://github.com/user-attachments/assets/44454453-d7f9-4093-8809-927c440066f0" />
+
+![Screenshot 2025-09-16 at 8 42 44 PM](https://github.com/user-attachments/assets/f78e2349-2f89-4647-bba8-ec77fc49bb6e)
+
+
 
 ## Follow the journey!
 I will be uploading any progress in https://jkominovic.dev
