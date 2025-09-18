@@ -37,12 +37,12 @@ function DragAndDropZone({
         let validFiles = 0;
         for (const file of e.dataTransfer.files) {
           if (file.type === "application/pdf") {
-            await uploadPdf(safeCategoryId, file);
             validFiles++;
+            await uploadPdf(safeCategoryId, file);
           }
         }
 
-        if (validFiles > 0 && validFiles === e.dataTransfer.files.length) {
+        if (validFiles > 0 && validFiles !== e.dataTransfer.files.length) {
           setDragging(false);
           setDraggingValidFile(true);
         } else {

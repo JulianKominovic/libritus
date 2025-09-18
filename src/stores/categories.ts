@@ -224,15 +224,11 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       size: data.size,
       pages: pdfMetadata.pages,
       thumbnail: thumbnailSrc,
-      author:
-        pdfMetadata.author ||
-        pdfMetadata.creator ||
-        pdfMetadata.producer ||
-        "Unknown",
+      author: pdfMetadata.author || pdfMetadata.creator || pdfMetadata.producer,
       creationDate: pdfMetadata.creationDate,
       modificationDate: pdfMetadata.modificationDate,
       progress: { percentage: 0, pages: 0, offset: 0 },
-      hexColor: pdfMetadata.hexColor,
+      hexColor: pdfMetadata.hexColor || "#555555",
       highlights: [],
     };
     const categories = [...get().categories].map((cat) => {

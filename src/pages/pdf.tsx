@@ -179,7 +179,8 @@ function PdfPage() {
       key={pdfId}
     >
       <Root
-        isZoomFitWidth
+        isZoomFitWidth={pdf.isZoomFitWidth}
+        zoom={pdf.zoom}
         source={pdf.src}
         className={cn(
           "w-full h-full overflow-hidden select-auto gap-4 grid",

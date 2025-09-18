@@ -1,5 +1,7 @@
+// biome-ignore-all lint: If this file is linted the app will crash
 // @ts-nocheck
 import quantize from "quantize";
+
 function createPixelArray(imgData, pixelCount, quality) {
   const pixels = imgData;
   const pixelArray = [];
@@ -104,7 +106,7 @@ var ColorThief = function () {};
  * */
 ColorThief.prototype.getColor = function (sourceImage, quality = 5) {
   const palette = this.getPalette(sourceImage, 5, quality);
-  const dominantColor = palette[0];
+  const dominantColor = palette?.[0];
   return dominantColor;
 };
 export function getPaletteFromImageData(

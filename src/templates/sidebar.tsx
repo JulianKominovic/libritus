@@ -126,6 +126,7 @@ function TreeView() {
 
           if (itemType === NativeTypes.FILE) {
             for (const file of files) {
+              console.log("File uploading", file);
               if (file?.type === "application/pdf") {
                 await uploadPdf(dropTargetId as string, file);
               }

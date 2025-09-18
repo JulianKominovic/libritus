@@ -1,6 +1,7 @@
-import { getPaletteFromImageData } from "./color-thief";
-import { getDocument } from "pdfjs-dist";
 import chroma from "chroma-js";
+import { getDocument } from "pdfjs-dist";
+import { getPaletteFromImageData } from "./color-thief";
+
 /**
  * Transforms D:YYYYMMDDHHMMSS+HH'MM' to YYYY-MM-DDTHH:MM:SS+HH:MM
  * @param {string} strWithD Date string in D:YYYYMMDDHHMMSS+HH'MM format
@@ -67,9 +68,10 @@ export async function getPdfMetadata(file: File): Promise<{
       resolve(blob);
     });
   });
-  const [r, g, b] = getPaletteFromImageData(
+  const dominantColor = getPaletteFromImageData(
     canvasContext.getImageData(0, 0, canvas.width, canvas.height)
   );
+  const [r, g, b] = dominantColor || [33, 33, 33];
   const hexColor = chroma(r, g, b).hex();
   return {
     title,

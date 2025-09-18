@@ -8,10 +8,14 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { WORKDIR } from "@/stores/settings";
 
-await mkdirFs(WORKDIR, { recursive: true }).catch((e) => {
-  console.error(e);
-});
 console.log("workdir", WORKDIR);
+await mkdirFs(WORKDIR, { recursive: true })
+  .then(() => {
+    console.log("workdir created", WORKDIR);
+  })
+  .catch((e) => {
+    console.error(e);
+  });
 export async function writeFile(filename: string, data: Uint8Array) {
   const fullPath = await join(WORKDIR, filename);
 
