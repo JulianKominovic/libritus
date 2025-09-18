@@ -19,7 +19,7 @@ function DragAndDropZone({
   const uploadPdf = usePdfs((p) => p.uploadPdf);
   const [dragging, setDragging] = useState(false);
   const [draggingValidFile, setDraggingValidFile] = useState(true);
-  const delayedSetDragging = useDebounceCallback(setDragging, 2000);
+  const delayedSetDragging = useDebounceCallback(setDragging, 5000);
   return (
     <div
       onDragStart={() => setDragging(true)}
@@ -32,17 +32,21 @@ function DragAndDropZone({
       onDragLeave={() => {
         setDragging(false);
       }}
-      onDrop={(e) => {
+      onDrop={async (e) => {
         e.preventDefault();
-        const isValidFile =
-          e.dataTransfer.files.length > 0 &&
-          e.dataTransfer.files.item(0)?.type === "application/pdf";
-        const file = e.dataTransfer.files.item(0);
-        setDraggingValidFile(isValidFile);
-        if (isValidFile && file) {
-          uploadPdf(safeCategoryId, file);
+        let validFiles = 0;
+        for (const file of e.dataTransfer.files) {
+          if (file.type === "application/pdf") {
+            await uploadPdf(safeCategoryId, file);
+            validFiles++;
+          }
+        }
+
+        if (validFiles > 0 && validFiles === e.dataTransfer.files.length) {
           setDragging(false);
+          setDraggingValidFile(true);
         } else {
+          setDraggingValidFile(false);
           delayedSetDragging(false);
         }
       }}
@@ -63,7 +67,7 @@ function DragAndDropZone({
               "bg-white max-w-md w-full p-8 rounded-xl border",
               draggingValidFile
                 ? "border-morphing-200"
-                : "border-destructive/60 bg-destructive/10"
+                : "border-destructive/60"
             )}
           >
             <h2
@@ -72,7 +76,9 @@ function DragAndDropZone({
                 draggingValidFile ? "text-morphing-800" : "text-destructive"
               )}
             >
-              {draggingValidFile ? "Drop the PDF here" : "Invalid file type"}
+              {draggingValidFile
+                ? "Drop the PDF here"
+                : "One or more files are not PDFs"}
             </h2>
             <p
               className={cn(
@@ -82,7 +88,7 @@ function DragAndDropZone({
             >
               {draggingValidFile
                 ? "Drop the PDF here to upload it."
-                : "That file is not a PDF."}
+                : "One or more files are not PDFs. Those files will not be uploaded."}
             </p>
           </div>
         </div>

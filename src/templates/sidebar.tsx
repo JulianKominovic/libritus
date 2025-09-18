@@ -1,7 +1,14 @@
+import {
+  getBackendOptions,
+  MultiBackend,
+  type NodeModel,
+  Tree,
+} from "@minoru/react-dnd-treeview";
 import { DynamicIcon } from "lucide-react/dynamic";
 import { motion } from "motion/react";
 import { useMemo } from "react";
-import { useDebounceCallback } from "usehooks-ts";
+import { DndProvider } from "react-dnd";
+import { NativeTypes } from "react-dnd-html5-backend";
 import { Link, useLocation, useRoute } from "wouter";
 import {
   AlertDialog,
@@ -23,19 +30,11 @@ import {
   ContextMenuTrigger,
   contextMenuVariants,
 } from "@/components/ui/context-menu";
-import { Input } from "@/components/ui/input";
 import { useLang } from "@/i18n/lang-context";
 import { cn } from "@/lib/utils";
+import PdfCardContextMenuContent from "@/organisms/pdf/pdf-card-context-menu-content";
 import { type Category, type Pdf, usePdfs } from "@/stores/categories";
 import { useSettings } from "@/stores/settings";
-import {
-  Tree,
-  getBackendOptions,
-  MultiBackend,
-  NodeModel,
-} from "@minoru/react-dnd-treeview";
-import { DndProvider } from "react-dnd";
-import { NativeTypes } from "react-dnd-html5-backend";
 
 type PdfTreeItem = Pdf & { type: "P" };
 type CategoryTreeItem = Category & { type: "C" };
@@ -45,45 +44,46 @@ function TreeView() {
   const selectedCategoryId = params2?.categoryId || params3?.categoryId;
   const selectedPdfId = params3?.pdfId;
   const categories = usePdfs((s) => s.categories);
-  const treeData: NodeModel<CategoryTreeItem | PdfTreeItem | null>[] =
-    useMemo(() => {
-      const fixed: NodeModel<null>[] = [
-        {
-          id: "add-category",
-          text: "Add Category",
-          data: null,
+  const treeData: NodeModel<
+    CategoryTreeItem | PdfTreeItem | { type: "C" } | null
+  >[] = useMemo(() => {
+    const fixed: NodeModel<{ type: "C" }>[] = [
+      {
+        id: "add-category",
+        text: "Add Category",
+        data: { type: "C" },
+        parent: 0,
+        droppable: true,
+      },
+    ];
+    const mappedCategories: NodeModel<CategoryTreeItem>[] = categories.map(
+      (category) =>
+        ({
+          id: category.id,
+          text: category.name,
+          data: { ...category, type: "C" },
           parent: 0,
-        },
-      ];
-      const mappedCategories: NodeModel<CategoryTreeItem>[] = categories.map(
-        (category) =>
-          ({
-            id: category.id,
-            text: category.name,
-            data: { ...category, type: "C" },
-            parent: 0,
-            droppable: true,
-          } as NodeModel<CategoryTreeItem>)
-      );
-      const mappedPdfs: NodeModel<PdfTreeItem>[] = categories.flatMap(
-        (category) =>
-          category.pdfs.map(
-            (pdf) =>
-              ({
-                id: pdf.id,
-                text: pdf.name,
-                data: { ...pdf, type: "P" },
-                parent: category.id,
-              } as NodeModel<PdfTreeItem>)
-          )
-      );
-      return [...mappedCategories, ...mappedPdfs, ...fixed];
-    }, [categories]);
+          droppable: true,
+        } as NodeModel<CategoryTreeItem>)
+    );
+    const mappedPdfs: NodeModel<PdfTreeItem>[] = categories.flatMap(
+      (category) =>
+        category.pdfs.map(
+          (pdf) =>
+            ({
+              id: pdf.id,
+              text: pdf.name,
+              data: { ...pdf, type: "P" },
+              parent: category.id,
+            } as NodeModel<PdfTreeItem>)
+        )
+    );
+    return [...mappedCategories, ...mappedPdfs, ...fixed];
+  }, [categories]);
   const createCategory = usePdfs((s) => s.createCategory);
   const [, navigate] = useLocation();
   const deleteCategory = usePdfs((s) => s.deleteCategory);
-  const deletePdf = usePdfs((s) => s.deletePdf);
-  const updatePdf = usePdfs((s) => s.updatePdf);
+
   const uploadPdf = usePdfs((s) => s.uploadPdf);
   const movePdf = usePdfs((s) => s.movePdf);
   const initialOpen = useMemo(() => {
@@ -96,25 +96,14 @@ function TreeView() {
     }
     return openPaths;
   }, [selectedPdfId, selectedCategoryId]);
-  const debouncedUpdatePdf = useDebounceCallback((categoryId, pdfId, name) => {
-    updatePdf(categoryId, pdfId, { name });
-  }, 300);
 
   return (
     <DndProvider backend={MultiBackend} options={getBackendOptions()}>
       <Tree
         tree={treeData}
-        onChangeOpen={(openPaths) => {
-          console.log("openPaths", openPaths);
-          //         if(categoryId!=='add-category'){
-          // const [isActive] = useRoute(`/category/${categoryId}/:pdfId?`);
-          //         }
-        }}
         extraAcceptTypes={[
           // PDF FILES
           NativeTypes.FILE,
-          // HTML PDF CARDS
-          // NativeTypes.HTML,
         ]}
         canDrag={(node) => {
           return node?.data?.type === "P";
@@ -122,27 +111,37 @@ function TreeView() {
         rootId={0}
         sort={false}
         onDrop={async (
-          newTree,
-          { monitor, dropTargetId, dragSourceId, dragSource }
+          _,
+          { monitor, dropTargetId: ogDropTargetId, dragSource }
         ) => {
           const itemType = monitor.getItemType();
-          console.log("ondrop", newTree, monitor, dropTargetId);
-          if (itemType === NativeTypes.FILE) {
-            const file: File | undefined = monitor.getItem().files[0];
-            if (file?.type === "application/pdf") {
-              await uploadPdf(dropTargetId as string, file);
-            }
-          } else {
-            console.log("movePdf", dragSourceId, dragSource?.id, dropTargetId);
-            movePdf(
-              dragSource?.parent as string,
-              dragSource?.id as string,
-              dropTargetId as string
-            );
+          let dropTargetId = ogDropTargetId + "";
+          const files: File[] = monitor.getItem().files || [];
+
+          if (dropTargetId === "add-category") {
+            const createdCategory = await createCategory();
+            navigate(`/category/${createdCategory.id}`, { replace: true });
+            dropTargetId = createdCategory.id;
           }
+
+          if (itemType === NativeTypes.FILE) {
+            for (const file of files) {
+              if (file?.type === "application/pdf") {
+                await uploadPdf(dropTargetId as string, file);
+              }
+            }
+          }
+          movePdf(
+            dragSource?.parent as string,
+            dragSource?.id as string,
+            dropTargetId as string
+          );
         }}
         initialOpen={initialOpen}
-        render={(node, { depth, isOpen, onToggle }) => {
+        render={(
+          node,
+          { depth, isOpen, onToggle, isDragging, isDropTarget }
+        ) => {
           const isPdf = node.data?.type === "P";
           // const isActive =
           //   (isPdf
@@ -163,7 +162,8 @@ function TreeView() {
                   className={cn(
                     buttonVariants({ variant: "none" }),
                     "w-full justify-start ml-auto !p-0 h-auto mb-2 whitespace-pre-line line-clamp-2",
-                    isActive ? "font-semibold active" : ""
+                    isActive ? "font-semibold active" : "",
+                    isDragging ? "animate-[pulse_1s_ease-in-out_infinite]" : ""
                   )}
                   style={{
                     width: `calc(100% - ${depth * 24}px)`,
@@ -171,28 +171,10 @@ function TreeView() {
                 >
                   {pdfNode.name}
                 </ContextMenuTrigger>
-                <ContextMenuContent className="w-full max-w-md">
-                  <Input
-                    className="text-morphing-900 flex items-center gap-2 font-medium text-sm px-2 py-2 border-b mb-2 resize-none border-none rounded-b-none rounded-t-lg"
-                    defaultValue={pdfNode.name}
-                    onChange={(e) => {
-                      debouncedUpdatePdf(
-                        node.parent,
-                        pdfNode.id,
-                        e.target.value
-                      );
-                    }}
-                  />
-                  <ContextMenuItem
-                    variant="destructive"
-                    onClick={() => {
-                      deletePdf(node.parent as string, pdfNode.id);
-                    }}
-                  >
-                    <DynamicIcon name="trash" />
-                    Delete
-                  </ContextMenuItem>
-                </ContextMenuContent>
+                <PdfCardContextMenuContent
+                  pdf={pdfNode}
+                  categoryId={node.parent as string}
+                />
               </ContextMenu>
             );
           }
@@ -200,7 +182,10 @@ function TreeView() {
             return (
               <Button
                 variant={"none"}
-                className="!p-0 h-10"
+                className={cn(
+                  "!p-0 h-10 w-full justify-start",
+                  isDropTarget ? "bg-morphing-100 !px-2" : ""
+                )}
                 onClick={() => {
                   createCategory().then((category) => {
                     navigate(`/category/${category.id}`, { replace: true });
@@ -219,8 +204,9 @@ function TreeView() {
               <ContextMenuTrigger
                 className={cn(
                   buttonVariants({ variant: "none" }),
-                  "w-full justify-start !p-0 h-8 line-clamp-3 flex",
-                  isActive ? "font-semibold active" : ""
+                  "w-full relative justify-start !p-0 h-10 line-clamp-3 flex",
+                  isActive ? "font-semibold active" : "",
+                  isDropTarget ? "bg-morphing-100 !px-2" : ""
                 )}
                 onClick={() => {
                   onToggle();
@@ -259,7 +245,7 @@ function TreeView() {
                         })}
                       >
                         <DynamicIcon name="trash" />
-                        Delete
+                        Delete category
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -302,11 +288,9 @@ function TreeView() {
 function Sidebar() {
   const { t } = useLang();
   const categories = usePdfs((s) => s.categories);
-  const createCategory = usePdfs((s) => s.createCategory);
   const pdfsCount = useMemo(() => {
     return categories.reduce((acc, category) => acc + category.pdfs.length, 0);
   }, [categories]);
-  const [, navigate] = useLocation();
   const [isTrash] = useRoute("/trash");
   const [isSettings] = useRoute("/settings");
   const [isInfo] = useRoute("/info");
