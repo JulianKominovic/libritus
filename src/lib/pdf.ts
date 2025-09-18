@@ -62,7 +62,7 @@ export async function getPdfMetadata(file: File): Promise<{
     transform: [1, 0, 0, 1, 0, 0],
     // This prop exists in pdfjs-dist 5 not in 4.10.38
     // canvas: canvas,
-    background: "transparent",
+    background: "#fff",
   }).promise;
   const thumbnail: Blob | null = await new Promise((resolve) => {
     canvas.toBlob((blob) => {
