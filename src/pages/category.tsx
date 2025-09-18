@@ -3,15 +3,12 @@ import { DynamicIcon } from "lucide-react/dynamic";
 import { useLayoutEffect } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Link, Redirect, useParams } from "wouter";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { IconPicker } from "@/components/ui/icon-picker";
 import { setGlobalTheme } from "@/lib/app-theme";
 import { createColorPalette } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import PdfCardContextMenuContent from "@/organisms/pdf/pdf-card-context-menu-content";
 import { usePdfs } from "@/stores/categories";
 import DragAndDropZone from "@/templates/drag-and-drop";
 
@@ -107,8 +104,8 @@ function Category() {
       <h2 className="text-sm text- mb-6">{category.pdfs.length} pdfs</h2>
       <div className="flex flex-wrap gap-8 group/container">
         {category.pdfs.map((pdf) => (
-          <HoverCard openDelay={100} closeDelay={100} key={pdf.id}>
-            <HoverCardTrigger asChild>
+          <ContextMenu key={pdf.id}>
+            <ContextMenuTrigger asChild>
               <Link
                 to={`/category/${categoryId}/${pdf.id}`}
                 className="p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] hover:drop-shadow-xl hover:scale-105 duration-300 transition-all drop-shadow-morphing-900/20 group"
@@ -118,12 +115,19 @@ function Category() {
                   alt={pdf.name}
                   className="size-full object-cover"
                 />
+                <div className="bg-black/20 border border-black/5 backdrop-blur-3xl absolute bottom-1.5 right-1.5 w-fit rounded-full">
+                  <p className="text-white px-2">
+                    {pdf.progress.percentage > 0 ? (
+                      `${pdf.progress.percentage.toFixed(0)}%`
+                    ) : (
+                      <i className="font-serif">New</i>
+                    )}
+                  </p>
+                </div>
               </Link>
-            </HoverCardTrigger>
-            <HoverCardContent side="right" sideOffset={12}>
-              The React Framework – created and maintained by @vercel.
-            </HoverCardContent>
-          </HoverCard>
+            </ContextMenuTrigger>
+            <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
+          </ContextMenu>
         ))}
         <label
           htmlFor={`pdf-upload-${categoryId}`}
@@ -138,10 +142,13 @@ function Category() {
             placeholder="Upload a PDF"
             accept="application/pdf"
             hidden
-            onChange={(e) => {
-              const file = e.target.files?.item(0);
-              if (file && file.type === "application/pdf") {
-                uploadPdf(categoryId, file);
+            multiple
+            onChange={async (e) => {
+              for (const file of e.target.files || []) {
+                console.log("Uploading pdf", file);
+                if (file && file.type === "application/pdf") {
+                  await uploadPdf(categoryId, file);
+                }
               }
             }}
           />
