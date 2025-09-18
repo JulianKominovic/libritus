@@ -207,7 +207,6 @@ function PdfPage() {
           onOffsetChange={(offset) => {
             if (offset === lastOffset.current) return;
             debouncedUpdatePdfProgress(() => {
-              console.log("Updating pdf progress", offset, lastOffset.current);
               updatePdf(categoryId, pdfId, {
                 progress: {
                   ...pdf.progress,
