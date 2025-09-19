@@ -1,8 +1,13 @@
-import { type NodeModel, Tree } from "@minoru/react-dnd-treeview";
+import {
+  getBackendOptions,
+  MultiBackend,
+  type NodeModel,
+  Tree,
+} from "@minoru/react-dnd-treeview";
 import { DynamicIcon } from "lucide-react/dynamic";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef } from "react";
-import { useDragDropManager } from "react-dnd";
+import { DndProvider, useDragDropManager } from "react-dnd";
 import { NativeTypes } from "react-dnd-html5-backend";
 import { Link, useLocation, useRoute } from "wouter";
 import {
@@ -375,7 +380,9 @@ function Sidebar() {
             <strong className="font-medium">{t("categories")} </strong>
             <span>{pdfsCount} pdfs</span>
           </p>
-          <TreeView containerRef={containerRef} />
+          <DndProvider backend={MultiBackend} options={getBackendOptions()}>
+            <TreeView containerRef={containerRef} />
+          </DndProvider>
           {/* <motion.ul className="h-full">
             {categories.map((category) => {
               return (
