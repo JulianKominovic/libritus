@@ -5,4 +5,6 @@ export type TranslationsKeys =
   | "trash"
   | "info"
   | "home_welcome"
-  | "home_welcome_description";
+  | "home_welcome_description"
+  | "pdf"
+  | "navigation";

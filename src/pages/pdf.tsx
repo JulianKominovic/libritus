@@ -102,24 +102,26 @@ function AttachListeners({
   const updatePdf = usePdfs((s) => s.updatePdf);
   const currentPage = usePdf((s) => s.currentPage);
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // useEffect(() => {
+  //   function handleResize() {
+  //     if (timerRef.current) clearTimeout(timerRef.current);
 
-  useEffect(() => {
-    function handleResize() {
-      const lastZoom = Number(zoom);
-      updateZoom(5);
-      if (isZoomFitWidth) {
-        zoomFitWidth();
-      } else {
-        setTimeout(() => {
-          updateZoom(lastZoom);
-        }, 200);
-      }
-    }
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [updateZoom, zoom, isZoomFitWidth]);
+  //     const lastZoom = Number(zoom);
+  //     updateZoom(5);
+  //     timerRef.current = setTimeout(() => {
+  //       if (isZoomFitWidth) {
+  //         zoomFitWidth();
+  //       } else {
+  //         updateZoom(lastZoom);
+  //       }
+  //     }, 200);
+  //   }
+  //   window.addEventListener("resize", handleResize);
+  //   return () => {
+  //     window.removeEventListener("resize", handleResize);
+  //   };
+  // }, [updateZoom, zoom, isZoomFitWidth, timerRef]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
@@ -183,12 +185,7 @@ function PdfPage() {
   }
 
   return (
-    <div
-      className={
-        "px-0 w-full h-[calc(100%-50px)] overflow-y-auto overflow-x-hidden relative"
-      }
-      key={pdfId}
-    >
+    <div className="px-0 w-full h-[calc(100%-50px)] overflow-y-auto overflow-x-hidden relative">
       <Root
         isZoomFitWidth={pdf.isZoomFitWidth}
         zoom={pdf.zoom}

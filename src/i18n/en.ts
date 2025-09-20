@@ -7,5 +7,7 @@ export const en: Record<TranslationsKeys, string> = {
   home_welcome_description: "Your new favourite reading companion.",
   settings: "Settings",
   trash: "Trash",
+  pdf: "PDF",
+  navigation: "Navigation",
   info: "Info",
 };
