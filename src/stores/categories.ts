@@ -79,11 +79,7 @@ export type PdfsStore = {
     pdf: Partial<Pdf>
   ) => Promise<void>;
   deletePdf: (categoryId: string, pdfId: string) => Promise<void>;
-  movePdf: (
-    sourceCategoryId: string,
-    pdfId: string,
-    destinationCategoryId: string
-  ) => Promise<void>;
+  movePdf: (pdfId: string, destinationCategoryId: string) => Promise<void>;
   updateCategory: (
     categoryId: string,
     category: Partial<Category>
@@ -171,23 +167,17 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
     );
     set({ categories });
   },
-  movePdf: async (
-    sourceCategoryId: string,
-    pdfId: string,
-    destinationCategoryId: string
-  ) => {
+  movePdf: async (pdfId: string, destinationCategoryId: string) => {
     let sourceCategory: Category | undefined;
     let destinationCategory: Category | undefined;
     let pdf: Pdf | undefined;
     const categories = [...get().categories];
     for (const category of categories) {
       if (sourceCategory && destinationCategory && pdf) break;
-      if (category.id === sourceCategoryId) {
+      const pdfFound = category.pdfs.find((p) => p.id === pdfId);
+      if (pdfFound) {
         sourceCategory = category;
-        const pdfFound = category.pdfs.find((p) => p.id === pdfId);
-        if (pdfFound) {
-          pdf = pdfFound;
-        }
+        pdf = pdfFound;
       }
       if (category.id === destinationCategoryId) {
         destinationCategory = category;

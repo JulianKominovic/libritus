@@ -16,11 +16,6 @@ function App() {
     <>
       <Navbar />
       <motion.div
-        onDragStart={(e) => e.preventDefault()}
-        onDragEnd={(e) => e.preventDefault()}
-        onDragOver={(e) => e.preventDefault()}
-        onDragLeave={(e) => e.preventDefault()}
-        onDrop={(e) => e.preventDefault()}
         className={cn("grid gap-12 h-full bg-morphing-50 text-morphing-900")}
         initial={{ opacity: 0 }}
         animate={{

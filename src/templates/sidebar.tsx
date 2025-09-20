@@ -1,13 +1,8 @@
-import {
-  getBackendOptions,
-  MultiBackend,
-  type NodeModel,
-  Tree,
-} from "@minoru/react-dnd-treeview";
+import { type NodeModel, Tree } from "@minoru/react-dnd-treeview";
 import { DynamicIcon } from "lucide-react/dynamic";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef } from "react";
-import { DndProvider, useDragDropManager } from "react-dnd";
+import { useDragDropManager } from "react-dnd";
 import { NativeTypes } from "react-dnd-html5-backend";
 import { Link, useLocation, useRoute } from "wouter";
 import {
@@ -129,8 +124,8 @@ function TreeView({
         const speed = clientOffset.y - offsetBottom;
 
         timer = setInterval(() => {
-          containerRef.current!.scrollTop =
-            containerRef.current!.scrollTop + speed;
+          (containerRef.current as unknown as HTMLElement).scrollTop =
+            (containerRef.current as unknown as HTMLElement).scrollTop + speed;
         }, 10);
       }
 
@@ -138,8 +133,8 @@ function TreeView({
         const speed = offsetTop - clientOffset.y;
 
         timer = setInterval(() => {
-          containerRef.current!.scrollTop =
-            containerRef.current!.scrollTop - speed;
+          (containerRef.current as unknown as HTMLElement).scrollTop =
+            (containerRef.current as unknown as HTMLElement).scrollTop - speed;
         }, 10);
       }
     });
@@ -166,7 +161,8 @@ function TreeView({
         { monitor, dropTargetId: ogDropTargetId, dragSource }
       ) => {
         const itemType = monitor.getItemType();
-        let dropTargetId = ogDropTargetId + "";
+        let dropTargetId = `${ogDropTargetId}`;
+        let dragSourceId = `${dragSource?.id}`;
         const files: File[] = monitor.getItem().files || [];
 
         if (dropTargetId === "add-category") {
@@ -184,13 +180,12 @@ function TreeView({
           }
         }
         if (itemType === NativeTypes.HTML) {
-          console.log("Is HTML", monitor.getItem());
+          const item = monitor.getItem();
+          if (item.type === "P") {
+            dragSourceId = item.id;
+          }
         }
-        movePdf(
-          dragSource?.parent as string,
-          dragSource?.id as string,
-          dropTargetId as string
-        );
+        movePdf(dragSourceId as string, dropTargetId as string);
       }}
       initialOpen={initialOpen}
       render={(node, { depth, isOpen, onToggle, isDragging, isDropTarget }) => {
@@ -380,34 +375,7 @@ function Sidebar() {
             <strong className="font-medium">{t("categories")} </strong>
             <span>{pdfsCount} pdfs</span>
           </p>
-          <DndProvider backend={MultiBackend} options={getBackendOptions()}>
-            <TreeView containerRef={containerRef} />
-          </DndProvider>
-          {/* <motion.ul className="h-full">
-            {categories.map((category) => {
-              return (
-                <SidebarItem
-                  key={category.id}
-                  category={category}
-                  categoryId={category.id}
-                ></SidebarItem>
-              );
-            })}
-            <motion.li className="h-auto cursor-pointer">
-              <Button
-                variant={"none"}
-                className="!p-0 h-9"
-                onClick={() => {
-                  createCategory().then((category) => {
-                    navigate(`/category/${category.id}`, { replace: true });
-                  });
-                }}
-              >
-                <DynamicIcon name="plus" />
-                Create new category
-              </Button>
-            </motion.li>
-          </motion.ul> */}
+          <TreeView containerRef={containerRef} />
         </div>
         <footer className="flex items-center gap-4 pb-4 pt-1">
           <Link to="/settings">

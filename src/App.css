@@ -128,7 +128,7 @@
     @apply border-border outline-ring/50 min-w-0;
   }
   html {
-    @apply overscroll-none select-none cursor-default;
+    @apply overscroll-none cursor-default;
   }
   body {
     @apply bg-morphing-50 text-morphing-900 h-screen;
@@ -189,7 +189,6 @@
     border-bottom-right-radius: var(--radius);
     border-top-left-radius: 2px;
     border-bottom-left-radius: 2px;
-    pointer-events: none;
     filter: contrast(310%) brightness(100%);
     box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px inset;
     background: linear-gradient(

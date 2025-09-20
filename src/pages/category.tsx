@@ -1,6 +1,8 @@
 import chroma from "chroma-js";
 import { DynamicIcon } from "lucide-react/dynamic";
 import { useLayoutEffect } from "react";
+import { useDrag } from "react-dnd";
+import { NativeTypes } from "react-dnd-html5-backend";
 import { useDebounceCallback } from "usehooks-ts";
 import { Link, Redirect, useParams } from "wouter";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -9,10 +11,61 @@ import { setGlobalTheme } from "@/lib/app-theme";
 import { createColorPalette } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import PdfCardContextMenuContent from "@/organisms/pdf/pdf-card-context-menu-content";
-import { usePdfs } from "@/stores/categories";
+import { type Pdf, usePdfs } from "@/stores/categories";
 import DragAndDropZone from "@/templates/drag-and-drop";
 
 const DEBOUNCE_TIME = 300;
+
+function DraggablePdfCard({
+  pdf,
+  categoryId,
+}: {
+  pdf: Pdf;
+  categoryId: string;
+}) {
+  const [, drag, preview] = useDrag(() => ({
+    type: NativeTypes.HTML,
+    previewOptions: {
+      offsetX: -1,
+      offsetY: 320,
+    },
+    options: { dropEffect: "move" },
+    item: { id: pdf.id, type: "P" },
+  }));
+
+  return (
+    <ContextMenu key={pdf.id}>
+      <ContextMenuTrigger
+        ref={drag as unknown as React.Ref<HTMLDivElement>}
+        asChild
+      >
+        <Link
+          to={`/category/${categoryId}/${pdf.id}`}
+          className={
+            "p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] hover:scale-105 duration-300 transition-transform group"
+          }
+        >
+          <img
+            ref={preview as unknown as React.Ref<HTMLImageElement>}
+            src={pdf.thumbnail || ""}
+            alt={pdf.name}
+            className={"size-full object-cover"}
+          />
+          <div className="bg-black/20 border border-black/5 backdrop-blur-3xl absolute bottom-1.5 right-1.5 w-fit rounded-full">
+            <p className="text-white px-2">
+              {pdf.progress.percentage > 0 ? (
+                `${pdf.progress.percentage.toFixed(0)}%`
+              ) : (
+                <i className="font-serif">New</i>
+              )}
+            </p>
+          </div>
+        </Link>
+      </ContextMenuTrigger>
+      <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
+    </ContextMenu>
+  );
+}
 
 function Category() {
   const { categoryId } = useParams();
@@ -104,30 +157,11 @@ function Category() {
       <h2 className="text-sm text- mb-6">{category.pdfs.length} pdfs</h2>
       <div className="flex flex-wrap gap-8 group/container">
         {category.pdfs.map((pdf) => (
-          <ContextMenu key={pdf.id}>
-            <ContextMenuTrigger asChild>
-              <Link
-                to={`/category/${categoryId}/${pdf.id}`}
-                className="p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] hover:drop-shadow-xl hover:scale-105 duration-300 transition-all drop-shadow-morphing-900/20 group"
-              >
-                <img
-                  src={pdf.thumbnail || ""}
-                  alt={pdf.name}
-                  className="size-full object-cover"
-                />
-                <div className="bg-black/20 border border-black/5 backdrop-blur-3xl absolute bottom-1.5 right-1.5 w-fit rounded-full">
-                  <p className="text-white px-2">
-                    {pdf.progress.percentage > 0 ? (
-                      `${pdf.progress.percentage.toFixed(0)}%`
-                    ) : (
-                      <i className="font-serif">New</i>
-                    )}
-                  </p>
-                </div>
-              </Link>
-            </ContextMenuTrigger>
-            <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
-          </ContextMenu>
+          <DraggablePdfCard
+            key={`${pdf.id}card`}
+            pdf={pdf}
+            categoryId={categoryId}
+          />
         ))}
         <label
           htmlFor={`pdf-upload-${categoryId}`}

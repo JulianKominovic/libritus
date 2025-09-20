@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { LangProvider } from "./i18n/lang-context";
 import "pdfjs-dist/web/pdf_viewer.css";
+import { getBackendOptions, MultiBackend } from "@minoru/react-dnd-treeview";
+import { DndProvider } from "react-dnd";
 
 // import { scan } from "react-scan";
 // scan({ enabled: true });
@@ -14,7 +16,9 @@ GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <LangProvider>
-    <App />
-  </LangProvider>
+  <DndProvider backend={MultiBackend} options={getBackendOptions()}>
+    <LangProvider>
+      <App />
+    </LangProvider>
+  </DndProvider>
 );

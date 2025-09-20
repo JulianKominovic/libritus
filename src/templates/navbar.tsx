@@ -27,7 +27,6 @@ function Navbar() {
   const [isSettings] = useRoute("/settings");
   const [isTrash] = useRoute("/trash");
   const [isInfo] = useRoute("/info");
-  console.log("location", location);
   const { t } = useLang();
   const categories = usePdfs((s) => s.categories);
   const segments = useMemo<
