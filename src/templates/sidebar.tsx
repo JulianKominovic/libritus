@@ -348,7 +348,7 @@ function Sidebar() {
       initial={{ opacity: 0, width: 0 }}
       animate={{
         opacity: showNavigationSidebar ? 1 : 0,
-        width: showNavigationSidebar ? "260px" : "0px",
+        width: showNavigationSidebar ? "300px" : "0px",
       }}
       transition={{
         duration: 0.3,
@@ -357,7 +357,7 @@ function Sidebar() {
       className="overflow-hidden h-[calc(100%-50px)]"
       style={{ minWidth: 0 }}
     >
-      <div className="px-4 w-[260px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">
+      <div className="px-4 w-[300px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">
         <Link
           to="/"
           className={(isActive) =>

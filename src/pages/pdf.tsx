@@ -103,6 +103,24 @@ function AttachListeners({
   const currentPage = usePdf((s) => s.currentPage);
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages);
 
+  useEffect(() => {
+    function handleResize() {
+      const lastZoom = Number(zoom);
+      updateZoom(5);
+      if (isZoomFitWidth) {
+        zoomFitWidth();
+      } else {
+        setTimeout(() => {
+          updateZoom(lastZoom);
+        }, 200);
+      }
+    }
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [updateZoom, zoom, isZoomFitWidth]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
     updatePdf(categoryId, pdfId, {
@@ -148,10 +166,9 @@ function AttachListeners({
 
 function PdfPage() {
   const { categoryId, pdfId } = useParams();
-  const pdfs = usePdfs((p) => p.categories);
-  const pdf = pdfs
-    .find((c) => c.id === categoryId)
-    ?.pdfs.find((p) => p.id === pdfId);
+  const categories = usePdfs((p) => p.categories);
+  const category = categories.find((c) => c.id === categoryId);
+  const pdf = category?.pdfs.find((p) => p.id === pdfId);
   const lastOffset = useRef<number>(pdf?.progress.offset || 0);
   const updatePdf = usePdfs((s) => s.updatePdf);
   const [selectedHighlight, setSelectedHighlight] = useState<
@@ -160,12 +177,6 @@ function PdfPage() {
   const { debounce: debouncedUpdatePdfProgress } = useDebounceFunction(1000);
 
   const showPdfOutline = useSettings((s) => s.showPdfOutline);
-  // useLayoutEffect(() => {
-  //   setGlobalTheme(createColorPalette(pdf?.hexColor || "#555"));
-  //   return () => {
-  //     resetGlobalTheme();
-  //   };
-  // }, [pdf?.hexColor]);
 
   if (!pdf || !categoryId || !pdfId) {
     return <Redirect to="/" />;
@@ -184,7 +195,7 @@ function PdfPage() {
         source={pdf.src}
         className={cn(
           "w-full h-full overflow-hidden select-auto gap-4 grid",
-          showPdfOutline ? "grid-cols-[1fr_300px]" : "grid-cols-1"
+          showPdfOutline ? "grid-cols-[1fr_350px]" : "grid-cols-1"
         )}
         loader={
           <div className="p-4 max-w-sm w-full mx-auto">
