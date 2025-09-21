@@ -1,17 +1,23 @@
 import {
   AnnotationLayer,
+  calculateHighlightRects,
   CanvasLayer,
+  HighlightLayer,
   Outline,
   OutlineChildItems,
   OutlineItem,
   Page,
   Pages,
   Root,
+  Search,
   TextLayer,
   usePdf,
+  usePdfJump,
+  useSearch,
 } from "@anaralabs/lector";
 import { DynamicIcon } from "lucide-react/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { useDebounceCallback } from "usehooks-ts";
 import { Redirect, useParams } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDebounceFunction } from "@/hooks/use-debounce-function";
@@ -22,6 +28,7 @@ import { type Pdf, usePdfs } from "@/stores/categories";
 import { useSettings } from "@/stores/settings";
 import FloatingControls from "@/templates/pdf/floating-controls";
 import SelectionMenu from "@/templates/pdf/text-selection-menu";
+import { Button } from "@/components/ui/button";
 
 function CustomOutline({
   selectedHighlight,
@@ -86,6 +93,124 @@ function CustomOutline({
   );
 }
 
+function SearchUi() {
+  const { search, searchResults } = useSearch();
+  const debouncedSearch = useDebounceCallback(
+    (term: string) => term && search(term, { limit: 100 }),
+    1000
+  );
+  const { jumpToHighlightRects } = usePdfJump();
+  const getPdfPageProxy = usePdf((state) => state.getPdfPageProxy);
+  const [resultsCursor, setResultsCursor] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === "f") {
+          inputRef.current?.focus();
+          setOpen(true);
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  async function handlePrevResult() {
+    const newIndex = Math.max(0, resultsCursor - 1);
+    setResultsCursor(newIndex);
+    const result = searchResults.exactMatches[newIndex];
+    const pageProxy = getPdfPageProxy(result.pageNumber);
+    const rects = await calculateHighlightRects(pageProxy, {
+      pageNumber: result.pageNumber,
+      text: result.text,
+      matchIndex: result.matchIndex,
+      searchText: result.searchText,
+    });
+    jumpToHighlightRects(rects, "pixels");
+  }
+
+  async function handleNextResult() {
+    const newIndex = Math.min(
+      searchResults.exactMatches.length - 1,
+      resultsCursor + 1
+    );
+    setResultsCursor(newIndex);
+    const result = searchResults.exactMatches[newIndex];
+    const pageProxy = getPdfPageProxy(result.pageNumber);
+    const rects = await calculateHighlightRects(pageProxy, {
+      pageNumber: result.pageNumber,
+      text: result.text,
+      matchIndex: result.matchIndex,
+      searchText: result.searchText,
+    });
+    jumpToHighlightRects(rects, "pixels");
+  }
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
+    <div
+      className={cn(
+        "absolute top-0 right-96 w-fit h-10 flex items-center z-10 bg-morphing-50 border border-morphing-300 shadow-md shadow-morphing-900/10 rounded-lg px-2 gap-2",
+        open ? "scale-100" : "scale-0"
+      )}
+    >
+      <input
+        spellCheck={false}
+        ref={inputRef}
+        type="text"
+        onChange={(e) => {
+          const value = e.target.value;
+          setResultsCursor(0);
+          if (value) debouncedSearch(value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setOpen(false);
+            (e.target as HTMLInputElement).blur();
+            setResultsCursor(0);
+          }
+          if (e.key === "Enter") {
+            if (e.shiftKey) handlePrevResult();
+            else handleNextResult();
+          }
+        }}
+        className="flex-grow h-full outline-none"
+      />
+      {searchResults.exactMatches.length > 0 && (
+        <p className="text-xs text-morphing-700">
+          {resultsCursor + 1} / {searchResults.exactMatches.length}
+        </p>
+      )}
+      <Button
+        onClick={handlePrevResult}
+        variant="ghost"
+        className="rounded-[50%] aspect-square !size-6"
+      >
+        <DynamicIcon name="chevron-up" className="size-4" />
+      </Button>
+      <Button
+        onClick={handleNextResult}
+        variant="ghost"
+        className="rounded-[50%] aspect-square !size-6"
+      >
+        <DynamicIcon name="chevron-down" className="size-4" />
+      </Button>
+      <Button
+        onClick={() => setOpen(false)}
+        variant="ghost"
+        className="rounded-[50%] aspect-square !size-6"
+      >
+        <DynamicIcon name="x" className="size-4" />
+      </Button>
+    </div>
+  );
+}
+
 function AttachListeners({
   categoryId,
   pdfId,
@@ -102,26 +227,6 @@ function AttachListeners({
   const updatePdf = usePdfs((s) => s.updatePdf);
   const currentPage = usePdf((s) => s.currentPage);
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  // useEffect(() => {
-  //   function handleResize() {
-  //     if (timerRef.current) clearTimeout(timerRef.current);
-
-  //     const lastZoom = Number(zoom);
-  //     updateZoom(5);
-  //     timerRef.current = setTimeout(() => {
-  //       if (isZoomFitWidth) {
-  //         zoomFitWidth();
-  //       } else {
-  //         updateZoom(lastZoom);
-  //       }
-  //     }, 200);
-  //   }
-  //   window.addEventListener("resize", handleResize);
-  //   return () => {
-  //     window.removeEventListener("resize", handleResize);
-  //   };
-  // }, [updateZoom, zoom, isZoomFitWidth, timerRef]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
@@ -231,6 +336,7 @@ function PdfPage() {
             <CanvasLayer background={"transparent"} />
             <TextLayer className="bg-morphing-50 mix-blend-multiply" />
             <AnnotationLayer />
+            <HighlightLayer className="pointer-events-none bg-amber-500/20" />
             <CustomHighlightLayer
               highlights={pdf.highlights}
               selectedHighlight={selectedHighlight}
@@ -251,6 +357,9 @@ function PdfPage() {
           />
         )}
         <FloatingControls />
+        <Search>
+          <SearchUi />
+        </Search>
         <AttachListeners categoryId={categoryId} pdfId={pdfId} pdf={pdf} />
       </Root>
     </div>
