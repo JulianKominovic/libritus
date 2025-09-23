@@ -122,10 +122,7 @@ function Navbar() {
   const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
   return (
-    <nav
-      data-tauri-drag-region
-      className="w-full h-[50px] flex items-center justify-between px-4 pl-20"
-    >
+    <nav className="w-full h-[50px] flex items-center justify-between px-4 pl-20">
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"

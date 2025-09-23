@@ -81,7 +81,7 @@ function DragAndDropZone({
           >
             <h2
               className={cn(
-                'text-2xl font-bold mb-4 text-center font-serif',
+                'text-2xl font-bold mb-4 text-center font-serif tracking-tighter',
                 message === 'error' ? 'text-destructive' : 'text-morphing-800'
               )}
             >

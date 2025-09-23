@@ -16,7 +16,10 @@ function HomePage() {
 
   return (
     <motion.main className="p-4 mx-auto max-w-4xl select-none cursor-default">
-      <motion.h1 className="text-6xl font-serif font-bold text-center" {...fadeInOut()}>
+      <motion.h1
+        className="text-6xl font-serif tracking-tighter font-bold text-center"
+        {...fadeInOut()}
+      >
         {t('home_welcome')}
       </motion.h1>
       <motion.h2
@@ -28,22 +31,34 @@ function HomePage() {
       <section>
         <ul className="flex flex-wrap gap-6">
           <motion.li className="flex flex-col items-center flex-grow w-64" {...fadeInOut(2)}>
-            <Badge className="rounded-[50%] size-10 text-2xl font-serif mb-4">1</Badge>
-            <h3 className="text-xl font-serif text-center mb-1">Upload a PDF</h3>
+            <Badge className="rounded-[50%] size-10 text-2xl font-serif tracking-tighter font-semibold mb-4">
+              1
+            </Badge>
+            <h3 className="text-xl font-serif tracking-tighter font-semibold text-center mb-1">
+              Upload a PDF
+            </h3>
             <p className="text-muted-foreground text-center">
               Drag and drop the file anywhere on the screen or drop it in any of the categories.
             </p>
           </motion.li>
           <motion.li className="flex flex-col items-center flex-grow w-64" {...fadeInOut(3)}>
-            <Badge className="rounded-[50%] size-10 text-2xl font-serif mb-4">2</Badge>
-            <h3 className="text-xl font-serif text-center mb-1">Create a new category</h3>
+            <Badge className="rounded-[50%] size-10 text-2xl font-serif tracking-tighter font-semibold mb-4">
+              2
+            </Badge>
+            <h3 className="text-xl font-serif tracking-tighter font-semibold text-center mb-1">
+              Create a new category
+            </h3>
             <p className="text-muted-foreground text-center">
               Create a new category to organize your pdfs.
             </p>
           </motion.li>
           <motion.li className="flex flex-col items-center flex-grow w-64" {...fadeInOut(4)}>
-            <Badge className="rounded-[50%] size-10 text-2xl font-serif mb-4">3</Badge>
-            <h3 className="text-xl font-serif text-center mb-1">Start reading</h3>
+            <Badge className="rounded-[50%] size-10 text-2xl font-serif tracking-tighter font-semibold mb-4">
+              3
+            </Badge>
+            <h3 className="text-xl font-serif tracking-tighter font-semibold text-center mb-1">
+              Start reading
+            </h3>
             <p className="text-muted-foreground text-center">
               Click on the category you want to read and start reading.
             </p>

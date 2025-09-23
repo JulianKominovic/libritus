@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: Shut up 🔥🚒🧨 */
 
 import { useSelectionDimensions } from '@anaralabs/lector'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEffect, useRef, useState } from 'react'
 import { useDebounceCallback } from 'usehooks-ts'
@@ -62,11 +61,7 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
               />
             )}
             <a
-              onMouseDown={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                openUrl(definition.url)
-              }}
+              rel="noreferrer noopener"
               href={definition.url}
               target="_blank"
               className="flex items-center gap-1"
@@ -124,14 +119,9 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
           Search can be inaccurate. Extracted from{' '}
           <a
             href={'https://wikipedia.org/'}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              openUrl('https://wikipedia.org/')
-            }}
             target="_blank"
             className="flex items-center gap-1 underline"
-            rel="noopener"
+            rel="noreferrer noopener"
           >
             Wikipedia
           </a>
@@ -141,14 +131,9 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
           Search can be inaccurate. Extracted from{' '}
           <a
             href={'https://dictionaryapi.dev/'}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              openUrl('https://dictionaryapi.dev/')
-            }}
+            rel="noreferrer noopener"
             target="_blank"
             className="flex items-center gap-1 underline"
-            rel="noopener"
           >
             Dictionary API
           </a>

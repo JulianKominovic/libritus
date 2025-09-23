@@ -49,7 +49,7 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
       )}
       <p className="text-sm text-morphing-700 px-2 mb-2">
         Read {pdf.progress.pages} of {pdf.pages} pages{' '}
-        <i className="font-serif">({pdf.progress.percentage.toFixed(0)}%)</i>
+        <i className="font-serif tracking-tighter">({pdf.progress.percentage.toFixed(0)}%)</i>
       </p>
 
       <ContextMenuSeparator className="mb-2" />

@@ -126,7 +126,7 @@ function Category() {
           disabled={isDefault}
           className={cn(
             isDefault ? 'cursor-default' : 'cursor-text',
-            'text-5xl font-semibold font-serif w-full block focus:outline-0 min-w-40 text-morphing-900'
+            'text-5xl font-semibold tracking-tighter font-serif w-full block focus:outline-0 min-w-40 text-morphing-900'
           )}
           defaultValue={category.name}
           onChange={(e) => updateTitle(e.target.value)}
