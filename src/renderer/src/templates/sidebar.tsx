@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import PdfCardContextMenuContent from '@/organisms/pdf/pdf-card-context-menu-content'
 import { type Category, type Pdf, usePdfs } from '@/stores/categories'
 import { useSettings } from '@/stores/settings'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 
 type PdfTreeItem = Pdf & { type: 'P' }
 type CategoryTreeItem = Category & { type: 'C' }
@@ -190,26 +191,39 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
           const pdfNode = node.data as PdfTreeItem
           return (
             <ContextMenu>
-              <ContextMenuTrigger
-                onClick={() => {
-                  onToggle()
-                  navigate(`/category/${node.parent}/${pdfNode.id}`, {
-                    replace: true
-                  })
-                }}
-                className={cn(
-                  buttonVariants({ variant: 'none' }),
-                  'w-full justify-start ml-auto !p-0 h-auto mb-2 whitespace-pre-line line-clamp-2',
-                  isActive ? 'font-semibold active' : '',
-                  isDragging ? 'animate-[pulse_1s_ease-in-out_infinite]' : ''
-                )}
-                style={{
-                  width: `calc(100% - ${depth * 24}px)`
-                }}
-              >
-                {pdfNode.name}
-              </ContextMenuTrigger>
-              <PdfCardContextMenuContent pdf={pdfNode} categoryId={node.parent as string} />
+              <HoverCard closeDelay={0} openDelay={0}>
+                <ContextMenuTrigger
+                  onClick={() => {
+                    onToggle()
+                    navigate(`/category/${node.parent}/${pdfNode.id}`, {
+                      replace: true
+                    })
+                  }}
+                  className={cn(
+                    buttonVariants({ variant: 'none' }),
+                    'w-full justify-start ml-auto !p-0 h-auto mb-2 whitespace-pre-line line-clamp-2',
+                    isActive ? 'font-semibold active' : '',
+                    isDragging ? 'animate-[pulse_1s_ease-in-out_infinite]' : ''
+                  )}
+                  style={{
+                    width: `calc(100% - ${depth * 24}px)`
+                  }}
+                  asChild
+                >
+                  <HoverCardTrigger>{pdfNode.name}</HoverCardTrigger>
+                </ContextMenuTrigger>
+                <HoverCardContent
+                  side="right"
+                  className="w-28 h-40 border-none bg-transparent shadow-none rounded-lg p-0"
+                >
+                  <img
+                    src={pdfNode.thumbnail}
+                    alt={pdfNode.name}
+                    className="size-full object-cover rounded-lg shadow-md"
+                  />
+                </HoverCardContent>
+                <PdfCardContextMenuContent pdf={pdfNode} categoryId={node.parent as string} />
+              </HoverCard>
             </ContextMenu>
           )
         }

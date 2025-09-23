@@ -14,11 +14,13 @@ function Highlight({
   isSelected,
   setSelectedHighlight,
   categoryId,
-  pdfId
+  pdfId,
+  isNoteModalOpen
 }: {
   h: NonNullable<Pdf['highlights']>[0]
   r: NonNullable<Pdf['highlights']>[0]['rects'][0]
   isSelected: boolean
+  isNoteModalOpen: boolean
   setSelectedHighlight: (highlight: NonNullable<Pdf['highlights']>[0] | null) => void
   categoryId: string
   pdfId: string
@@ -28,7 +30,7 @@ function Highlight({
   const [confirmDelete, setConfirmDelete] = useState(false)
   return (
     <Popover
-      open={isSelected}
+      open={isNoteModalOpen}
       onOpenChange={(open) => {
         setSelectedHighlight(open ? h : null)
       }}
@@ -143,6 +145,7 @@ export default function CustomHighlightLayer({
         .filter((rect) => rect.left > 0 && rect.top > 0 && rect.pageNumber === pageNumber)
         .map((r, i) => {
           const isSelected = h.id === selectedHighlight?.id
+          const isNoteModalOpen = isSelected && i === 0
           return (
             <Highlight
               key={idx + r.pageNumber + (h?.id ?? '') + i}
@@ -152,6 +155,7 @@ export default function CustomHighlightLayer({
               isSelected={isSelected}
               categoryId={categoryId}
               pdfId={pdfId}
+              isNoteModalOpen={isNoteModalOpen}
             />
           )
         })

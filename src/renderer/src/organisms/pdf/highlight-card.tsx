@@ -89,7 +89,7 @@ function HighlightCardsTemplate({
                 </header>
                 <pre
                   className={
-                    'cursor-pointer rounded-xl overflow-clip p-2 w-full font-serif tracking-tighter border whitespace-pre-wrap text-left text-sm select-none'
+                    'cursor-pointer rounded-xl overflow-clip p-2 w-full font-serif tracking-tight border whitespace-pre-wrap text-left select-none'
                   }
                   style={{
                     color: 'rgba(0, 0, 0, 0.7)',
