@@ -26,7 +26,8 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
     options: { dropEffect: 'move' },
     item: { id: pdf.id, type: 'P' }
   }))
-
+  const highlightsNumber = pdf.highlights?.length
+  const commentsNumber = pdf.highlights?.flatMap((h) => h.comments)?.length
   return (
     <ContextMenu key={pdf.id}>
       <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>} asChild>
@@ -42,8 +43,20 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
             alt={pdf.name}
             className={'size-full object-cover'}
           />
-          <div className="bg-black/20 border border-black/5 backdrop-blur-3xl absolute bottom-1.5 right-1.5 w-fit rounded-full">
-            <p className="text-white px-2">
+          <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
+            {commentsNumber && commentsNumber > 0 ? (
+              <p className="px-2 text-violet-600 h-6 bg-violet-100 border border-violet-200 backdrop-blur-lg rounded-full flex items-center gap-1">
+                <DynamicIcon name="message-circle" className="size-4" />
+                {commentsNumber}
+              </p>
+            ) : null}
+            {highlightsNumber && highlightsNumber > 0 ? (
+              <p className="px-2 text-orange-600 h-6 bg-orange-100 border border-orange-200 backdrop-blur-lg rounded-full flex items-center gap-1">
+                <DynamicIcon name="highlighter" className="size-4" />
+                {highlightsNumber}
+              </p>
+            ) : null}
+            <p className="text-green-600 px-2 h-6 bg-green-100 border border-green-200 backdrop-blur-lg rounded-full flex items-center gap-1">
               {pdf.progress.percentage > 0 ? (
                 `${pdf.progress.percentage.toFixed(0)}%`
               ) : (
@@ -147,9 +160,11 @@ function Category() {
       />
       <h2 className="text-sm text- mb-6">{category.pdfs.length} pdfs</h2>
       <div className="flex flex-wrap gap-8 group/container">
-        {category.pdfs.map((pdf) => (
-          <DraggablePdfCard key={`${pdf.id}card`} pdf={pdf} categoryId={categoryId} />
-        ))}
+        {category.pdfs
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          .map((pdf) => (
+            <DraggablePdfCard key={`${pdf.id}card`} pdf={pdf} categoryId={categoryId} />
+          ))}
         <label
           htmlFor={`pdf-upload-${categoryId}`}
           className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-52 bg-morphing-100 hover:bg-morphing-200 transition-colors"

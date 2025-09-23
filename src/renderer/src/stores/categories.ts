@@ -219,7 +219,9 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       if (cat.id === categoryId) {
         return {
           ...cat,
-          pdfs: cat.pdfs.map((p) => (p.id === pdfId ? { ...p, ...pdf } : p))
+          pdfs: cat.pdfs.map((p) =>
+            p.id === pdfId ? { ...p, ...pdf, updatedAt: new Date().toISOString() } : p
+          )
         }
       }
       return cat
@@ -240,7 +242,8 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       if (cat.id === categoryId) {
         return {
           ...cat,
-          ...category
+          ...category,
+          updatedAt: new Date().toISOString()
         }
       }
       return cat
@@ -312,7 +315,9 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
               return {
                 ...pdf,
                 highlights: (pdf.highlights || []).map((h) =>
-                  h.id === highlightId ? { ...h, ...highlight } : h
+                  h.id === highlightId
+                    ? { ...h, ...highlight, updatedAt: new Date().toISOString() }
+                    : h
                 )
               }
             }
