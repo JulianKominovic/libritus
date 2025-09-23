@@ -33,7 +33,7 @@ export function createColorPalette(hexColor: string): ColorPalette {
   const colorScale = chroma
     .scale(['white', balancedColor])
     .domain([0, 0.6, 1])
-    .mode('lab')
+    .mode('oklab')
     .classes(12)
     .colors(12)
     .slice(1, 11)

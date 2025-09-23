@@ -126,7 +126,7 @@ function SearchUi() {
       matchIndex: result.matchIndex,
       searchText: result.searchText
     })
-    jumpToHighlightRects(rects, 'pixels')
+    jumpToHighlightRects(rects, 'pixels', 'center')
   }
 
   async function handleNextResult() {
@@ -140,7 +140,7 @@ function SearchUi() {
       matchIndex: result.matchIndex,
       searchText: result.searchText
     })
-    jumpToHighlightRects(rects, 'pixels')
+    jumpToHighlightRects(rects, 'pixels', 'center')
   }
 
   return (
@@ -148,7 +148,7 @@ function SearchUi() {
     <div
       className={cn(
         'absolute top-0 right-96 w-fit h-10 flex items-center z-10 bg-morphing-50 border border-morphing-300 shadow-md shadow-morphing-900/10 rounded-lg px-2 gap-2',
-        open ? 'scale-100' : 'scale-0'
+        open ? 'scale-100 drop-shadow-md shadow-morphing-900/10' : 'scale-0'
       )}
     >
       <input
@@ -289,7 +289,7 @@ function PdfPage() {
         source={pdf.src}
         className={cn(
           'w-full h-full overflow-hidden select-auto gap-4 grid',
-          showPdfOutline ? 'grid-cols-[1fr_350px]' : 'grid-cols-1'
+          showPdfOutline ? 'grid-cols-[1fr_350px]' : 'grid-cols-1 max-w-5xl mx-auto'
         )}
         loader={
           <div className="p-4 max-w-sm w-full mx-auto">

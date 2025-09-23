@@ -18,8 +18,8 @@ function createWindow(): void {
     titleBarStyle: 'hidden',
     titleBarOverlay: false,
     trafficLightPosition: {
-      x: 19,
-      y: 14
+      x: 16,
+      y: 17
     },
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),

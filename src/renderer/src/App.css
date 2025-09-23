@@ -167,6 +167,7 @@
 @layer base {
   * {
     @apply border-border outline-ring/50 min-w-0;
+    -electron-corner-smoothing: system-ui;
   }
   html {
     @apply overscroll-none cursor-default;
@@ -191,6 +192,14 @@
     margin: 0;
   }
 
+  .window-nav {
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  .window-nav button,
+  .window-nav a {
+    -webkit-app-region: no-drag;
+  }
   /* PDF CARD CSS */
 
   .pdf-card-content {
