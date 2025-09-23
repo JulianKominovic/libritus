@@ -1,4 +1,3 @@
-
 <p align="center"><img src="./app-icon.png" width="256" height="256"/></p>
 <h1 align="center">
   Libritus
@@ -14,10 +13,10 @@ Modern reading app designed to make reading simple, elegant, and enjoyable. Clea
 
 ![Screenshot 2025-09-16 at 8 42 44 PM](https://github.com/user-attachments/assets/f78e2349-2f89-4647-bba8-ec77fc49bb6e)
 
-
-
 ## Follow the journey!
+
 I will be uploading any progress in https://jkominovic.dev
 
 ## Mascot
+
 <img width="400" height="400" alt="Libritus mascot" src="https://github.com/user-attachments/assets/a30341eb-9b83-4227-adb6-95f07a50fc76" />
