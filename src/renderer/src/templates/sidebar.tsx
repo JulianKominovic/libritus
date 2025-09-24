@@ -1,10 +1,4 @@
 import { type NodeModel, Tree } from '@minoru/react-dnd-treeview'
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { motion } from 'motion/react'
-import { useEffect, useMemo, useRef } from 'react'
-import { useDragDropManager } from 'react-dnd'
-import { NativeTypes } from 'react-dnd-html5-backend'
-import { Link, useLocation, useRoute } from 'wouter'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,12 +19,18 @@ import {
   ContextMenuTrigger,
   contextMenuVariants
 } from '@renderer/components//ui/context-menu'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { motion } from 'motion/react'
+import { useEffect, useMemo, useRef } from 'react'
+import { useDragDropManager } from 'react-dnd'
+import { NativeTypes } from 'react-dnd-html5-backend'
+import { Link, useLocation, useRoute } from 'wouter'
 
 type PdfTreeItem = Pdf & { type: 'P' }
 type CategoryTreeItem = Category & { type: 'C' }
@@ -159,7 +159,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
 
         if (dropTargetId === 'add-category') {
           const createdCategory = await createCategory()
-          navigate(`/category/${createdCategory.id}`, { replace: true })
+          navigate(`/category/${createdCategory.id}`)
           dropTargetId = createdCategory.id
         }
 
@@ -237,7 +237,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               )}
               onClick={() => {
                 createCategory().then((category) => {
-                  navigate(`/category/${category.id}`, { replace: true })
+                  navigate(`/category/${category.id}`)
                 })
               }}
             >
@@ -259,7 +259,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               )}
               onClick={() => {
                 onToggle()
-                navigate(`/category/${node.id}`, { replace: true })
+                navigate(`/category/${node.id}`)
               }}
             >
               <DynamicIcon name={categoryNode.icon} size={16} />

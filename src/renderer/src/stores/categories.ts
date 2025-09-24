@@ -1,8 +1,8 @@
 import type { HighlightRect } from '@anaralabs/lector'
-import type { IconName } from 'lucide-react/dynamic'
-import { create } from 'zustand'
 import { readFile, writeFile } from '@renderer/integrations/fs'
 import { getPdfMetadata } from '@renderer/lib/pdf'
+import type { IconName } from 'lucide-react/dynamic'
+import { create } from 'zustand'
 
 export enum HighlightColorEnum {
   Fuchsia = 0,
@@ -59,6 +59,7 @@ export type Pdf = {
     createdAt: string | Date
     updatedAt: string | Date
     json: any
+    text?: string
   }[]
 }
 export type Category = {

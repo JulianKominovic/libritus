@@ -242,7 +242,7 @@ const InlineComboboxContent: typeof ComboboxPopover = ({ className, ...props }) 
 }
 
 const comboboxItemVariants = cva(
-  'relative mx-1 flex h-auto py-1 items-center bg-popover text-popover-foreground rounded-sm px-2 text-sm text-foreground outline-none select-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'relative mx-1 flex h-auto py-2 items-center bg-popover text-popover-foreground rounded-sm px-2 text-sm text-foreground outline-none select-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     defaultVariants: {
       interactive: true

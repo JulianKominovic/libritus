@@ -31,7 +31,6 @@ function EssayItemEditable({
     autoSelect: 'end'
   })
   editorRef.current = editor
-
   return <PlateEditor className="p-2 mb-4" editor={editor}></PlateEditor>
 }
 
@@ -54,34 +53,32 @@ function EssayItem({
 
   async function handleSave() {
     if (!editorRef.current) return
-    const [ancestor] = editorRef.current?.api.block({ highest: true }) || []
-    const isEditorEmpty = ancestor ? editorRef.current?.api.isEmpty(ancestor) : true
-    console.log('Saving')
-    console.log('Editor is empty', isEditorEmpty)
-    if (isEditorEmpty) {
-      return await deleteEssay(categoryId, pdf.id, essay.id)
-    }
+    // const ancestorNode = editorRef.current.api.block({ highest: true })
+
+    // const isEditorEmpty = !ancestorNode || NodeApi.string(ancestorNode[0]).trim().length === 0
+    // console.log(editorRef.current.api)
+    // console.log('Saving')
+    // console.log('Editor is empty', isEditorEmpty)
+    // if (isEditorEmpty) {
+    //   return await deleteEssay(categoryId, pdf.id, essay.id)
+    // }
+    const text = editorRef.current?.api.string([])
     if (essay) {
-      console.log('Updating essay')
-      await updateEssay(categoryId, pdf.id, essay.id, { json: editorRef.current?.children })
+      console.log('Updating essay', text)
+      await updateEssay(categoryId, pdf.id, essay.id, { json: editorRef.current?.children, text })
     } else {
       console.log('Creating essay')
       await createEssay(categoryId, pdf.id, {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        json: editorRef.current?.children
+        json: editorRef.current?.children,
+        text
       })
     }
     setIsEditing(false)
   }
   async function handleCancel() {
-    if (!editorRef.current) return
-    const [ancestor] = editorRef.current?.api.block({ highest: true }) || []
-    const isEditorEmpty = ancestor ? editorRef.current?.api.isEmpty(ancestor) : true
-    if (isEditorEmpty) {
-      await deleteEssay(categoryId, pdf.id, essay.id)
-    }
     setIsEditing(false)
   }
 

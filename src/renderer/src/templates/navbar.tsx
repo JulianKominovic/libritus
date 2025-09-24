@@ -1,7 +1,3 @@
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { type ReactNode, useMemo } from 'react'
-import { Fragment } from 'react/jsx-runtime'
-import { Link, useRoute } from 'wouter'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,6 +15,10 @@ import {
 import { useLang } from '@renderer/i18n/lang-context'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { type ReactNode, useMemo } from 'react'
+import { Fragment } from 'react/jsx-runtime'
+import { Link, useRoute } from 'wouter'
 
 function Navbar() {
   const [isHome] = useRoute('/')
@@ -121,9 +121,24 @@ function Navbar() {
   const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar)
   const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
+
   return (
     <nav className="w-full h-[50px] flex items-center justify-between px-4 pl-20 window-nav">
       <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          className="!p-2 aspect-square !size-8 text-muted-foreground"
+          onClick={() => window.history.back()}
+        >
+          <DynamicIcon name={'arrow-left'} />
+        </Button>
+        <Button
+          variant="ghost"
+          className="!p-2 aspect-square !size-8 text-muted-foreground -mx-2"
+          onClick={() => window.history.forward()}
+        >
+          <DynamicIcon name={'arrow-right'} />
+        </Button>
         <Button
           variant="ghost"
           className="!p-2 aspect-square !size-8 text-muted-foreground"
