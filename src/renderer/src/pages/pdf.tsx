@@ -15,45 +15,57 @@ import {
   usePdfJump,
   useSearch
 } from '@anaralabs/lector'
+import { Button } from '@renderer/components//ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components//ui/tabs'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup
+} from '@renderer/components/ui/resizable'
+import { useDebounceFunction } from '@renderer/hooks/use-debounce-function'
+import { cn } from '@renderer/lib/utils'
+import CustomHighlightLayer from '@renderer/organisms/pdf/custom-highlight-layer'
+import EssayTab from '@renderer/organisms/pdf/essays-tab'
+import HighlightCardsTemplate from '@renderer/organisms/pdf/highlight-card'
+import { type Pdf, usePdfs } from '@renderer/stores/categories'
+import { useSettings } from '@renderer/stores/settings'
+import FloatingControls from '@renderer/templates/pdf/floating-controls'
+import SelectionMenu from '@renderer/templates/pdf/text-selection-menu'
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ImperativePanelHandle } from 'react-resizable-panels'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Redirect, useParams } from 'wouter'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useDebounceFunction } from '@/hooks/use-debounce-function'
-import { cn } from '@/lib/utils'
-import CustomHighlightLayer from '@/organisms/pdf/custom-highlight-layer'
-import HighlightCardsTemplate from '@/organisms/pdf/highlight-card'
-import { type Pdf, usePdfs } from '@/stores/categories'
-import { useSettings } from '@/stores/settings'
-import FloatingControls from '@/templates/pdf/floating-controls'
-import SelectionMenu from '@/templates/pdf/text-selection-menu'
-import { Button } from '@/components/ui/button'
 
 function CustomOutline({
   selectedHighlight,
   highlights,
   categoryId,
   pdfId,
-  setSelectedHighlight
+  setSelectedHighlight,
+  pdf
 }: {
   selectedHighlight: NonNullable<Pdf['highlights']>[0] | null
   highlights: Pdf['highlights']
   categoryId: string
   pdfId: string
   setSelectedHighlight: (highlight: NonNullable<Pdf['highlights']>[0] | null) => void
+  pdf: Pdf
 }) {
   const highlightTabRef = useRef<HTMLDivElement>(null)
   return (
     <Tabs className="w-full h-full min-h-0 px-4 overscroll-contain" defaultValue="highlights">
       <TabsList className="w-full px-1">
-        <TabsTrigger value="highlights">
+        <TabsTrigger className="h-[30px]" value="highlights">
           <DynamicIcon name="highlighter" className="size-4" />
         </TabsTrigger>
-        <TabsTrigger value="chats">
+        <TabsTrigger className="h-[30px]" value="essays">
+          <DynamicIcon name="file-pen-line" className="size-4" />
+        </TabsTrigger>
+        <TabsTrigger className="h-[30px]" value="chats">
           <DynamicIcon name="bot-message-square" className="size-4" />
         </TabsTrigger>
-        <TabsTrigger value="outline">
+        <TabsTrigger className="h-[30px]" value="outline">
           <DynamicIcon name="list" className="size-4" />
         </TabsTrigger>
       </TabsList>
@@ -71,6 +83,9 @@ function CustomOutline({
           setSelectedHighlight={setSelectedHighlight}
           tabRef={highlightTabRef}
         />
+      </TabsContent>
+      <TabsContent value="essays" className="h-full overflow-y-auto">
+        <EssayTab pdf={pdf} categoryId={categoryId} />
       </TabsContent>
       <TabsContent value="chats">chats.</TabsContent>
       <TabsContent value="outline" className="h-full">
@@ -126,7 +141,7 @@ function SearchUi() {
       matchIndex: result.matchIndex,
       searchText: result.searchText
     })
-    jumpToHighlightRects(rects, 'pixels', 'center')
+    jumpToHighlightRects(rects, 'pixels')
   }
 
   async function handleNextResult() {
@@ -140,14 +155,14 @@ function SearchUi() {
       matchIndex: result.matchIndex,
       searchText: result.searchText
     })
-    jumpToHighlightRects(rects, 'pixels', 'center')
+    jumpToHighlightRects(rects, 'pixels')
   }
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
     <div
       className={cn(
-        'absolute top-0 right-96 w-fit h-10 flex items-center z-10 bg-morphing-50 border border-morphing-300 shadow-md shadow-morphing-900/10 rounded-lg px-2 gap-2',
+        'absolute top-2 right-2 w-fit h-10 flex items-center z-10 bg-morphing-50 border border-morphing-300 shadow-md shadow-morphing-900/10 rounded-lg px-2 gap-2',
         open ? 'scale-100 drop-shadow-md shadow-morphing-900/10' : 'scale-0'
       )}
     >
@@ -263,6 +278,8 @@ function AttachListeners({
   return null
 }
 
+const MAX_OUTLINE_SIZE_PERCENTAGE = 60
+
 function PdfPage() {
   const { categoryId, pdfId } = useParams()
   const categories = usePdfs((p) => p.categories)
@@ -274,85 +291,125 @@ function PdfPage() {
     NonNullable<Pdf['highlights']>[0] | null
   >(null)
   const { debounce: debouncedUpdatePdfProgress } = useDebounceFunction(1000)
-
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
+  const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
+  const [minSize, setMinSize] = useState(20)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const outlinePanelRef = useRef<ImperativePanelHandle>(null)
+
+  useLayoutEffect(() => {
+    if (showPdfOutline) {
+      outlinePanelRef.current?.expand()
+    } else {
+      outlinePanelRef.current?.collapse()
+    }
+  }, [showPdfOutline, outlinePanelRef.current])
+
+  useEffect(() => {
+    if (rootRef.current) {
+      function calculateMinSize() {
+        const rootWidth = rootRef.current?.getBoundingClientRect().width
+        if (!rootWidth) return
+        const minOutlinePercentage = (350 * 100) / rootWidth
+        setMinSize(Math.min(minOutlinePercentage, MAX_OUTLINE_SIZE_PERCENTAGE))
+      }
+      const resizeObserver = new ResizeObserver(calculateMinSize)
+      calculateMinSize()
+      resizeObserver.observe(rootRef.current)
+      return () => resizeObserver.disconnect()
+    }
+  }, [rootRef])
 
   if (!pdf || !categoryId || !pdfId) {
     return <Redirect to="/" />
   }
 
   return (
-    <div className="px-0 w-full h-[calc(100%-50px)] overflow-y-auto overflow-x-hidden relative">
-      <Root
-        isZoomFitWidth={pdf.isZoomFitWidth}
-        zoom={pdf.zoom}
-        source={pdf.src}
-        className={cn(
-          'w-full h-full overflow-hidden select-auto gap-4 grid',
-          showPdfOutline ? 'grid-cols-[1fr_350px]' : 'grid-cols-1 max-w-5xl mx-auto'
-        )}
-        loader={
-          <div className="p-4 max-w-sm w-full mx-auto">
-            <img
-              src={pdf?.thumbnail}
-              alt={pdf?.name}
-              className="h-auto w-full mb-4 object-cover rounded-md"
-            />
-            <p className="text-lg text-morphing-700 font-medium text-center mb-2">Loading PDF...</p>
-            <DynamicIcon
-              name="loader-2"
-              className="size-8 animate-spin text-morphing-700 mx-auto"
-            />
-          </div>
-        }
+    <Root
+      ref={rootRef}
+      isZoomFitWidth={pdf.isZoomFitWidth}
+      zoom={pdf.zoom}
+      source={pdf.src}
+      className={cn('w-full h-[calc(100%-50px)] overflow-hidden relative select-auto gap-0 pl-4')}
+      loader={
+        <div className="p-4 max-w-sm w-full mx-auto">
+          <img
+            src={pdf?.thumbnail}
+            alt={pdf?.name}
+            className="h-auto w-full mb-4 object-cover rounded-md"
+          />
+          <p className="text-lg text-morphing-700 font-medium text-center mb-2">Loading PDF...</p>
+          <DynamicIcon name="loader-2" className="size-8 animate-spin text-morphing-700 mx-auto" />
+        </div>
+      }
+    >
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="px-0 w-full h-full overflow-y-auto overflow-x-hidden relative"
       >
-        <Pages
-          className="h-full"
-          onOffsetChange={(offset) => {
-            if (offset === lastOffset.current) return
-            debouncedUpdatePdfProgress(() => {
-              updatePdf(categoryId, pdfId, {
-                progress: {
-                  ...pdf.progress,
-                  offset
-                }
+        <ResizablePanel minSize={30} order={1} id="pdf-page-panel" className="relative">
+          <Pages
+            className="h-full"
+            onOffsetChange={(offset) => {
+              if (offset === lastOffset.current) return
+              debouncedUpdatePdfProgress(() => {
+                updatePdf(categoryId, pdfId, {
+                  progress: {
+                    ...pdf.progress,
+                    offset
+                  }
+                })
               })
-            })
-            lastOffset.current = offset
-          }}
-          initialOffset={pdf.progress.offset}
+              lastOffset.current = offset
+            }}
+            initialOffset={pdf.progress.offset}
+          >
+            <Page data-pdf-page>
+              <CanvasLayer background={'transparent'} />
+              <TextLayer className="bg-morphing-50 mix-blend-multiply" />
+              <AnnotationLayer />
+              <HighlightLayer className="pointer-events-none bg-amber-500/20" />
+              <CustomHighlightLayer
+                highlights={pdf.highlights}
+                selectedHighlight={selectedHighlight}
+                setSelectedHighlight={setSelectedHighlight}
+                categoryId={categoryId}
+                pdfId={pdfId}
+              />
+            </Page>
+          </Pages>
+          <Search>
+            <SearchUi />
+          </Search>
+        </ResizablePanel>
+        <ResizableHandle />
+        <ResizablePanel
+          ref={outlinePanelRef}
+          id="pdf-outline-panel"
+          maxSize={60}
+          minSize={minSize}
+          defaultSize={minSize}
+          collapsible
+          order={2}
+          onCollapse={() => setShowPdfOutline(false)}
         >
-          <Page data-pdf-page>
-            <CanvasLayer background={'transparent'} />
-            <TextLayer className="bg-morphing-50 mix-blend-multiply" />
-            <AnnotationLayer />
-            <HighlightLayer className="pointer-events-none bg-amber-500/20" />
-            <CustomHighlightLayer
-              highlights={pdf.highlights}
-              selectedHighlight={selectedHighlight}
-              setSelectedHighlight={setSelectedHighlight}
-              categoryId={categoryId}
-              pdfId={pdfId}
-            />
-          </Page>
-        </Pages>
-        <SelectionMenu categoryId={categoryId} pdfId={pdfId} />
-        {showPdfOutline && (
           <CustomOutline
+            pdf={pdf}
             selectedHighlight={selectedHighlight}
             highlights={pdf.highlights}
             categoryId={categoryId}
             pdfId={pdfId}
             setSelectedHighlight={setSelectedHighlight}
           />
-        )}
-        <FloatingControls />
-        <Search>
-          <SearchUi />
-        </Search>
-        <AttachListeners categoryId={categoryId} pdfId={pdfId} pdf={pdf} />
-      </Root>
-    </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      <SelectionMenu categoryId={categoryId} pdfId={pdfId} />
+
+      <FloatingControls />
+
+      <AttachListeners categoryId={categoryId} pdfId={pdfId} pdf={pdf} />
+    </Root>
   )
 }
 

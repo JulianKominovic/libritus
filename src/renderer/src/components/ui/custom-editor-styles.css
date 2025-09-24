@@ -1,0 +1,17 @@
+/* While editing */
+[data-slate-editor] > div:first-of-type > .slate-blockWrapper > *:first-child {
+  margin-top: 0;
+}
+
+[data-slate-editor] > [data-slate-node='element']:first-child {
+  margin-top: 0;
+}
+
+[data-note-card-content] * {
+  word-break: break-word;
+}
+
+[data-type='backlink'] {
+  cursor: pointer;
+  user-select: none;
+}

@@ -1,10 +1,10 @@
 import { CurrentPage, CurrentZoom, TotalPages, usePdf, ZoomIn, ZoomOut } from '@anaralabs/lector'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useMemo } from 'react'
-import { buttonVariants } from '@/components/ui/button'
-import Shortcut from '@/components/ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Keys } from '@/lib/keymaps'
+import { buttonVariants } from '@renderer/components//ui/button'
+import Shortcut from '@renderer/components//ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components//ui/tooltip'
+import { Keys } from '@renderer/lib/keymaps'
 
 function PercentageProgress() {
   const currentPage = usePdf((s) => s.currentPage)

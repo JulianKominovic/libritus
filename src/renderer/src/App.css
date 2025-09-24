@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@plugin "tailwind-scrollbar-hide";
 
 @font-face {
   font-family: 'Inter';
@@ -80,6 +81,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Platejs */
+  --color-brand: var(--brand);
+  --color-highlight: var(--color-morphing-400);
 }
 
 :root {
@@ -246,5 +251,34 @@
       rgba(255, 255, 255, 0.14) 5.68%,
       rgba(244, 244, 244, 0) 6.96%
     );
+  }
+  .paper-decoration {
+    background-image:
+      linear-gradient(
+        90deg,
+        #fff 12px,
+        0,
+        var(--color-morphing-200) 15px,
+        0,
+        var(--color-morphing-100) 20px,
+        0,
+        #fff 100%
+      ),
+      radial-gradient(circle closest-side, rgba(255, 255, 255, 0) 88%, #fff 100%),
+      radial-gradient(
+        circle at 22px 8px,
+        var(--color-morphing-100) 40%,
+        var(--color-morphing-200) 40%,
+        var(--color-morphing-200) 100%
+      );
+    background-size:
+      32px 8px,
+      32px 16px,
+      32px 16px;
+    background-repeat: space no-repeat;
+    background-position:
+      center top,
+      center 6px,
+      center 6px;
   }
 }

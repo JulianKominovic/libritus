@@ -5,14 +5,14 @@ import { useDrag } from 'react-dnd'
 import { NativeTypes } from 'react-dnd-html5-backend'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Link, Redirect, useParams } from 'wouter'
-import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
-import { IconPicker } from '@/components/ui/icon-picker'
-import { setGlobalTheme } from '@/lib/app-theme'
-import { createColorPalette } from '@/lib/colors'
-import { cn } from '@/lib/utils'
-import PdfCardContextMenuContent from '@/organisms/pdf/pdf-card-context-menu-content'
-import { type Pdf, usePdfs } from '@/stores/categories'
-import DragAndDropZone from '@/templates/drag-and-drop'
+import { ContextMenu, ContextMenuTrigger } from '@renderer/components//ui/context-menu'
+import { IconPicker } from '@renderer/components//ui/icon-picker'
+import { setGlobalTheme } from '@renderer/lib/app-theme'
+import { createColorPalette } from '@renderer/lib/colors'
+import { cn } from '@renderer/lib/utils'
+import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
+import { type Pdf, usePdfs } from '@renderer/stores/categories'
+import DragAndDropZone from '@renderer/templates/drag-and-drop'
 
 const DEBOUNCE_TIME = 300
 
@@ -28,6 +28,7 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
   }))
   const highlightsNumber = pdf.highlights?.length
   const commentsNumber = pdf.highlights?.flatMap((h) => h.comments)?.length
+  const essaysNumber = pdf.essays?.length
   return (
     <ContextMenu key={pdf.id}>
       <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>} asChild>
@@ -44,6 +45,12 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
             className={'size-full object-cover'}
           />
           <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
+            {essaysNumber && essaysNumber > 0 ? (
+              <p className="px-2 text-blue-600 h-6 bg-blue-100 border border-blue-200 backdrop-blur-lg rounded-full flex items-center gap-1">
+                <DynamicIcon name="file-pen-line" className="size-4" />
+                {essaysNumber}
+              </p>
+            ) : null}
             {commentsNumber && commentsNumber > 0 ? (
               <p className="px-2 text-violet-600 h-6 bg-violet-100 border border-violet-200 backdrop-blur-lg rounded-full flex items-center gap-1">
                 <DynamicIcon name="message-circle" className="size-4" />

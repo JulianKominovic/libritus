@@ -12,7 +12,7 @@ const Shortcut = ({ keys, ...rest }: Props) => {
     <kbd
       {...rest}
       className={clsx(
-        'inline-flex items-center gap-0.5 leading-none font-medium font-mono text-sm tabular-nums',
+        'inline-flex items-center gap-0.5 leading-none font-medium font-sans text-xs tabular-nums bg-black/10 rounded text-black p-0.5',
         rest.className
       )}
     >

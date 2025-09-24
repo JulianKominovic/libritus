@@ -8,17 +8,17 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator
-} from '@/components/ui/breadcrumb'
-import { Button } from '@/components/ui/button'
+} from '@renderer/components//ui/breadcrumb'
+import { Button } from '@renderer/components//ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { useLang } from '@/i18n/lang-context'
-import { usePdfs } from '@/stores/categories'
-import { useSettings } from '@/stores/settings'
+} from '@renderer/components//ui/dropdown-menu'
+import { useLang } from '@renderer/i18n/lang-context'
+import { usePdfs } from '@renderer/stores/categories'
+import { useSettings } from '@renderer/stores/settings'
 
 function Navbar() {
   const [isHome] = useRoute('/')

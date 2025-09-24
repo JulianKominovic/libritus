@@ -2,11 +2,11 @@
 import { usePDFPageNumber } from '@anaralabs/lector'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Textarea } from '@/components/ui/textarea'
-import { getHightBaseColor } from '@/lib/highlight-colors'
-import { type Pdf, usePdfs } from '@/stores/categories'
+import { Button } from '@renderer/components//ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
+import { Textarea } from '@renderer/components//ui/textarea'
+import { getHightBaseColor } from '@renderer/lib/highlight-colors'
+import { type Pdf, usePdfs } from '@renderer/stores/categories'
 
 function Highlight({
   h,

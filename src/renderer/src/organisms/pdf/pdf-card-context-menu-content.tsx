@@ -4,9 +4,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator
-} from '@/components/ui/context-menu'
-import { Input } from '@/components/ui/input'
-import { type Pdf, usePdfs } from '@/stores/categories'
+} from '@renderer/components//ui/context-menu'
+import { Input } from '@renderer/components//ui/input'
+import { type Pdf, usePdfs } from '@renderer/stores/categories'
 
 type Props = {
   pdf: Pdf

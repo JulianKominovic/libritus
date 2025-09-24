@@ -5,8 +5,8 @@ import { useDrop } from 'react-dnd'
 import { NativeTypes } from 'react-dnd-html5-backend'
 import { useDebounceCallback } from 'usehooks-ts'
 import { useParams } from 'wouter'
-import { cn } from '@/lib/utils'
-import { usePdfs } from '@/stores/categories'
+import { cn } from '@renderer/lib/utils'
+import { usePdfs } from '@renderer/stores/categories'
 
 function DragAndDropZone({
   children,

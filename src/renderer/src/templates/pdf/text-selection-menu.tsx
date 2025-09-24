@@ -4,15 +4,15 @@ import { useSelectionDimensions } from '@anaralabs/lector'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEffect, useRef, useState } from 'react'
 import { useDebounceCallback } from 'usehooks-ts'
-import { SelectionTooltip } from '@/components/pdf/selection-tooltip'
-import { Button } from '@/components/ui/button'
+import { SelectionTooltip } from '@renderer/components//pdf/selection-tooltip'
+import { Button } from '@renderer/components//ui/button'
 import {
   type DictionaryApiResponse,
   WikiClient,
   type WikipediaDefinition
-} from '@/integrations/wiktionary'
-import { checkSelectionSource } from '@/lib/dom'
-import { HighlightColorEnum, usePdfs } from '@/stores/categories'
+} from '@renderer/integrations/wiktionary'
+import { checkSelectionSource } from '@renderer/lib/dom'
+import { HighlightColorEnum, usePdfs } from '@renderer/stores/categories'
 
 type DefinitionState =
   | {

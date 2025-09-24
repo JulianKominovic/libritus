@@ -2,7 +2,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import type * as React from 'react'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@renderer/lib/utils'
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />

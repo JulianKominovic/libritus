@@ -1,8 +1,8 @@
 import type { HighlightRect } from '@anaralabs/lector'
 import type { IconName } from 'lucide-react/dynamic'
 import { create } from 'zustand'
-import { readFile, writeFile } from '@/integrations/fs'
-import { getPdfMetadata } from '@/lib/pdf'
+import { readFile, writeFile } from '@renderer/integrations/fs'
+import { getPdfMetadata } from '@renderer/lib/pdf'
 
 export enum HighlightColorEnum {
   Fuchsia = 0,
@@ -54,6 +54,12 @@ export type Pdf = {
       text: string
     }[]
   }[]
+  essays?: {
+    id: string
+    createdAt: string | Date
+    updatedAt: string | Date
+    json: any
+  }[]
 }
 export type Category = {
   id: string
@@ -102,6 +108,18 @@ export type PdfsStore = {
     highlightId: string,
     commentId: string
   ) => Promise<void>
+  createEssay: (
+    categoryId: string,
+    pdfId: string,
+    essay: NonNullable<Pdf['essays']>[0]
+  ) => Promise<void>
+  updateEssay: (
+    categoryId: string,
+    pdfId: string,
+    essayId: string,
+    essay: Partial<NonNullable<Pdf['essays']>[0]>
+  ) => Promise<void>
+  deleteEssay: (categoryId: string, pdfId: string, essayId: string) => Promise<void>
 }
 
 export const usePdfs = create<PdfsStore>((set, get) => ({
@@ -382,6 +400,55 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
             }
             return pdf
           })
+        }
+      }
+      return cat
+    })
+    await get().setCategories(categories)
+  },
+  async createEssay(categoryId, pdfId, essay) {
+    const categories = [...get().categories].map((cat) => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          pdfs: cat.pdfs.map((pdf) =>
+            pdf.id === pdfId ? { ...pdf, essays: [essay, ...(pdf.essays || [])] } : pdf
+          )
+        }
+      }
+      return cat
+    })
+    await get().setCategories(categories)
+  },
+  async deleteEssay(categoryId, pdfId, essayId) {
+    const categories = [...get().categories].map((cat) => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          pdfs: cat.pdfs.map((pdf) =>
+            pdf.id === pdfId ? { ...pdf, essays: pdf.essays?.filter((e) => e.id !== essayId) } : pdf
+          )
+        }
+      }
+      return cat
+    })
+    await get().setCategories(categories)
+  },
+  async updateEssay(categoryId, pdfId, essayId, essay) {
+    const categories = [...get().categories].map((cat) => {
+      if (cat.id === categoryId) {
+        return {
+          ...cat,
+          pdfs: cat.pdfs.map((pdf) =>
+            pdf.id === pdfId
+              ? {
+                  ...pdf,
+                  essays: pdf.essays?.map((e) =>
+                    e.id === essayId ? { ...e, ...essay, updatedAt: new Date().toISOString() } : e
+                  )
+                }
+              : pdf
+          )
         }
       }
       return cat

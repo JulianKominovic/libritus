@@ -1,4 +1,4 @@
-import { HighlightColorEnum } from '@/stores/categories'
+import { HighlightColorEnum } from '@renderer/stores/categories'
 import { createColorPalette } from './colors'
 
 export function getHightBaseColor(color: HighlightColorEnum) {

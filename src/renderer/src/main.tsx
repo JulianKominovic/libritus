@@ -1,10 +1,10 @@
+import { getBackendOptions, MultiBackend } from '@minoru/react-dnd-treeview'
 import { GlobalWorkerOptions } from 'pdfjs-dist'
+import 'pdfjs-dist/web/pdf_viewer.css'
+import { DndProvider } from 'react-dnd'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { LangProvider } from './i18n/lang-context'
-import 'pdfjs-dist/web/pdf_viewer.css'
-import { getBackendOptions, MultiBackend } from '@minoru/react-dnd-treeview'
-import { DndProvider } from 'react-dnd'
 
 // import { scan } from "react-scan";
 // scan({ enabled: true });

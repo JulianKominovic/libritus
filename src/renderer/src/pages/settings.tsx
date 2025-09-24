@@ -1,7 +1,7 @@
-import { Switch } from '@/components/ui/switch'
-import { useLang } from '@/i18n/lang-context'
-import { TranslationsKeys } from '@/i18n/translations-keys'
-import { useSettings } from '@/stores/settings'
+import { Switch } from '@renderer/components//ui/switch'
+import { useLang } from '@renderer/i18n/lang-context'
+import { TranslationsKeys } from '@renderer/i18n/translations-keys'
+import { useSettings } from '@renderer/stores/settings'
 
 function SettingsPage() {
   const showPdfOutline = useSettings((s) => s.showPdfOutline)

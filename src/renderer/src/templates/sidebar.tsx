@@ -15,8 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger
-} from '@/components/ui/alert-dialog'
-import { Button, buttonVariants } from '@/components/ui/button'
+} from '@renderer/components//ui/alert-dialog'
+import { Button, buttonVariants } from '@renderer/components//ui/button'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -24,12 +24,12 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
   contextMenuVariants
-} from '@/components/ui/context-menu'
-import { useLang } from '@/i18n/lang-context'
-import { cn } from '@/lib/utils'
-import PdfCardContextMenuContent from '@/organisms/pdf/pdf-card-context-menu-content'
-import { type Category, type Pdf, usePdfs } from '@/stores/categories'
-import { useSettings } from '@/stores/settings'
+} from '@renderer/components//ui/context-menu'
+import { useLang } from '@renderer/i18n/lang-context'
+import { cn } from '@renderer/lib/utils'
+import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
+import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
+import { useSettings } from '@renderer/stores/settings'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 
 type PdfTreeItem = Pdf & { type: 'P' }

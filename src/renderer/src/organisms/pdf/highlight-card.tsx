@@ -7,11 +7,11 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger
-} from '@/components/ui/context-menu'
-import { createColorPalette } from '@/lib/colors'
-import { getRelativeTimeString } from '@/lib/date'
-import { getHighlightColor } from '@/lib/highlight-colors'
-import { type Pdf, usePdfs } from '@/stores/categories'
+} from '@renderer/components//ui/context-menu'
+import { createColorPalette } from '@renderer/lib/colors'
+import { getRelativeTimeString } from '@renderer/lib/date'
+import { getHighlightColor } from '@renderer/lib/highlight-colors'
+import { type Pdf, usePdfs } from '@renderer/stores/categories'
 
 type Props = {
   highlights: Pdf['highlights']

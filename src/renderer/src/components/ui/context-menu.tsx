@@ -3,7 +3,7 @@ import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
 import { cva } from 'class-variance-authority'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import * as React from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '@renderer/lib/utils'
 
 const ContextMenu = React.forwardRef<
   typeof ContextMenuPrimitive.Root,

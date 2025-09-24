@@ -1,6 +1,6 @@
+import { motion } from 'motion/react'
 import { Redirect, Route, Switch } from 'wouter'
 import './App.css'
-import { motion } from 'motion/react'
 import { cn } from './lib/utils'
 import Category from './pages/category'
 import HomePage from './pages/home'
