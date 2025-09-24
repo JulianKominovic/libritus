@@ -1,5 +1,5 @@
+import { commentPlugin } from '@renderer/components/editor/plugins/comment-kit'
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { commentPlugin } from '@renderer/components//editor/plugins/comment-kit'
 import { useEditorRef } from 'platejs/react'
 
 import { ToolbarButton } from './toolbar'

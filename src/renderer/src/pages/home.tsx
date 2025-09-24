@@ -1,6 +1,6 @@
-import { motion } from 'motion/react'
-import { Badge } from '@renderer/components//ui/badge'
+import { Badge } from '@renderer/components/ui/badge'
 import { useLang } from '@renderer/i18n/lang-context'
+import { motion } from 'motion/react'
 
 function fadeInOut(order = 0) {
   return {

@@ -5,7 +5,7 @@ import {
   CodeBlockElementStatic,
   CodeLineElementStatic,
   CodeSyntaxLeafStatic
-} from '@renderer/components//ui/code-block-node-static'
+} from '@renderer/components/ui/code-block-node-static'
 
 const lowlight = createLowlight(all)
 

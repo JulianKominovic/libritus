@@ -2,8 +2,8 @@
 
 import { PlaceholderPlugin } from '@platejs/media/react'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { KEYS, isUrl } from 'platejs'
 import { useEditorRef } from 'platejs/react'
 import * as React from 'react'
@@ -19,15 +19,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
-} from '@renderer/components//ui/alert-dialog'
+} from '@renderer/components/ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
-import { Input } from '@renderer/components//ui/input'
+} from '@renderer/components/ui/dropdown-menu'
+import { Input } from '@renderer/components/ui/input'
 
 import {
   ToolbarSplitButton,

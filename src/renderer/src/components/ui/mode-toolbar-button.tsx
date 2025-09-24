@@ -6,14 +6,14 @@ import { SuggestionPlugin } from '@platejs/suggestion/react'
 import { DropdownMenuItemIndicator, type DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
 import { useEditorRef, usePlateState, usePluginOption } from 'platejs/react'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 
 import { ToolbarButton } from './toolbar'
 

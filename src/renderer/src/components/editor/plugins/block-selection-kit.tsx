@@ -3,7 +3,7 @@
 import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { KEYS, getPluginTypes } from 'platejs'
 
-import { BlockSelection } from '@renderer/components//ui/block-selection'
+import { BlockSelection } from '@renderer/components/ui/block-selection'
 
 export const BlockSelectionKit = [
   BlockSelectionPlugin.configure(({ editor }) => ({

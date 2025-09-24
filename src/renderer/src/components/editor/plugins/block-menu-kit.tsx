@@ -2,7 +2,7 @@
 
 import { BlockMenuPlugin } from '@platejs/selection/react'
 
-import { BlockContextMenu } from '@renderer/components//ui/block-context-menu'
+import { BlockContextMenu } from '@renderer/components/ui/block-context-menu'
 
 import { BlockSelectionKit } from './block-selection-kit'
 

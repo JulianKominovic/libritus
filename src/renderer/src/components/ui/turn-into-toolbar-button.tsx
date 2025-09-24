@@ -2,13 +2,13 @@
 
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
 import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu'
-import { getBlockType, setBlockType } from '@renderer/components//editor/transforms'
+import { getBlockType, setBlockType } from '@renderer/components/editor/transforms'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import type { TElement } from 'platejs'
 import { KEYS } from 'platejs'

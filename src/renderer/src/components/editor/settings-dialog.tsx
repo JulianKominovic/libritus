@@ -2,9 +2,9 @@
 
 /* DEMO ONLY, DO NOT USE IN PRODUCTION */
 
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { aiChatPlugin } from '@renderer/components//editor/plugins/ai-kit'
-import { Button } from '@renderer/components//ui/button'
+import { CopilotPlugin } from '@platejs/ai/react'
+import { aiChatPlugin } from '@renderer/components/editor/plugins/ai-kit'
+import { Button } from '@renderer/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -12,7 +12,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList
-} from '@renderer/components//ui/command'
+} from '@renderer/components/ui/command'
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger
-} from '@renderer/components//ui/dialog'
-import { Input } from '@renderer/components//ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
+} from '@renderer/components/ui/dialog'
+import { Input } from '@renderer/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
-import { CopilotPlugin } from '@platejs/ai/react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEditorRef } from 'platejs/react'
 import * as React from 'react'
 

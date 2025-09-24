@@ -5,7 +5,6 @@ import { ResizableProvider } from '@platejs/resizable'
 import type { TAudioElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, withHOC } from 'platejs/react'
-import * as React from 'react'
 
 import { Caption, CaptionTextarea } from './caption'
 

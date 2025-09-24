@@ -1,3 +1,14 @@
+import { Button } from '@renderer/components/ui/button'
+import { Input } from '@renderer/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { Skeleton } from '@renderer/components/ui/skeleton'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@renderer/components/ui/tooltip'
+import { cn } from '@renderer/lib/utils'
 import { useVirtualizer, type VirtualItem } from '@tanstack/react-virtual'
 import Fuse from 'fuse.js'
 import type { LucideIcon, LucideProps } from 'lucide-react'
@@ -5,17 +16,6 @@ import { DynamicIcon, type IconName } from 'lucide-react/dynamic'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDebounceValue } from 'usehooks-ts'
-import { Button } from '@renderer/components//ui/button'
-import { Input } from '@renderer/components//ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
-import { Skeleton } from '@renderer/components//ui/skeleton'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@renderer/components//ui/tooltip'
-import { cn } from '@renderer/lib/utils'
 import type { iconsData } from './icons-data'
 
 export type IconData = (typeof iconsData)[number]
@@ -168,7 +168,7 @@ const IconPicker = React.forwardRef<React.ComponentRef<typeof PopoverTrigger>, I
       categorizedIcons.forEach((category, categoryIndex) => {
         items.push({ type: 'category', categoryIndex })
 
-        const rows = []
+        const rows: IconData[][] = []
         for (let i = 0; i < category.icons.length; i += 5) {
           rows.push(category.icons.slice(i, i + 5))
         }
@@ -433,4 +433,4 @@ const Icon = React.forwardRef<React.ComponentRef<LucideIcon>, IconProps>(
 )
 Icon.displayName = 'Icon'
 
-export { IconPicker, Icon, type IconName }
+export { Icon, IconPicker, type IconName }

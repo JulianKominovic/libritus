@@ -19,7 +19,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger
-} from '@renderer/components//ui/context-menu'
+} from '@renderer/components/ui/context-menu'
 import { useIsTouchDevice } from '@renderer/hooks/use-is-touch-device'
 
 type Value = 'askAI' | null

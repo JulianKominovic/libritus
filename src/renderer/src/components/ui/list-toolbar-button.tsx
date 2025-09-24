@@ -1,8 +1,8 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { ListStyleType, someList, toggleList } from '@platejs/list'
 import { useIndentTodoToolBarButton, useIndentTodoToolBarButtonState } from '@platejs/list/react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEditorRef, useEditorSelector } from 'platejs/react'
 import * as React from 'react'
 
@@ -12,7 +12,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 
 import {
   ToolbarButton,

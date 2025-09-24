@@ -5,8 +5,8 @@ import type { PlateElementProps } from 'platejs/react'
 
 import { PlateElement, useReadOnly } from 'platejs/react'
 
-import { Calendar } from '@renderer/components//ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
+import { Calendar } from '@renderer/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
 
 export function DateElement(props: PlateElementProps<TDateElement>) {

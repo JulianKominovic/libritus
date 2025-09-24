@@ -17,8 +17,8 @@ import {
 } from 'platejs/react'
 import * as React from 'react'
 
-import { Button } from '@renderer/components//ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components//ui/tooltip'
+import { Button } from '@renderer/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 
 const UNDRAGGABLE_KEYS = [KEYS.column, KEYS.tr, KEYS.td]

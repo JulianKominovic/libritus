@@ -4,12 +4,12 @@
 // 	FontFamilyPlugin,
 // 	FontSizePlugin,
 // } from "@platejs/basic-styles/react";
-import { KEYS } from 'platejs'
-import type { PlatePluginConfig } from 'platejs/react'
+// import { KEYS } from 'platejs'
+// import type { PlatePluginConfig } from 'platejs/react'
 
-const options = {
-  inject: { targetPlugins: [KEYS.p] }
-} satisfies PlatePluginConfig
+// const options = {
+//   inject: { targetPlugins: [KEYS.p] }
+// } satisfies PlatePluginConfig
 
 export const FontKit = [
   // FontColorPlugin.configure({

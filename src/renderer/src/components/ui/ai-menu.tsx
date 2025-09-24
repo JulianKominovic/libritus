@@ -1,14 +1,14 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { useChat } from '@renderer/components//editor/use-chat'
-import { Button } from '@renderer/components//ui/button'
-import { Command, CommandGroup, CommandItem, CommandList } from '@renderer/components//ui/command'
-import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components//ui/popover'
-import { cn } from '@renderer/lib/utils'
 import { AIChatPlugin, AIPlugin, useEditorChat, useLastAssistantMessage } from '@platejs/ai/react'
 import { BlockSelectionPlugin, useIsSelecting } from '@platejs/selection/react'
+import { useChat } from '@renderer/components/editor/use-chat'
+import { Button } from '@renderer/components/ui/button'
+import { Command, CommandGroup, CommandItem, CommandList } from '@renderer/components/ui/command'
+import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
+import { cn } from '@renderer/lib/utils'
 import { Command as CommandPrimitive } from 'cmdk'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { NodeApi, type NodeEntry, type SlateEditor, isHotkey } from 'platejs'
 import {
   type PlateEditor,

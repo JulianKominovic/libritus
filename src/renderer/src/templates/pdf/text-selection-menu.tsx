@@ -1,11 +1,8 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: Shut up 🔥🚒🧨 */
 
 import { useSelectionDimensions } from '@anaralabs/lector'
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { useEffect, useRef, useState } from 'react'
-import { useDebounceCallback } from 'usehooks-ts'
-import { SelectionTooltip } from '@renderer/components//pdf/selection-tooltip'
-import { Button } from '@renderer/components//ui/button'
+import { SelectionTooltip } from '@renderer/components/pdf/selection-tooltip'
+import { Button } from '@renderer/components/ui/button'
 import {
   type DictionaryApiResponse,
   WikiClient,
@@ -13,6 +10,9 @@ import {
 } from '@renderer/integrations/wiktionary'
 import { checkSelectionSource } from '@renderer/lib/dom'
 import { HighlightColorEnum, usePdfs } from '@renderer/stores/categories'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { useEffect, useRef, useState } from 'react'
+import { useDebounceCallback } from 'usehooks-ts'
 
 type DefinitionState =
   | {

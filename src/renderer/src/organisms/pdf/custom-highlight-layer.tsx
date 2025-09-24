@@ -1,12 +1,12 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: I know what I'm doing 🔥🚒🧨 */
 import { usePDFPageNumber } from '@anaralabs/lector'
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { useState } from 'react'
-import { Button } from '@renderer/components//ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
-import { Textarea } from '@renderer/components//ui/textarea'
+import { Button } from '@renderer/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { Textarea } from '@renderer/components/ui/textarea'
 import { getHightBaseColor } from '@renderer/lib/highlight-colors'
 import { type Pdf, usePdfs } from '@renderer/stores/categories'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { useState } from 'react'
 
 function Highlight({
   h,

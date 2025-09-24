@@ -11,7 +11,7 @@ import {
   useFormState
 } from 'react-hook-form'
 
-import { Label } from '@renderer/components//ui/label'
+import { Label } from '@renderer/components/ui/label'
 import { cn } from '@renderer/lib/utils'
 
 const Form = FormProvider
@@ -139,12 +139,12 @@ function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {
 }
 
 export {
-  useFormField,
   Form,
-  FormItem,
-  FormLabel,
   FormControl,
   FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
   FormMessage,
-  FormField
+  useFormField
 }

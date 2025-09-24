@@ -5,7 +5,7 @@ import { DynamicIcon } from 'lucide-react/dynamic'
 import {
   type SuggestionConfig,
   suggestionPlugin
-} from '@renderer/components//editor/plugins/suggestion-kit'
+} from '@renderer/components/editor/plugins/suggestion-kit'
 import { cn } from '@renderer/lib/utils'
 import type { TSuggestionData, TSuggestionText } from 'platejs'
 import type { PlateLeafProps, RenderNodeWrapper } from 'platejs/react'
@@ -57,7 +57,7 @@ export const SuggestionLineBreak: RenderNodeWrapper<SuggestionConfig> = ({ api, 
 
   if (!suggestionData?.isLineBreak) return
 
-  return function Component({ children }) {
+  return function Component({ children }: { children: React.ReactNode }) {
     return (
       <React.Fragment>
         {children}

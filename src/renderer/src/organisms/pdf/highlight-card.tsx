@@ -1,17 +1,17 @@
 import { usePdfJump } from '@anaralabs/lector'
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { useEffect } from 'react'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger
-} from '@renderer/components//ui/context-menu'
+} from '@renderer/components/ui/context-menu'
 import { createColorPalette } from '@renderer/lib/colors'
 import { getRelativeTimeString } from '@renderer/lib/date'
 import { getHighlightColor } from '@renderer/lib/highlight-colors'
 import { type Pdf, usePdfs } from '@renderer/stores/categories'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { useEffect } from 'react'
 
 type Props = {
   highlights: Pdf['highlights']

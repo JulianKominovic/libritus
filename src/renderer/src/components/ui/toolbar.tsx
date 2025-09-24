@@ -10,9 +10,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuSeparator
-} from '@renderer/components//ui/dropdown-menu'
-import { Separator } from '@renderer/components//ui/separator'
-import { Tooltip, TooltipTrigger } from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/dropdown-menu'
+import { Separator } from '@renderer/components/ui/separator'
+import { Tooltip, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 
 export const Toolbar = React.forwardRef<

@@ -1,8 +1,7 @@
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { getEquationHtml } from '@platejs/math'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import type { SlateElementProps, TEquationElement } from 'platejs'
 import { SlateElement } from 'platejs'
-import * as React from 'react'
 
 import { cn } from '@renderer/lib/utils'
 

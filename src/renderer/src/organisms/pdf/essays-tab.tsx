@@ -49,7 +49,6 @@ function EssayItem({
   const editorRef = useRef<ReturnType<typeof usePlateEditor> | null>(null)
   const createEssay = usePdfs((state) => state.createEssay)
   const updateEssay = usePdfs((state) => state.updateEssay)
-  const deleteEssay = usePdfs((state) => state.deleteEssay)
 
   async function handleSave() {
     if (!editorRef.current) return

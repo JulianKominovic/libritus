@@ -4,14 +4,14 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator
-} from '@renderer/components//ui/breadcrumb'
-import { Button } from '@renderer/components//ui/button'
+} from '@renderer/components/ui/breadcrumb'
+import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 import { useLang } from '@renderer/i18n/lang-context'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'

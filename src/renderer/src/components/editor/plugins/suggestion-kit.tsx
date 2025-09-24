@@ -4,10 +4,10 @@ import { type BaseSuggestionConfig, BaseSuggestionPlugin } from '@platejs/sugges
 import { type ExtendConfig, type Path, isSlateEditor, isSlateElement, isSlateString } from 'platejs'
 import { toTPlatePlugin } from 'platejs/react'
 
-import { BlockSuggestion } from '@renderer/components//ui/block-suggestion'
-import { SuggestionLeaf, SuggestionLineBreak } from '@renderer/components//ui/suggestion-node'
+import { BlockSuggestion } from '@renderer/components/ui/block-suggestion'
+import { SuggestionLeaf, SuggestionLineBreak } from '@renderer/components/ui/suggestion-node'
 
-import { discussionPlugin } from './discussion-kit.tsx'
+import { discussionPlugin } from './discussion-kit'
 
 export type SuggestionConfig = ExtendConfig<
   BaseSuggestionConfig,

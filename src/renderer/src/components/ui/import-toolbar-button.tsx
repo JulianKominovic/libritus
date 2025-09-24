@@ -2,8 +2,8 @@
 
 import { MarkdownPlugin } from '@platejs/markdown'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { getEditorDOMFromHtmlString } from 'platejs'
 import { useEditorRef } from 'platejs/react'
 import * as React from 'react'
@@ -15,7 +15,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 
 import { ToolbarButton } from './toolbar'
 

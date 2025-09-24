@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator
-} from '@renderer/components//ui/sidebar'
+} from '@renderer/components/ui/sidebar'
 
 export function SidebarRight({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (

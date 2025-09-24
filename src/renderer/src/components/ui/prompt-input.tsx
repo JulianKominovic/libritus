@@ -1,10 +1,10 @@
-import { Textarea } from '@renderer/components//ui/textarea'
+import { Textarea } from '@renderer/components/ui/textarea'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 
@@ -175,4 +175,4 @@ function PromptInputAction({
   )
 }
 
-export { PromptInput, PromptInputTextarea, PromptInputActions, PromptInputAction }
+export { PromptInput, PromptInputAction, PromptInputActions, PromptInputTextarea }

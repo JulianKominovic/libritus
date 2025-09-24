@@ -9,8 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger
-} from '@renderer/components//ui/alert-dialog'
-import { Button, buttonVariants } from '@renderer/components//ui/button'
+} from '@renderer/components/ui/alert-dialog'
+import { Button, buttonVariants } from '@renderer/components/ui/button'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,7 +18,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
   contextMenuVariants
-} from '@renderer/components//ui/context-menu'
+} from '@renderer/components/ui/context-menu'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
@@ -81,7 +81,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
   const uploadPdf = usePdfs((s) => s.uploadPdf)
   const movePdf = usePdfs((s) => s.movePdf)
   const initialOpen = useMemo(() => {
-    const openPaths = []
+    const openPaths: string[] = []
     if (selectedPdfId) {
       openPaths.push(selectedPdfId)
     }

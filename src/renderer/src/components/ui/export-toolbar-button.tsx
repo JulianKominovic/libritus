@@ -2,16 +2,16 @@
 
 import { MarkdownPlugin } from '@platejs/markdown'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { BaseEditorKit } from '@renderer/components//editor/editor-base-kit'
+import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+import { BaseEditorKit } from '@renderer/components/editor/editor-base-kit'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { createSlateEditor, serializeHtml } from 'platejs'
 import { useEditorRef } from 'platejs/react'
 import * as React from 'react'

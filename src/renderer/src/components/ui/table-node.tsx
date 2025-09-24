@@ -1,6 +1,5 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { useDraggable, useDropLine } from '@platejs/dnd'
 import { BlockSelectionPlugin, useBlockSelected } from '@platejs/selection/react'
 import { setCellBackground } from '@platejs/table'
@@ -16,6 +15,7 @@ import {
 import type * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { PopoverAnchor } from '@radix-ui/react-popover'
 import { cva } from 'class-variance-authority'
+import { DynamicIcon } from 'lucide-react/dynamic'
 
 import {
   KEYS,
@@ -43,7 +43,7 @@ import {
 } from 'platejs/react'
 import * as React from 'react'
 
-import { Button } from '@renderer/components//ui/button'
+import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -52,8 +52,8 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
-import { Popover, PopoverContent } from '@renderer/components//ui/popover'
+} from '@renderer/components/ui/dropdown-menu'
+import { Popover, PopoverContent } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
 
 import { blockSelectionVariants } from './block-selection'
@@ -333,13 +333,13 @@ function ColorDropdownMenu({ children, tooltip }: { children: React.ReactNode; t
   const editor = useEditorRef()
   const selectedCells = usePluginOption(TablePlugin, 'selectedCells')
 
-  const onUpdateColor = React.useCallback(
-    (color: string) => {
-      setOpen(false)
-      setCellBackground(editor, { color, selectedCells: selectedCells ?? [] })
-    },
-    [selectedCells, editor]
-  )
+  // const _onUpdateColor = React.useCallback(
+  //   (color: string) => {
+  //     setOpen(false)
+  //     setCellBackground(editor, { color, selectedCells: selectedCells ?? [] })
+  //   },
+  //   [selectedCells, editor]
+  // )
 
   const onClearColor = React.useCallback(() => {
     setOpen(false)

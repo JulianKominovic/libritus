@@ -5,7 +5,7 @@ import { faker } from '@faker-js/faker'
 import { usePluginOption } from 'platejs/react'
 import * as React from 'react'
 
-import { aiChatPlugin } from '@renderer/components//editor/plugins/ai-kit'
+import { aiChatPlugin } from '@renderer/components/editor/plugins/ai-kit'
 
 export const useChat = () => {
   const options = usePluginOption(aiChatPlugin, 'chatOptions')

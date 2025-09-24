@@ -1,10 +1,10 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components//ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components/ui/avatar'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 import { Markdown } from './markdown'
 
@@ -102,4 +102,4 @@ const MessageAction = ({
   )
 }
 
-export { Message, MessageAvatar, MessageContent, MessageActions, MessageAction }
+export { Message, MessageAction, MessageActions, MessageAvatar, MessageContent }

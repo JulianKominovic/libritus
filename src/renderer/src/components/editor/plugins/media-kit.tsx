@@ -11,14 +11,14 @@ import {
 } from '@platejs/media/react'
 import { KEYS } from 'platejs'
 
-import { AudioElement } from '@renderer/components//ui/media-audio-node'
-import { MediaEmbedElement } from '@renderer/components//ui/media-embed-node'
-import { FileElement } from '@renderer/components//ui/media-file-node'
-import { ImageElement } from '@renderer/components//ui/media-image-node'
-import { PlaceholderElement } from '@renderer/components//ui/media-placeholder-node'
-import { MediaPreviewDialog } from '@renderer/components//ui/media-preview-dialog'
-import { MediaUploadToast } from '@renderer/components//ui/media-upload-toast'
-import { VideoElement } from '@renderer/components//ui/media-video-node'
+import { AudioElement } from '@renderer/components/ui/media-audio-node'
+import { MediaEmbedElement } from '@renderer/components/ui/media-embed-node'
+import { FileElement } from '@renderer/components/ui/media-file-node'
+import { ImageElement } from '@renderer/components/ui/media-image-node'
+import { PlaceholderElement } from '@renderer/components/ui/media-placeholder-node'
+import { MediaPreviewDialog } from '@renderer/components/ui/media-preview-dialog'
+import { MediaUploadToast } from '@renderer/components/ui/media-upload-toast'
+import { VideoElement } from '@renderer/components/ui/media-video-node'
 
 export const MediaKit = [
   ImagePlugin.configure({

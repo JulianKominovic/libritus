@@ -1,7 +1,7 @@
 import { DynamicIcon } from 'lucide-react/dynamic'
 import type * as React from 'react'
 
-import { type Button, buttonVariants } from '@renderer/components//ui/button'
+import { type Button, buttonVariants } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {

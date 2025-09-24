@@ -12,9 +12,9 @@ import {
   UnderlinePlugin
 } from '@platejs/basic-nodes/react'
 
-import { CodeLeaf } from '@renderer/components//ui/code-node'
-import { HighlightLeaf } from '@renderer/components//ui/highlight-node'
-import { KbdLeaf } from '@renderer/components//ui/kbd-node'
+import { CodeLeaf } from '@renderer/components/ui/code-node'
+import { HighlightLeaf } from '@renderer/components/ui/highlight-node'
+import { KbdLeaf } from '@renderer/components/ui/kbd-node'
 
 export const BasicMarksKit = [
   BoldPlugin,

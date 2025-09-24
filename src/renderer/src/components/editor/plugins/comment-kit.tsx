@@ -6,7 +6,7 @@ import { type BaseCommentConfig, BaseCommentPlugin, getDraftCommentKey } from '@
 import { isSlateString } from 'platejs'
 import { toTPlatePlugin } from 'platejs/react'
 
-import { CommentLeaf } from '@renderer/components//ui/comment-node'
+import { CommentLeaf } from '@renderer/components/ui/comment-node'
 
 type CommentConfig = ExtendConfig<
   BaseCommentConfig,

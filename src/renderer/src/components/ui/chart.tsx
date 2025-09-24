@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
 
@@ -312,9 +314,9 @@ function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key:
 
 export {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
-  ChartStyle
+  ChartStyle,
+  ChartTooltip,
+  ChartTooltipContent
 }

@@ -1,11 +1,11 @@
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { Button } from '@renderer/components//ui/button'
+import { Button } from '@renderer/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger
-} from '@renderer/components//ui/collapsible'
+} from '@renderer/components/ui/collapsible'
 import { cn } from '@renderer/lib/utils'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { useState } from 'react'
 
 export type ToolPart = {

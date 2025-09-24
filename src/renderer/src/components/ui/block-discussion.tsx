@@ -20,19 +20,19 @@ import {
 } from 'platejs'
 import { useEditorPlugin, useEditorRef, usePluginOption } from 'platejs/react'
 
-import { commentPlugin } from '@renderer/components//editor/plugins/comment-kit'
+import { commentPlugin } from '@renderer/components/editor/plugins/comment-kit'
 import {
   type TDiscussion,
   discussionPlugin
-} from '@renderer/components//editor/plugins/discussion-kit'
-import { suggestionPlugin } from '@renderer/components//editor/plugins/suggestion-kit'
-import { Button } from '@renderer/components//ui/button'
+} from '@renderer/components/editor/plugins/discussion-kit'
+import { suggestionPlugin } from '@renderer/components/editor/plugins/suggestion-kit'
+import { Button } from '@renderer/components/ui/button'
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
   PopoverTrigger
-} from '@renderer/components//ui/popover'
+} from '@renderer/components/ui/popover'
 
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { BlockSuggestionCard, isResolvedSuggestion, useResolveSuggestion } from './block-suggestion'

@@ -1,6 +1,5 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import type { Emoji } from '@emoji-mart/data'
 import {
   type EmojiCategoryList,
@@ -14,16 +13,17 @@ import {
   useEmojiDropdownMenuState
 } from '@platejs/emoji/react'
 import * as Popover from '@radix-ui/react-popover'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import * as React from 'react'
 
-import { Button } from '@renderer/components//ui/button'
-import { ToolbarButton } from '@renderer/components//ui/toolbar'
+import { Button } from '@renderer/components/ui/button'
+import { ToolbarButton } from '@renderer/components/ui/toolbar'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 
 export function EmojiToolbarButton({

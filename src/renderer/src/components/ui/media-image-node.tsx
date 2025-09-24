@@ -6,7 +6,6 @@ import { ResizableProvider, useResizableValue } from '@platejs/resizable'
 import type { TImageElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, withHOC } from 'platejs/react'
-import * as React from 'react'
 
 import { cn } from '@renderer/lib/utils'
 

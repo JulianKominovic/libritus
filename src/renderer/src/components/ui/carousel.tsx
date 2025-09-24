@@ -1,10 +1,10 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import * as React from 'react'
 
-import { Button } from '@renderer/components//ui/button'
+import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
 type CarouselApi = UseEmblaCarouselType[1]
@@ -220,4 +220,4 @@ function CarouselNext({
   )
 }
 
-export { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext }
+export { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi }

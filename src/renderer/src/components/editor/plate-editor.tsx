@@ -1,12 +1,12 @@
 import { Plate, type TPlateEditor, usePlateEditor } from 'platejs/react'
 
-import { Editor, EditorContainer, EditorView } from '@renderer/components//ui/editor'
+import { Editor, EditorContainer } from '@renderer/components/ui/editor'
 import type { Value } from 'platejs'
 import { EditorKit } from './editor-kit'
-import { BaseEditorKit } from './editor-base-kit'
 
 export function PlateEditor({
   className,
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   editor = usePlateEditor({
     plugins: EditorKit
   })

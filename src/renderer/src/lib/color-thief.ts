@@ -1,3 +1,4 @@
+/* eslint-disable */
 // biome-ignore-all lint: If this file is linted the app will crash
 // @ts-nocheck
 import quantize from 'quantize'

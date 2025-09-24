@@ -1,8 +1,8 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEquationElement, useEquationInput } from '@platejs/math/react'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import type { TEquationElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import {
@@ -17,8 +17,8 @@ import {
 import * as React from 'react'
 import TextareaAutosize, { type TextareaAutosizeProps } from 'react-textarea-autosize'
 
-import { Button } from '@renderer/components//ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
+import { Button } from '@renderer/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
 
 export function EquationElement(props: PlateElementProps<TEquationElement>) {

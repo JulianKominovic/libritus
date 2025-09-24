@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react'
 
 import type { DropdownMenuItemProps, DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
@@ -8,21 +6,22 @@ import { useComposedRef } from '@udecode/cn'
 import debounce from 'lodash/debounce.js'
 import { useEditorRef, useEditorSelector } from 'platejs/react'
 
-import { buttonVariants } from '@renderer/components//ui/button'
+import { buttonVariants } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { ToolbarButton, ToolbarMenuGroup } from './toolbar'
 
 export function FontColorToolbarButton({

@@ -1,4 +1,4 @@
-import { Switch } from '@renderer/components//ui/switch'
+import { Switch } from '@renderer/components/ui/switch'
 import { useLang } from '@renderer/i18n/lang-context'
 import { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import { useSettings } from '@renderer/stores/settings'

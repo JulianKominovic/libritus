@@ -1,6 +1,5 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import {
   FloatingMedia as FloatingMediaPrimitive,
   FloatingMediaStore,
@@ -8,6 +7,7 @@ import {
   useImagePreviewValue
 } from '@platejs/media/react'
 import { cva } from 'class-variance-authority'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import type { WithRequiredKey } from 'platejs'
 import {
   useEditorRef,
@@ -20,9 +20,9 @@ import {
 } from 'platejs/react'
 import * as React from 'react'
 
-import { Button, buttonVariants } from '@renderer/components//ui/button'
-import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components//ui/popover'
-import { Separator } from '@renderer/components//ui/separator'
+import { Button, buttonVariants } from '@renderer/components/ui/button'
+import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
+import { Separator } from '@renderer/components/ui/separator'
 
 import { CaptionButton } from './caption'
 

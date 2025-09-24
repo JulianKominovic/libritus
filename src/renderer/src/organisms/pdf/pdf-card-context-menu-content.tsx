@@ -1,12 +1,12 @@
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { useDebounceCallback } from 'usehooks-ts'
 import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator
-} from '@renderer/components//ui/context-menu'
-import { Input } from '@renderer/components//ui/input'
+} from '@renderer/components/ui/context-menu'
+import { Input } from '@renderer/components/ui/input'
 import { type Pdf, usePdfs } from '@renderer/stores/categories'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { useDebounceCallback } from 'usehooks-ts'
 
 type Props = {
   pdf: Pdf

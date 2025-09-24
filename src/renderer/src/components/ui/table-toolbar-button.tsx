@@ -2,8 +2,8 @@
 
 import { TablePlugin, useTableMergeState } from '@platejs/table/react'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { KEYS } from 'platejs'
 import { useEditorPlugin, useEditorSelector } from 'platejs/react'
 import * as React from 'react'
@@ -17,7 +17,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 import { cn } from '@renderer/lib/utils'
 
 import { ToolbarButton } from './toolbar'

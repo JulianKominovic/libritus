@@ -4,16 +4,16 @@ import * as React from 'react'
 
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
+import { LineHeightPlugin } from '@platejs/basic-styles/react'
+import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
-import { LineHeightPlugin } from '@platejs/basic-styles/react'
-import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEditorRef, useSelectionFragmentProp } from 'platejs/react'
 
 import { ToolbarButton } from './toolbar'

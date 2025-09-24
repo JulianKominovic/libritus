@@ -226,7 +226,10 @@ const InlineComboboxInput = React.forwardRef<
 
 InlineComboboxInput.displayName = 'InlineComboboxInput'
 
-const InlineComboboxContent: typeof ComboboxPopover = ({ className, ...props }) => {
+const InlineComboboxContent: typeof ComboboxPopover = ({
+  className,
+  ...props
+}: { className?: string } & React.ComponentProps<typeof ComboboxPopover>) => {
   // Portal prevents CSS from leaking into popover
   return (
     <Portal>

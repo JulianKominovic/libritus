@@ -9,9 +9,10 @@ import { FontSizePlugin } from '@platejs/basic-styles/react'
 import { KEYS } from 'platejs'
 import { useEditorPlugin, useEditorSelector } from 'platejs/react'
 
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
 
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { ToolbarButton } from './toolbar'
 
 const DEFAULT_FONT_SIZE = '16'

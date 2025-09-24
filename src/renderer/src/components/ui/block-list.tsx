@@ -6,7 +6,7 @@ import type { TListElement } from 'platejs'
 import { type PlateElementProps, type RenderNodeWrapper, useReadOnly } from 'platejs/react'
 import type React from 'react'
 
-import { Checkbox } from '@renderer/components//ui/checkbox'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import { cn } from '@renderer/lib/utils'
 
 const config: Record<

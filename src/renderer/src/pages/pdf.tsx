@@ -15,13 +15,13 @@ import {
   usePdfJump,
   useSearch
 } from '@anaralabs/lector'
-import { Button } from '@renderer/components//ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components//ui/tabs'
+import { Button } from '@renderer/components/ui/button'
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup
 } from '@renderer/components/ui/resizable'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { useDebounceFunction } from '@renderer/hooks/use-debounce-function'
 import { cn } from '@renderer/lib/utils'
 import CustomHighlightLayer from '@renderer/organisms/pdf/custom-highlight-layer'

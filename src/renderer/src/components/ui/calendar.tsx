@@ -1,8 +1,7 @@
 import type * as React from 'react'
 import { DayPicker } from 'react-day-picker'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { buttonVariants } from '@renderer/components//ui/button'
+import { buttonVariants } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
 function Calendar({
@@ -59,14 +58,22 @@ function Calendar({
         day_hidden: 'invisible',
         ...classNames
       }}
-      components={{
-        IconLeft: ({ className, ...props }) => (
-          <DynamicIcon name="chevron-left" className={cn('size-4', className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <DynamicIcon name="chevron-right" className={cn('size-4', className)} {...props} />
-        )
-      }}
+      components={
+        {
+          // IconLeft: ({
+          //   className,
+          //   ...props
+          // }: { className?: string } & React.ComponentProps<typeof DynamicIcon>) => (
+          //   <DynamicIcon {...props} name="chevron-left" className={cn('size-4', className)} />
+          // ),
+          // IconRight: ({
+          //   className,
+          //   ...props
+          // }: { className?: string } & React.ComponentProps<typeof DynamicIcon>) => (
+          //   <DynamicIcon {...props} name="chevron-right" className={cn('size-4', className)} />
+          // )
+        }
+      }
       {...props}
     />
   )

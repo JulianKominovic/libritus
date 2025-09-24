@@ -1,9 +1,8 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { SuggestionPlugin } from '@platejs/suggestion/react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEditorPlugin, usePluginOption } from 'platejs/react'
-import * as React from 'react'
 
 import { cn } from '@renderer/lib/utils'
 

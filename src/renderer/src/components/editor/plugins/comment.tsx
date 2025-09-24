@@ -4,10 +4,10 @@ import * as React from 'react'
 
 import type { CreatePlateEditorOptions } from 'platejs/react'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { getCommentKey, getDraftCommentKey } from '@platejs/comment'
 import { CommentPlugin, useCommentId } from '@platejs/comment/react'
 import { differenceInDays, differenceInHours, differenceInMinutes, format } from 'date-fns'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { KEYS, NodeApi, type Value, nanoid } from 'platejs'
 import {
   Plate,
@@ -17,23 +17,23 @@ import {
   usePluginOption
 } from 'platejs/react'
 
-import { BasicMarksKit } from '@renderer/components//editor/plugins/basic-marks-kit'
+import { BasicMarksKit } from '@renderer/components/editor/plugins/basic-marks-kit'
 import {
   type TDiscussion,
   discussionPlugin
-} from '@renderer/components//editor/plugins/discussion-kit'
-import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components//ui/avatar'
-import { Button } from '@renderer/components//ui/button'
+} from '@renderer/components/editor/plugins/discussion-kit'
+import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components/ui/avatar'
+import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 import { cn } from '@renderer/lib/utils'
 
-import { Editor, EditorContainer } from '@renderer/components//ui/editor'
+import { Editor, EditorContainer } from '@renderer/components/ui/editor'
 
 export interface TComment {
   id: string

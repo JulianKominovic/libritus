@@ -1,14 +1,14 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { insertBlock, insertInlineElement } from '@renderer/components//editor/transforms'
+import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+import { insertBlock, insertInlineElement } from '@renderer/components/editor/transforms'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { KEYS } from 'platejs'
 import { type PlateEditor, useEditorRef } from 'platejs/react'
 import * as React from 'react'

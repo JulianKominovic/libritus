@@ -5,13 +5,13 @@ import * as React from 'react'
 import type { TColumnElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { useDraggable, useDropLine } from '@platejs/dnd'
 import { setColumns } from '@platejs/layout'
 import { ResizableProvider } from '@platejs/resizable'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { useComposedRef } from '@udecode/cn'
 import type { LucideProps } from 'lucide-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { PathApi } from 'platejs'
 import {
   PlateElement,
@@ -26,15 +26,15 @@ import {
   withHOC
 } from 'platejs/react'
 
-import { Button } from '@renderer/components//ui/button'
-import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components//ui/popover'
-import { Separator } from '@renderer/components//ui/separator'
+import { Button } from '@renderer/components/ui/button'
+import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
+import { Separator } from '@renderer/components/ui/separator'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
 
 export const ColumnElement = withHOC(

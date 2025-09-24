@@ -1,6 +1,5 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { type UseVirtualFloatingOptions, flip, offset } from '@platejs/floating'
 import { getLinkAttributes } from '@platejs/link'
 import {
@@ -12,13 +11,14 @@ import {
   useFloatingLinkInsertState
 } from '@platejs/link/react'
 import { cva } from 'class-variance-authority'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import type { TLinkElement } from 'platejs'
 import { KEYS } from 'platejs'
 import { useEditorRef, useEditorSelection, useFormInputProps, usePluginOption } from 'platejs/react'
 import * as React from 'react'
 
-import { buttonVariants } from '@renderer/components//ui/button'
-import { Separator } from '@renderer/components//ui/separator'
+import { buttonVariants } from '@renderer/components/ui/button'
+import { Separator } from '@renderer/components/ui/separator'
 
 const popoverVariants = cva(
   'z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden'

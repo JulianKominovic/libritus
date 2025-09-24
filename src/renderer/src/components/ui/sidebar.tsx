@@ -1,25 +1,25 @@
-import { DynamicIcon } from 'lucide-react/dynamic'
-import { Button } from '@renderer/components//ui/button'
-import { Input } from '@renderer/components//ui/input'
-import { Separator } from '@renderer/components//ui/separator'
+import { Slot } from '@radix-ui/react-slot'
+import { Button } from '@renderer/components/ui/button'
+import { Input } from '@renderer/components/ui/input'
+import { Separator } from '@renderer/components/ui/separator'
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle
-} from '@renderer/components//ui/sheet'
-import { Skeleton } from '@renderer/components//ui/skeleton'
+} from '@renderer/components/ui/sheet'
+import { Skeleton } from '@renderer/components/ui/skeleton'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from '@renderer/components//ui/tooltip'
+} from '@renderer/components/ui/tooltip'
 import { useIsMobile } from '@renderer/hooks/use-mobile'
 import { cn } from '@renderer/lib/utils'
-import { Slot } from '@radix-ui/react-slot'
 import { type VariantProps, cva } from 'class-variance-authority'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import * as React from 'react'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'

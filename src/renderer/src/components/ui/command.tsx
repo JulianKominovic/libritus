@@ -1,5 +1,5 @@
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { Command as CommandPrimitive } from 'cmdk'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import type * as React from 'react'
 
 import {
@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle
-} from '@renderer/components//ui/dialog'
+} from '@renderer/components/ui/dialog'
 import { cn } from '@renderer/lib/utils'
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {

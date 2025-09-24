@@ -27,12 +27,13 @@ import { useEditorPlugin, usePluginOption } from 'platejs/react'
 import {
   type TDiscussion,
   discussionPlugin
-} from '@renderer/components//editor/plugins/discussion-kit'
-import { suggestionPlugin } from '@renderer/components//editor/plugins/suggestion-kit'
-import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components//ui/avatar'
-import { Button } from '@renderer/components//ui/button'
+} from '@renderer/components/editor/plugins/discussion-kit'
+import { suggestionPlugin } from '@renderer/components/editor/plugins/suggestion-kit'
+import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components/ui/avatar'
+import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { Comment, CommentCreateForm, type TComment, formatCommentDate } from './comment'
 
 export interface ResolvedSuggestion extends TResolvedSuggestion {

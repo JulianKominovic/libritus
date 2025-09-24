@@ -1,9 +1,9 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import type { Alignment } from '@platejs/basic-styles'
 import { TextAlignPlugin } from '@platejs/basic-styles/react'
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEditorPlugin, useSelectionFragmentProp } from 'platejs/react'
 import * as React from 'react'
 
@@ -13,7 +13,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger
-} from '@renderer/components//ui/dropdown-menu'
+} from '@renderer/components/ui/dropdown-menu'
 
 import { ToolbarButton } from './toolbar'
 

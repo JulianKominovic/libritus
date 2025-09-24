@@ -7,8 +7,8 @@ import type { UseChatOptions } from 'ai/react'
 import { KEYS, PathApi, getPluginType } from 'platejs'
 import { usePluginOption } from 'platejs/react'
 
-import { AILoadingBar, AIMenu } from '@renderer/components//ui/ai-menu'
-import { AIAnchorElement, AILeaf } from '@renderer/components//ui/ai-node'
+import { AILoadingBar, AIMenu } from '@renderer/components/ui/ai-menu'
+import { AIAnchorElement, AILeaf } from '@renderer/components/ui/ai-node'
 
 import { CursorOverlayKit } from './cursor-overlay-kit'
 import { MarkdownKit } from './markdown-kit'

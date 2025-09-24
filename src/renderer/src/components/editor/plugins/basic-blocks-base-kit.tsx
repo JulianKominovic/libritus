@@ -10,7 +10,7 @@ import {
 } from '@platejs/basic-nodes'
 import { BaseParagraphPlugin } from 'platejs'
 
-import { BlockquoteElementStatic } from '@renderer/components//ui/blockquote-node-static'
+import { BlockquoteElementStatic } from '@renderer/components/ui/blockquote-node-static'
 import {
   H1ElementStatic,
   H2ElementStatic,
@@ -18,9 +18,9 @@ import {
   H4ElementStatic,
   H5ElementStatic,
   H6ElementStatic
-} from '@renderer/components//ui/heading-node-static'
-import { HrElementStatic } from '@renderer/components//ui/hr-node-static'
-import { ParagraphElementStatic } from '@renderer/components//ui/paragraph-node-static'
+} from '@renderer/components/ui/heading-node-static'
+import { HrElementStatic } from '@renderer/components/ui/hr-node-static'
+import { ParagraphElementStatic } from '@renderer/components/ui/paragraph-node-static'
 
 export const BaseBasicBlocksKit = [
   BaseParagraphPlugin.withComponent(ParagraphElementStatic),

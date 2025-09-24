@@ -1,7 +1,7 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { formatCodeBlock, isLangSupported } from '@platejs/code-block'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { NodeApi, type TCodeBlockElement, type TCodeSyntaxLeaf } from 'platejs'
 import {
   PlateElement,
@@ -14,7 +14,7 @@ import {
 } from 'platejs/react'
 import * as React from 'react'
 
-import { Button } from '@renderer/components//ui/button'
+import { Button } from '@renderer/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -22,8 +22,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList
-} from '@renderer/components//ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components//ui/popover'
+} from '@renderer/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
 
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {

@@ -1,11 +1,11 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { useToggleButton, useToggleButtonState } from '@platejs/toggle/react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 
-import { Button } from '@renderer/components//ui/button'
+import { Button } from '@renderer/components/ui/button'
 
 export function ToggleElement(props: PlateElementProps) {
   const element = props.element

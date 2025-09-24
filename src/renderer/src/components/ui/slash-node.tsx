@@ -1,13 +1,13 @@
 'use client'
 
-import { DynamicIcon } from 'lucide-react/dynamic'
 import { AIChatPlugin } from '@platejs/ai/react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 import type * as React from 'react'
 
-import { insertBlock, insertInlineElement } from '@renderer/components//editor/transforms'
+import { insertBlock, insertInlineElement } from '@renderer/components/editor/transforms'
 
 import {
   InlineCombobox,

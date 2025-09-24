@@ -11,7 +11,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import type * as React from 'react'
 
-import { Button } from '@renderer/components//ui/button'
+import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 
 const captionVariants = cva('max-w-full', {
