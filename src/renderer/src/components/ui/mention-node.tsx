@@ -13,6 +13,7 @@ import { cn } from '@renderer/lib/utils'
 
 import { Category, Pdf, usePdfs } from '@renderer/stores/categories'
 import { DynamicIcon } from 'lucide-react/dynamic'
+import { useRoute } from 'wouter'
 import {
   InlineCombobox,
   InlineComboboxContent,
@@ -30,6 +31,7 @@ export function parseKey(key: string) {
       pdfId?: string
       highlightId?: string
       essayId?: string
+      page?: number
     }
   } catch {
     return null
@@ -43,6 +45,7 @@ export function MentionElement(
   const element = props.element
   const key = element.key as string
   const parsedKey = parseKey(key)
+  const page = parsedKey?.page
   const categories = usePdfs((s) => s.categories)
   const category = categories.find((c) => c.id === parsedKey?.categoryId)
   const pdf = category?.pdfs.find((p) => p.id === parsedKey?.pdfId)
@@ -58,7 +61,7 @@ export function MentionElement(
     <PlateElement
       {...props}
       className={cn(
-        'inline-flex items-center gap-2 flex-wrap rounded-md bg-muted px-1.5 py-0.5 align-baseline text-sm font-medium',
+        'inline-flex items-center gap-2 flex-wrap rounded-md bg-muted px-1.5 py-0.5 align-baseline text-sm font-medium m-0.5',
         !readOnly && 'cursor-pointer',
         selected && focused && 'ring-2 ring-ring',
         element.children[0][KEYS.bold] === true && 'font-bold',
@@ -72,7 +75,9 @@ export function MentionElement(
         draggable: true
       }}
     >
-      {highlight ? (
+      {page ? (
+        <PageMention page={page} />
+      ) : highlight ? (
         <HighlightMention highlight={{ ...highlight, pdf: pdf! }} />
       ) : essay ? (
         <EssayMention essay={{ ...essay, pdf: pdf! }} />
@@ -98,7 +103,12 @@ export function CategoryMention({ category }: { category: Category }) {
   return (
     <>
       <p className="flex items-center gap-2">
-        <DynamicIcon name={category.icon} size={16} style={{ color: category.color }} />
+        <DynamicIcon
+          name={category.icon}
+          size={16}
+          strokeWidth={2.5}
+          style={{ color: category.color }}
+        />
         {category.name}
       </p>
       <small className="text-morphing-700 font-serif">{category.pdfs.length} PDFs</small>
@@ -128,10 +138,22 @@ export function EssayMention({ essay }: { essay: NonNullable<Pdf['essays']>[0] &
   )
 }
 
+export function PageMention({ page }: { page: number }) {
+  return (
+    <p className="flex items-center gap-2">
+      <DynamicIcon name="file-text" size={16} />
+      Page {page}
+    </p>
+  )
+}
+
 export function MentionInputElement(props: PlateElementProps<TComboboxInputElement>) {
   const { editor, element } = props
   const [search, setSearch] = React.useState('')
+  const [, params] = useRoute('/category/:categoryId/:pdfId')
   const categories = usePdfs((s) => s.categories)
+  const category = params && categories.find((c) => c.id === params.categoryId)
+  const pdf = params && category?.pdfs.find((p) => p.id === params.pdfId)
   const pdfs = categories.flatMap((category) =>
     category.pdfs.map((p) => ({ ...p, category: category }))
   )
@@ -153,6 +175,34 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
         <InlineComboboxContent className="my-1.5">
           <InlineComboboxEmpty>No results</InlineComboboxEmpty>
 
+          <InlineComboboxGroup>
+            <InlineComboboxGroupLabel>Current document</InlineComboboxGroupLabel>
+            {pdf && params && (
+              <InlineComboboxItem
+                className="h-auto flex-col gap-1 items-start"
+                key={pdf.id + 'page' + pdf.progress.pages.toString()}
+                value={`Page ${pdf.progress.pages.toString()} from ${pdf.name}`}
+                onClick={() =>
+                  onSelectItem(
+                    editor,
+                    {
+                      text: `Page ${pdf.progress.pages.toString()} from ${pdf.name}`,
+                      key: JSON.stringify({
+                        categoryId: params.categoryId,
+                        pdfId: params.pdfId,
+                        highlightId: undefined,
+                        essayId: undefined,
+                        page: pdf.progress.pages
+                      })
+                    },
+                    search
+                  )
+                }
+              >
+                <PageMention page={pdf.progress.pages} />
+              </InlineComboboxItem>
+            )}
+          </InlineComboboxGroup>
           <InlineComboboxGroup>
             <InlineComboboxGroupLabel>Categories</InlineComboboxGroupLabel>
             {categories.map((category) => {

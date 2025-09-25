@@ -27,8 +27,7 @@ function EssayItemEditable({
 }) {
   const editor = usePlateEditor({
     plugins: EditorKit,
-    value: essay.json,
-    autoSelect: 'end'
+    value: essay.json
   })
   editorRef.current = editor
   return <PlateEditor className="p-2 mb-4" editor={editor}></PlateEditor>
