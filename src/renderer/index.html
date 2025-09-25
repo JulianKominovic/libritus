@@ -7,7 +7,7 @@
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' asset:  *.wikipedia.org *.wikimedia.org *.dictionaryapi.dev; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' *.wikipedia.org *.wikimedia.org wikipedia.org data: asset:; connect-src 'self' asset: *.wikipedia.org *.wikimedia.org *.dictionaryapi.dev"
+      content="default-src 'self' asset: https://*.wikipedia.org https://*.wikimedia.org https://*.dictionaryapi.dev; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.wikipedia.org https://*.wikimedia.org https://wikipedia.org data: asset:; connect-src 'self' asset: https://*.wikipedia.org https://wikipedia.org https://*.wikimedia.org https://*.dictionaryapi.dev; font-src 'self' data:"
     />
   </head>
 

@@ -301,7 +301,19 @@ export default function SelectionMenu({
           <DynamicIcon name="pencil" className="size-4" />
           <p>Add note</p>
         </Button>
+        <div className="w-px h-7 bg-black/20 -mx-1" />
+        <Button variant={'ghost'} className="!px-2 !text-xs rounded-lg aspect-square" asChild>
+          <a
+            title="Search on Google"
+            href={`https://google.com/search?q=${definition?.text}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <DynamicIcon name="globe" className="size-4" />
+          </a>
+        </Button>
       </div>
+
       {definition && (
         <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl max-w-sm p-3">
           {definition.loading ? (
