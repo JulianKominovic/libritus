@@ -17,3 +17,7 @@ export function getParentNodes(node: Node): Node[] {
 
   return parents
 }
+
+export function centerScrollX(element: HTMLElement, behavior: ScrollBehavior = 'instant') {
+  element.scrollTo({ left: element.scrollWidth / 2 - element.clientWidth / 2, behavior })
+}

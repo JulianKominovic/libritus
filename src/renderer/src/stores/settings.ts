@@ -6,6 +6,8 @@ export type SettingsStore = {
   setShowPdfOutline: (showPdfOutline: boolean) => void
   showNavigationSidebar: boolean
   setShowNavigationSidebar: (showNavigationSidebar: boolean) => void
+  lockPdfHorizontalScroll: boolean
+  setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) => void
 }
 export const useSettings = create<SettingsStore>()(
   persist(
@@ -13,7 +15,10 @@ export const useSettings = create<SettingsStore>()(
       showPdfOutline: true,
       setShowPdfOutline: (showPdfOutline: boolean) => set({ showPdfOutline }),
       showNavigationSidebar: true,
-      setShowNavigationSidebar: (showNavigationSidebar: boolean) => set({ showNavigationSidebar })
+      setShowNavigationSidebar: (showNavigationSidebar: boolean) => set({ showNavigationSidebar }),
+      lockPdfHorizontalScroll: false,
+      setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) =>
+        set({ lockPdfHorizontalScroll })
     }),
     {
       name: 'settings',

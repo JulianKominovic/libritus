@@ -23,6 +23,7 @@ import {
 } from '@renderer/components/ui/resizable'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { useDebounceFunction } from '@renderer/hooks/use-debounce-function'
+import usePdfScrollXLock from '@renderer/hooks/use-pdf-scroll-x-lock'
 import { cn } from '@renderer/lib/utils'
 import CustomHighlightLayer from '@renderer/organisms/pdf/custom-highlight-layer'
 import EssayTab from '@renderer/organisms/pdf/essays-tab'
@@ -279,7 +280,7 @@ function AttachListeners({
 }
 
 const MAX_OUTLINE_SIZE_PERCENTAGE = 60
-
+const PAGES_COMPONENT_ID = 'pdf-pages'
 function PdfPage() {
   const { categoryId, pdfId } = useParams()
   const categories = usePdfs((p) => p.categories)
@@ -296,6 +297,7 @@ function PdfPage() {
   const [minSize, setMinSize] = useState(20)
   const rootRef = useRef<HTMLDivElement>(null)
   const outlinePanelRef = useRef<ImperativePanelHandle>(null)
+  const { lockPdfHorizontalScroll } = usePdfScrollXLock(PAGES_COMPONENT_ID)
 
   useLayoutEffect(() => {
     if (showPdfOutline) {
@@ -305,6 +307,7 @@ function PdfPage() {
     }
   }, [showPdfOutline, outlinePanelRef.current])
 
+  // This makes sure the outline panel is at a reasonable size
   useEffect(() => {
     if (rootRef.current) {
       function calculateMinSize() {
@@ -349,7 +352,11 @@ function PdfPage() {
       >
         <ResizablePanel minSize={30} order={1} id="pdf-page-panel" className="relative">
           <Pages
-            className="h-full"
+            id={PAGES_COMPONENT_ID}
+            className={cn(
+              'h-full',
+              lockPdfHorizontalScroll ? '!overflow-x-hidden' : '!overflow-x-auto'
+            )}
             onOffsetChange={(offset) => {
               if (offset === lastOffset.current) return
               debouncedUpdatePdfProgress(() => {

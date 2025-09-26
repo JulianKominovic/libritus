@@ -8,6 +8,8 @@ function SettingsPage() {
   const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
   const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar)
   const setShowNavigationSidebar = useSettings((s) => s.setShowNavigationSidebar)
+  const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
+  const setLockPdfHorizontalScroll = useSettings((s) => s.setLockPdfHorizontalScroll)
   const { t } = useLang()
 
   const settingsFields: Record<
@@ -25,6 +27,12 @@ function SettingsPage() {
         description: 'Show the PDF right sidebar while reading',
         value: showPdfOutline,
         onChange: setShowPdfOutline
+      },
+      {
+        name: 'Allow horizontal scroll',
+        description: 'Allow or disable the PDF horizontal scroll',
+        value: lockPdfHorizontalScroll,
+        onChange: setLockPdfHorizontalScroll
       }
     ],
     navigation: [

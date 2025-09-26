@@ -17,11 +17,10 @@ function App() {
     <>
       <Navbar />
       <motion.div
-        className={cn('grid gap-12 h-full bg-morphing-50 text-morphing-900')}
+        className={cn('grid gap-0 h-full bg-morphing-50 text-morphing-900')}
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,
-          gap: showNavigationSidebar ? 48 : 0,
           gridTemplateColumns: showNavigationSidebar ? '300px 1fr' : '0px 1fr'
         }}
         exit={{ opacity: 0 }}

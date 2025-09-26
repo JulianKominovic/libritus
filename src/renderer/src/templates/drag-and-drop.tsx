@@ -1,12 +1,12 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
 
+import { cn } from '@renderer/lib/utils'
+import { usePdfs } from '@renderer/stores/categories'
 import { useMemo, useState } from 'react'
 import { useDrop } from 'react-dnd'
 import { NativeTypes } from 'react-dnd-html5-backend'
 import { useDebounceCallback } from 'usehooks-ts'
 import { useParams } from 'wouter'
-import { cn } from '@renderer/lib/utils'
-import { usePdfs } from '@renderer/stores/categories'
 
 function DragAndDropZone({
   children,
@@ -22,7 +22,7 @@ function DragAndDropZone({
   const [message, setMessage] = useState<
     'success' | 'error' | 'idle' | 'waiting-drop' | 'uploading'
   >('idle')
-  const delayedSetMessage = useDebounceCallback(setMessage, 3000)
+  const delayedSetMessage = useDebounceCallback(setMessage, 2000)
 
   const [, drop] = useDrop(
     () => ({
@@ -57,7 +57,7 @@ function DragAndDropZone({
 
   const description = useMemo(() => {
     if (message === 'error') return 'Those files will not be uploaded.'
-    if (message === 'success') return 'All good!'
+    if (message === 'success') return 'Happy reading!'
     if (message === 'waiting-drop') return 'Drop one or more PDFs here'
     if (message === 'uploading') return 'This may take a few seconds if the files are large'
     return 'Drop the PDF here'
