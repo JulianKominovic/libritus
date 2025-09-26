@@ -127,21 +127,21 @@ function Navbar() {
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
-          className="!p-2 aspect-square !size-8 text-muted-foreground"
+          className="!p-2 aspect-square !size-8 text-morphing-600"
           onClick={() => window.history.back()}
         >
           <DynamicIcon name={'arrow-left'} />
         </Button>
         <Button
           variant="ghost"
-          className="!p-2 aspect-square !size-8 text-muted-foreground -mx-2"
+          className="!p-2 aspect-square !size-8 text-morphing-600 -mx-2"
           onClick={() => window.history.forward()}
         >
           <DynamicIcon name={'arrow-right'} />
         </Button>
         <Button
           variant="ghost"
-          className="!p-2 aspect-square !size-8 text-muted-foreground"
+          className="!p-2 aspect-square !size-8 text-morphing-600"
           onClick={() => setShowNavigationSidebar(!showNavigationSidebar)}
         >
           <DynamicIcon name={showNavigationSidebar ? 'panel-left' : 'panel-left-open'} />
@@ -156,7 +156,7 @@ function Navbar() {
                   <BreadcrumbItem className="flex-shrink-0">
                     {suggestions?.length > 0 ? (
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-2 ">
+                        <DropdownMenuTrigger className="flex items-center gap-2 text-morphing-600">
                           {name} <DynamicIcon name="chevron-down" className="size-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
@@ -168,12 +168,14 @@ function Navbar() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
-                      <BreadcrumbLink asChild className="flex-shrink-0">
+                      <BreadcrumbLink asChild className="flex-shrink-0 text-morphing-600">
                         <Link to={href}>{name}</Link>
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
-                  {!isLast && <BreadcrumbSeparator className="flex-shrink-0" />}
+                  {!isLast && (
+                    <BreadcrumbSeparator className="flex-shrink-0 text-morphing-600 fill-morphing-600" />
+                  )}
                 </Fragment>
               )
             })}
@@ -184,7 +186,7 @@ function Navbar() {
         {isPdf && (
           <Button
             variant="ghost"
-            className="!p-2 aspect-square !size-8 text-muted-foreground"
+            className="!p-2 aspect-square !size-8 text-morphing-600"
             onClick={() => setShowPdfOutline(!showPdfOutline)}
           >
             <DynamicIcon name={showPdfOutline ? 'panel-right' : 'panel-right-open'} />

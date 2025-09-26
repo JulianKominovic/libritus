@@ -265,7 +265,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               <p className="text-sm cursor-pointer truncate w-full text-left overflow-hidden">
                 {categoryNode.name}
               </p>
-              <p className="text-xs text-morphing-500 shrink-0 inline-block w-fit">
+              <p className="text-xs text-morphing-600 shrink-0 inline-block w-fit">
                 {categoryNode.pdfs.length}
               </p>
             </ContextMenuTrigger>
@@ -331,9 +331,7 @@ function Sidebar() {
   const pdfsCount = useMemo(() => {
     return categories.reduce((acc, category) => acc + category.pdfs.length, 0)
   }, [categories])
-  const [isTrash] = useRoute('/trash')
   const [isSettings] = useRoute('/settings')
-  const [isInfo] = useRoute('/info')
   const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar)
   const containerRef = useRef<HTMLDivElement>(null)
   return (
@@ -365,7 +363,7 @@ function Sidebar() {
           <DynamicIcon name="home" /> {t('home')}
         </Link>
         <div className="overflow-y-auto h-full min-h-0" ref={containerRef}>
-          <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-500">
+          <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-600">
             <strong className="font-medium">{t('categories')} </strong>
             <span>{pdfsCount} pdfs</span>
           </p>

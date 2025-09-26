@@ -14,7 +14,8 @@ import { NativeTypes } from 'react-dnd-html5-backend'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Link, Redirect, useParams } from 'wouter'
 
-const DEBOUNCE_TIME = 300
+const SLOW_DEBOUNCE_TIME = 350
+const FAST_DEBOUNCE_TIME = 50
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
   const [, drag, preview] = useDrag(() => ({
@@ -87,16 +88,19 @@ function Category() {
     updateCategory(categoryId || '', {
       name: title
     })
-  }, DEBOUNCE_TIME)
+  }, SLOW_DEBOUNCE_TIME)
   const updateDescription = useDebounceCallback((description: string) => {
     updateCategory(categoryId || '', { description })
-  }, DEBOUNCE_TIME)
+  }, SLOW_DEBOUNCE_TIME)
   const updateColor = useDebounceCallback((color: string) => {
     const hex = chroma(color).hex()
     updateCategory(categoryId || '', { color: hex })
-    const palette = createColorPalette(hex)
-    console.log(palette)
-  }, DEBOUNCE_TIME)
+    setGlobalTheme(createColorPalette(hex || '#555'))
+  }, SLOW_DEBOUNCE_TIME)
+  const fastUpdateColor = useDebounceCallback((color: string) => {
+    const hex = chroma(color).hex()
+    setGlobalTheme(createColorPalette(hex || '#555'))
+  }, FAST_DEBOUNCE_TIME)
   const uploadPdf = usePdfs((p) => p.uploadPdf)
   const category = categories.find((c) => c.id === categoryId)
 
@@ -128,7 +132,10 @@ function Category() {
             id={`color-${categoryId}`}
             className={cn('size-full')}
             defaultValue={category.color}
-            onChange={(e) => updateColor(e.target.value)}
+            onChange={(e) => {
+              updateColor(e.target.value)
+              fastUpdateColor(e.target.value)
+            }}
           />
         </div>
         {isDefault ? null : (

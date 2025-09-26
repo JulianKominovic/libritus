@@ -109,8 +109,8 @@ export default function FloatingControls() {
             <Button
               variant={'none'}
               className={cn(
-                '!p-0 !size-6',
-                lockPdfHorizontalScroll ? 'text-morphing-500' : 'text-morphing-900'
+                '!p-0 !size-6 text-morphing-900',
+                lockPdfHorizontalScroll ? 'opacity-20' : ''
               )}
               onClick={() => setLockPdfHorizontalScroll(!lockPdfHorizontalScroll)}
             >

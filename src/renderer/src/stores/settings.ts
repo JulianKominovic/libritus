@@ -17,7 +17,7 @@ export const useSettings = create<SettingsStore>()(
       setShowPdfOutline: (showPdfOutline: boolean) => set({ showPdfOutline }),
       showNavigationSidebar: true,
       setShowNavigationSidebar: (showNavigationSidebar: boolean) => set({ showNavigationSidebar }),
-      lockPdfHorizontalScroll: false,
+      lockPdfHorizontalScroll: true,
       setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) =>
         set({ lockPdfHorizontalScroll }),
       appDataDir: ''
