@@ -1,9 +1,18 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import { APP_DATA_DIR } from '..'
 
 const attachIPCListeners = (): void => {
+  ipcMain.handle('open-path', (_, { path }) => {
+    return shell.openPath(path)
+  })
+  ipcMain.handle('open-app-data-dir', () => {
+    return shell.openPath(APP_DATA_DIR)
+  })
+  ipcMain.handle('get-app-data-dir', () => {
+    return APP_DATA_DIR
+  })
   ipcMain.handle('write-file', async (_, { filename, data }) => {
     const fullPath = path.join(APP_DATA_DIR, filename)
     await fs.writeFile(fullPath, data)

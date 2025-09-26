@@ -11,7 +11,7 @@ function SettingsPage() {
   const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
   const setLockPdfHorizontalScroll = useSettings((s) => s.setLockPdfHorizontalScroll)
   const { t } = useLang()
-
+  const appDataDir = useSettings((s) => s.appDataDir)
   const settingsFields: Record<
     string,
     {
@@ -72,6 +72,23 @@ function SettingsPage() {
             })}
           </div>
         ))}
+        <div className="flex flex-col gap-4 w-full">
+          <h2 className="text-2xl font-bold text-morphing-900">About</h2>
+
+          <p className="text-morphing-600 text-sm">
+            All the data is stored locally in your PC{' '}
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+              onClick={() => {
+                window.electron.ipcRenderer.invoke('open-path', { path: appDataDir })
+              }}
+            >
+              {appDataDir}
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )

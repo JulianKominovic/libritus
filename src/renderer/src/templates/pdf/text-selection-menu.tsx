@@ -237,7 +237,6 @@ export default function SelectionMenu({
     }
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
     function handleSelectionChange() {
       const comesFromPdfPage = checkSelectionSource(window.getSelection(), '[data-pdf-page]')

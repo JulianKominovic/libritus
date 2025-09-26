@@ -372,30 +372,39 @@ function Sidebar() {
           <TreeView containerRef={containerRef} />
         </div>
         <footer className="flex items-center gap-4 pb-4 pt-1">
-          <Link to="/settings">
+          <Link
+            to="/settings"
+            className={(isActive) =>
+              cn(
+                buttonVariants({ variant: 'none' }),
+                'w-full justify-start !p-0 mb-0',
+                isActive ? 'font-semibold opacity-100' : 'opacity-60'
+              )
+            }
+          >
             <DynamicIcon
               size={18}
               fill={isSettings ? 'var(--color-morphing-100)' : 'none'}
-              className={isSettings ? 'text-morphing-900' : 'text-morphing-400'}
               name="settings"
             />
+            Settings
           </Link>
-          <Link to="/trash">
+          {/* <Link to="/trash">
             <DynamicIcon
               size={18}
               fill={isTrash ? 'var(--color-morphing-100)' : 'none'}
               className={isTrash ? 'text-morphing-900' : 'text-morphing-400'}
               name="trash"
             />
-          </Link>
-          <Link to="/info">
+          </Link> */}
+          {/* <Link to="/info">
             <DynamicIcon
               size={18}
               fill={isInfo ? 'var(--color-morphing-100)' : 'none'}
               className={isInfo ? 'text-morphing-900' : 'text-morphing-400'}
               name="info"
             />
-          </Link>
+          </Link> */}
         </footer>
       </div>
     </motion.aside>

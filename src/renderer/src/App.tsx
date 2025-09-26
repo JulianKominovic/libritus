@@ -51,7 +51,6 @@ function App() {
             <SettingsPage />
           </Route>
           <Route path="/trash" key={'trash-page'}></Route>
-          <Route path="/info" key={'info-page'}></Route>
           <Route path="*" key={'not-found-page'}>
             <Redirect to="/" />
           </Route>

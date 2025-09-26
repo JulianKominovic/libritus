@@ -8,6 +8,7 @@ export type SettingsStore = {
   setShowNavigationSidebar: (showNavigationSidebar: boolean) => void
   lockPdfHorizontalScroll: boolean
   setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) => void
+  appDataDir: string
 }
 export const useSettings = create<SettingsStore>()(
   persist(
@@ -18,7 +19,8 @@ export const useSettings = create<SettingsStore>()(
       setShowNavigationSidebar: (showNavigationSidebar: boolean) => set({ showNavigationSidebar }),
       lockPdfHorizontalScroll: false,
       setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) =>
-        set({ lockPdfHorizontalScroll })
+        set({ lockPdfHorizontalScroll }),
+      appDataDir: ''
     }),
     {
       name: 'settings',
@@ -26,3 +28,9 @@ export const useSettings = create<SettingsStore>()(
     }
   )
 )
+
+window.electron.ipcRenderer.invoke('get-app-data-dir').then((location) => {
+  useSettings.setState({
+    appDataDir: location
+  })
+})
