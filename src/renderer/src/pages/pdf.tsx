@@ -23,7 +23,7 @@ import {
 } from '@renderer/components/ui/resizable'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { useDebounceFunction } from '@renderer/hooks/use-debounce-function'
-import usePdfScrollXLock from '@renderer/hooks/use-pdf-scroll-x-lock'
+import { centerScrollX } from '@renderer/lib/dom'
 import { cn } from '@renderer/lib/utils'
 import CustomHighlightLayer from '@renderer/organisms/pdf/custom-highlight-layer'
 import EssayTab from '@renderer/organisms/pdf/essays-tab'
@@ -235,6 +235,16 @@ function AttachListeners({
   const updatePdf = usePdfs((s) => s.updatePdf)
   const currentPage = usePdf((s) => s.currentPage)
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages)
+  const pagesElement = document.getElementById(PAGES_COMPONENT_ID) as HTMLDivElement
+  const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
+  //   if (lockPdfHorizontalScroll && pagesElement) {
+  //     centerScrollX(pagesElement)
+  //   }
+  useEffect(() => {
+    if (lockPdfHorizontalScroll && pagesElement) {
+      centerScrollX(pagesElement)
+    }
+  }, [lockPdfHorizontalScroll, pagesElement, zoom, isZoomFitWidth])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
@@ -297,7 +307,7 @@ function PdfPage() {
   const [minSize, setMinSize] = useState(20)
   const rootRef = useRef<HTMLDivElement>(null)
   const outlinePanelRef = useRef<ImperativePanelHandle>(null)
-  const { lockPdfHorizontalScroll } = usePdfScrollXLock(PAGES_COMPONENT_ID)
+  const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
 
   useLayoutEffect(() => {
     if (showPdfOutline) {

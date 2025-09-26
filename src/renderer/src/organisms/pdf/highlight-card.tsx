@@ -47,6 +47,10 @@ function HighlightCardsTemplate({
       }
     }
   }, [selectedHighlight, tabRef])
+  function goToHighlight(highlight: NonNullable<Pdf['highlights']>[0]) {
+    jumpToHighlightRects(highlight.rects, 'pixels', 'start')
+    setSelectedHighlight(highlight)
+  }
 
   return highlights
     ?.sort((a, b) => {
@@ -69,8 +73,7 @@ function HighlightCardsTemplate({
                 data-highlight-id={highlight.id}
                 type="button"
                 onClick={() => {
-                  jumpToHighlightRects(highlight.rects, 'pixels', 'start')
-                  setSelectedHighlight(highlight)
+                  goToHighlight(highlight)
                 }}
               >
                 <header
@@ -181,6 +184,9 @@ function HighlightCardsTemplate({
             ))}
             <li className="text-black/40 py-2">
               <button
+                onClick={() => {
+                  goToHighlight(highlight)
+                }}
                 type="button"
                 className="hover:text-black/80 transition-colors duration-200 cursor-pointer"
               >
