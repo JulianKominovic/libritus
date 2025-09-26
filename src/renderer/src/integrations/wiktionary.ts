@@ -70,7 +70,6 @@ async function searchWikipedia(
   let doc = await wtf.fetch(titleFound)
   if (!doc) return null
   if (Array.isArray(doc)) doc = doc[0]
-  console.log('doc', doc)
   return {
     title: doc.title() || '',
     sentences: doc

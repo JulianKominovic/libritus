@@ -142,7 +142,6 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
   },
   load: async () => {
     const categories = await readFile('categories.json')
-    console.log(categories)
     if (categories) {
       try {
         const parsedFile = JSON.parse(new TextDecoder().decode(categories))

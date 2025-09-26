@@ -2,7 +2,19 @@ import WritingIllustration from '@renderer/assets/illustrations/writing'
 import { BaseEditorKit } from '@renderer/components/editor/editor-base-kit'
 import { EditorKit } from '@renderer/components/editor/editor-kit'
 import { PlateEditor } from '@renderer/components/editor/plate-editor'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@renderer/components/ui/alert-dialog'
 import { Button, buttonVariants } from '@renderer/components/ui/button'
+import { contextMenuVariants } from '@renderer/components/ui/context-menu'
 import { EditorView } from '@renderer/components/ui/editor'
 import Shortcut from '@renderer/components/ui/kbd'
 import { Keys } from '@renderer/lib/keymaps'
@@ -48,24 +60,14 @@ function EssayItem({
   const editorRef = useRef<ReturnType<typeof usePlateEditor> | null>(null)
   const createEssay = usePdfs((state) => state.createEssay)
   const updateEssay = usePdfs((state) => state.updateEssay)
+  const deleteEssay = usePdfs((state) => state.deleteEssay)
 
   async function handleSave() {
     if (!editorRef.current) return
-    // const ancestorNode = editorRef.current.api.block({ highest: true })
-
-    // const isEditorEmpty = !ancestorNode || NodeApi.string(ancestorNode[0]).trim().length === 0
-    // console.log(editorRef.current.api)
-    // console.log('Saving')
-    // console.log('Editor is empty', isEditorEmpty)
-    // if (isEditorEmpty) {
-    //   return await deleteEssay(categoryId, pdf.id, essay.id)
-    // }
     const text = editorRef.current?.api.string([])
     if (essay) {
-      console.log('Updating essay', text)
       await updateEssay(categoryId, pdf.id, essay.id, { json: editorRef.current?.children, text })
     } else {
-      console.log('Creating essay')
       await createEssay(categoryId, pdf.id, {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
@@ -100,11 +102,11 @@ function EssayItem({
         <EssayItemReadOnly essay={essay} />
       )}
 
-      <footer className="flex items-center gap-2 h-12 border-t border-black/5 justify-between px-1">
+      <footer className="flex items-center gap-1 h-12 border-t border-black/5 px-1">
         {isEditing ? null : (
           <time
             dateTime={new Date(essay.createdAt).toISOString()}
-            className="text-xs text-morphing-500"
+            className="text-xs text-morphing-500 flex-grow"
           >
             {Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeStyle: 'short' }).format(
               new Date(essay.createdAt)
@@ -136,15 +138,51 @@ function EssayItem({
             </Button>
           </>
         ) : (
-          <Button
-            variant="ghost"
-            className="size-8"
-            onClick={() => {
-              setIsEditing(true)
-            }}
-          >
-            <DynamicIcon name="edit" className="size-4" />
-          </Button>
+          <>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={contextMenuVariants({
+                    variant: 'destructive',
+                    className: 'size-8 cursor-pointer'
+                  })}
+                >
+                  <DynamicIcon name="trash" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this essay? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>No! I want to keep it</AlertDialogCancel>
+                  <AlertDialogAction
+                    className={buttonVariants({
+                      variant: 'destructive'
+                    })}
+                    onClick={() => {
+                      deleteEssay(categoryId, pdf.id, essay.id)
+                    }}
+                  >
+                    Yes! Delete it
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              variant="ghost"
+              className="size-8 rounded-lg"
+              onClick={() => {
+                setIsEditing(true)
+              }}
+            >
+              <DynamicIcon name="edit" className="size-4" />
+            </Button>
+          </>
         )}
       </footer>
     </li>

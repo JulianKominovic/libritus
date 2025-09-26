@@ -124,7 +124,9 @@ export function HighlightMention({
   return (
     <>
       <i className="flex items-center gap-2">{highlight.text}</i>
-      <small className="text-morphing-700 font-serif">from {highlight.pdf.name}</small>
+      <small className="text-morphing-700 font-serif">
+        Page {highlight.rects[0].pageNumber} from {highlight.pdf.name}
+      </small>
     </>
   )
 }
