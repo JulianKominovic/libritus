@@ -17,6 +17,51 @@ Modern reading app designed to make reading simple, elegant, and enjoyable. Clea
 
 I will be uploading any progress in https://jkominovic.dev
 
+## Development
+
+Install yalc and pnpm globally:
+
+```bash
+npm i yalc pnpm -g
+```
+
+Clone JulianKominovic/libritus and install dependencies:
+
+```bash
+git clone git@github.com:JulianKominovic/libritus.git
+cd libritus
+bun install
+```
+
+Clone JulianKominovic/lector and build it:
+
+```bash
+git clone git@github.com:JulianKominovic/lector.git
+cd lector/packages/lector
+pnpm install
+pnpm build
+yalc publish
+cd ../../../
+yalc add @anaralabs/lector
+```
+
+Start the app (development):
+
+```bash
+bun run dev
+```
+
+From here, if you want to make changes to the lector package and apply them to the app, you can run:
+
+```bash
+cd lector/packages/lector
+pnpm build
+yalc publish
+cd ../../../
+yalc update
+bun i
+```
+
 ## Mascot
 
 <img width="400" height="400" alt="Libritus mascot" src="https://github.com/user-attachments/assets/a30341eb-9b83-4227-adb6-95f07a50fc76" />

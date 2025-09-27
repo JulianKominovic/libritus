@@ -8,7 +8,7 @@
         "@ai-sdk/provider": "1.1.3",
         "@ai-sdk/provider-utils": "2.2.8",
         "@ai-sdk/react": "1.2.12",
-        "@anaralabs/lector": "^3.6.0",
+        "@anaralabs/lector": "file:.yalc/@anaralabs/lector",
         "@ariakit/react": "^0.4.18",
         "@electron-toolkit/preload": "^3.0.2",
         "@electron-toolkit/utils": "^4.0.0",
@@ -168,7 +168,7 @@
 
     "@ai-sdk/ui-utils": ["@ai-sdk/ui-utils@1.2.11", "", { "dependencies": { "@ai-sdk/provider": "1.1.3", "@ai-sdk/provider-utils": "2.2.8", "zod-to-json-schema": "^3.24.1" }, "peerDependencies": { "zod": "^3.23.8" } }, "sha512-3zcwCc8ezzFlwp3ZD15wAPjf2Au4s3vAbKsXQVyhxODHcmu0iyPO2Eua6D/vicq/AUm/BAo60r97O6HU+EI0+w=="],
 
-    "@anaralabs/lector": ["@anaralabs/lector@3.6.0", "", { "dependencies": { "@floating-ui/react": "^0.26.28", "@radix-ui/react-slot": "^1.1.0", "@tanstack/react-virtual": "^3.10.9", "react-dom": "18.3.1", "use-debounce": "^10.0.4", "uuid": "^11.1.0", "zustand": "^5.0.2" }, "optionalDependencies": { "@rollup/rollup-linux-x64-gnu": "^4.28.1" }, "peerDependencies": { "pdfjs-dist": "^4.9", "react": ">=18" } }, "sha512-gRX+3FD46jUzdkY3ru09bpTES9dkqpNGCgdYr3b3L7IroBekC0pmrK5lRRipBDcYt6gTF6SiMDPNvKcOZP8stw=="],
+    "@anaralabs/lector": ["@anaralabs/lector@file:.yalc/@anaralabs/lector", { "dependencies": { "@floating-ui/react": "^0.26.28", "@radix-ui/react-slot": "^1.1.0", "@tanstack/react-virtual": "^3.10.9", "react-dom": "18.3.1", "use-debounce": "^10.0.4", "uuid": "^11.1.0", "zustand": "^5.0.2" }, "optionalDependencies": { "@rollup/rollup-linux-x64-gnu": "^4.28.1" }, "peerDependencies": { "pdfjs-dist": "^4.9", "react": ">=18" } }],
 
     "@ariakit/core": ["@ariakit/core@0.4.15", "", {}, "sha512-vvxmZvkNhiisKM+Y1TbGMUfVVchV/sWu9F0xw0RYADXcimWPK31dd9JnIZs/OQ5pwAryAHmERHwuGQVESkSjwQ=="],
 

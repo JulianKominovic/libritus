@@ -179,7 +179,7 @@ function SearchUi() {
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             setOpen(false)
-            ;(e.target as HTMLInputElement).blur()
+              ; (e.target as HTMLInputElement).blur()
             setResultsCursor(0)
           }
           if (e.key === 'Enter') {
@@ -340,25 +340,26 @@ function PdfPage() {
   return (
     <Root
       ref={rootRef}
+      resolution={3}
       isZoomFitWidth={pdf.isZoomFitWidth}
       zoom={pdf.zoom}
       source={pdf.src}
       className={cn('w-full h-full overflow-hidden relative select-auto gap-0 pl-4')}
       loader={
-        <div className="p-4 max-w-sm w-full mx-auto">
+        <div className="w-full max-w-sm p-4 mx-auto">
           <img
             src={pdf?.thumbnail}
             alt={pdf?.name}
-            className="h-auto w-full mb-4 object-cover rounded-md"
+            className="object-cover w-full h-auto mb-4 rounded-md"
           />
-          <p className="text-lg text-morphing-700 font-medium text-center mb-2">Loading PDF...</p>
-          <DynamicIcon name="loader-2" className="size-8 animate-spin text-morphing-700 mx-auto" />
+          <p className="mb-2 text-lg font-medium text-center text-morphing-700">Loading PDF...</p>
+          <DynamicIcon name="loader-2" className="mx-auto size-8 animate-spin text-morphing-700" />
         </div>
       }
     >
       <ResizablePanelGroup
         direction="horizontal"
-        className="px-0 w-full h-full overflow-y-auto overflow-x-hidden relative"
+        className="relative w-full h-full px-0 overflow-x-hidden overflow-y-auto"
       >
         <ResizablePanel minSize={30} order={1} id="pdf-page-panel" className="relative">
           <Pages
