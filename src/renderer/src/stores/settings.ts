@@ -23,7 +23,7 @@ export const useSettings = create<SettingsStore>()(
       setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) =>
         set({ lockPdfHorizontalScroll }),
       appDataDir: '',
-      pdfResolution: 1.5,
+      pdfResolution: 1,
       setPdfResolution: (pdfResolution: number) => set({ pdfResolution })
     }),
     {
