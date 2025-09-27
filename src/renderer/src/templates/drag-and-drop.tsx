@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
 
+import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
 import { cn } from '@renderer/lib/utils'
 import { usePdfs } from '@renderer/stores/categories'
 import { useMemo, useState } from 'react'
@@ -26,13 +27,32 @@ function DragAndDropZone({
 
   const [, drop] = useDrop(
     () => ({
-      accept: [NativeTypes.FILE],
+      accept: [NativeTypes.FILE, NativeTypes.URL],
       drop: async (item) => {
         const files = (item as { files: File[] }).files || []
+        const urls = (item as { urls: string[] }).urls || []
         const filteredFiles = files.filter((file: File) => file.type === 'application/pdf')
-        if (filteredFiles.length === 0) {
+        if (filteredFiles.length === 0 && urls.length === 0) {
           setMessage('error')
           return delayedSetMessage('idle')
+        }
+
+        for (const url of urls) {
+          const pdf = await downloadUrlAsPdf(url)
+          if (pdf) {
+            await uploadPdf(
+              safeCategoryId,
+              new File([pdf.buffer], `${url}.pdf`, {
+                type: 'application/pdf',
+                lastModified: new Date().getTime()
+              }),
+              {
+                author: pdf.author || 'Unknown',
+                name: pdf.title || 'Unknown',
+                creationDate: pdf.publishedTime ? new Date(pdf.publishedTime) : null
+              }
+            )
+          }
         }
 
         setMessage('uploading')

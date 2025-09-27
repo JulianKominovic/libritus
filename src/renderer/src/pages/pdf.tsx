@@ -343,7 +343,7 @@ function PdfPage() {
       isZoomFitWidth={pdf.isZoomFitWidth}
       zoom={pdf.zoom}
       source={pdf.src}
-      className={cn('w-full h-[calc(100%-50px)] overflow-hidden relative select-auto gap-0 pl-4')}
+      className={cn('w-full h-full overflow-hidden relative select-auto gap-0 pl-4')}
       loader={
         <div className="p-4 max-w-sm w-full mx-auto">
           <img

@@ -21,6 +21,7 @@ import {
 } from '@renderer/components/ui/context-menu'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { useLang } from '@renderer/i18n/lang-context'
+import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
 import { cn } from '@renderer/lib/utils'
 import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
@@ -145,7 +146,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
   return (
     <Tree
       tree={treeData}
-      extraAcceptTypes={[NativeTypes.FILE, NativeTypes.HTML]}
+      extraAcceptTypes={[NativeTypes.FILE, NativeTypes.HTML, NativeTypes.URL]}
       canDrag={(node) => {
         return node?.data?.type === 'P'
       }}
@@ -156,13 +157,32 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
         let dropTargetId = `${ogDropTargetId}`
         let dragSourceId = `${dragSource?.id}`
         const files: File[] = monitor.getItem().files || []
+        const urls: string[] = monitor.getItem().urls || []
 
         if (dropTargetId === 'add-category') {
           const createdCategory = await createCategory()
           navigate(`/category/${createdCategory.id}`)
           dropTargetId = createdCategory.id
         }
-
+        if (urls.length > 0) {
+          for (const url of urls) {
+            const pdf = await downloadUrlAsPdf(url)
+            if (pdf) {
+              await uploadPdf(
+                dropTargetId as string,
+                new File([pdf.buffer], `${url}.pdf`, {
+                  type: 'application/pdf',
+                  lastModified: new Date().getTime()
+                }),
+                {
+                  author: pdf.author || 'Unknown',
+                  name: pdf.title || 'Unknown',
+                  creationDate: pdf.publishedTime ? new Date(pdf.publishedTime) : null
+                }
+              )
+            }
+          }
+        }
         if (itemType === NativeTypes.FILE) {
           for (const file of files) {
             if (file?.type === 'application/pdf') {
@@ -346,7 +366,7 @@ function Sidebar() {
         duration: 0.3,
         opacity: { duration: showNavigationSidebar ? 0.3 : 0.15 }
       }}
-      className="overflow-hidden h-[calc(100%-50px)]"
+      className="overflow-hidden h-full"
       style={{ minWidth: 0 }}
     >
       <div className="px-4 w-[300px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">

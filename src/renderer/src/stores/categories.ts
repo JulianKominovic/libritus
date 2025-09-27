@@ -79,7 +79,7 @@ export type PdfsStore = {
   createCategory: () => Promise<Category>
   setCategories: (categories: PdfsStore['categories']) => Promise<void>
   load: () => Promise<void>
-  uploadPdf: (categoryId: string, data: File) => Promise<Pdf>
+  uploadPdf: (categoryId: string, data: File, overrides?: Partial<Pdf>) => Promise<Pdf>
   updatePdf: (categoryId: string, pdfId: string, pdf: Partial<Pdf>) => Promise<void>
   deletePdf: (categoryId: string, pdfId: string) => Promise<void>
   movePdf: (pdfId: string, destinationCategoryId: string) => Promise<void>
@@ -194,7 +194,7 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       await get().setCategories(categories)
     }
   },
-  uploadPdf: async (categoryId = 'default', data: File) => {
+  uploadPdf: async (categoryId = 'default', data: File, overrides: Partial<Pdf> = {}) => {
     if (data.type !== 'application/pdf') throw new Error('Invalid file type')
     const id = crypto.randomUUID()
     const pdfMetadata = await getPdfMetadata(data)
@@ -218,7 +218,8 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       modificationDate: pdfMetadata.modificationDate,
       progress: { percentage: 0, pages: 0, offset: 0 },
       hexColor: pdfMetadata.hexColor || '#555555',
-      highlights: []
+      highlights: [],
+      ...overrides
     }
     const categories = [...get().categories].map((cat) => {
       if (cat.id === categoryId) {

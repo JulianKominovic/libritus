@@ -163,7 +163,7 @@ function HighlightCardsTemplate({
                       borderColor: `rgb(${bg[200]})`
                     }}
                   >
-                    <pre className="mb-1 font-sans">{comment.text}</pre>
+                    <pre className="mb-1 font-sans whitespace-pre-wrap">{comment.text}</pre>
                     <time className="text-black/40 text-xs" dateTime={comment.createdAt.toString()}>
                       {getRelativeTimeString(new Date(comment.createdAt))}
                     </time>

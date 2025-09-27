@@ -17,7 +17,7 @@ function App() {
     <>
       <Navbar />
       <motion.div
-        className={cn('grid gap-0 h-full bg-morphing-50 text-morphing-900')}
+        className={cn('grid gap-0 h-[calc(100%-50px)] bg-morphing-50 text-morphing-900')}
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,

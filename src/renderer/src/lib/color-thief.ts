@@ -106,7 +106,11 @@ ColorThief.prototype.getColor = function (sourceImage, quality = 5) {
   const dominantColor = palette?.[0]
   return dominantColor
 }
-export function getPaletteFromImageData(imageData: ImageData, colorCount = 5, quality = 5) {
+export function getPaletteFromImageData(
+  imageData: ImageData,
+  colorCount = 5,
+  quality = 5
+): [number, number, number] {
   const options = validateOptions({
     colorCount,
     quality
@@ -122,8 +126,8 @@ export function getPaletteFromImageData(imageData: ImageData, colorCount = 5, qu
   const cmap = quantize(pixelArray, options.colorCount)
   const palette = cmap ? cmap.palette() : null
 
-  const dominantColor = palette[0]
-  return dominantColor
+  const dominantColor = palette?.[0]
+  return dominantColor || [33, 33, 33]
 }
 
 /*
