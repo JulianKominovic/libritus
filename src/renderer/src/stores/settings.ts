@@ -9,6 +9,8 @@ export type SettingsStore = {
   lockPdfHorizontalScroll: boolean
   setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) => void
   appDataDir: string
+  pdfResolution: number
+  setPdfResolution: (pdfResolution: number) => void
 }
 export const useSettings = create<SettingsStore>()(
   persist(
@@ -20,7 +22,9 @@ export const useSettings = create<SettingsStore>()(
       lockPdfHorizontalScroll: true,
       setLockPdfHorizontalScroll: (lockPdfHorizontalScroll: boolean) =>
         set({ lockPdfHorizontalScroll }),
-      appDataDir: ''
+      appDataDir: '',
+      pdfResolution: 1.5,
+      setPdfResolution: (pdfResolution: number) => set({ pdfResolution })
     }),
     {
       name: 'settings',

@@ -308,7 +308,7 @@ function PdfPage() {
   const rootRef = useRef<HTMLDivElement>(null)
   const outlinePanelRef = useRef<ImperativePanelHandle>(null)
   const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
-
+  const pdfResolution = useSettings((s) => s.pdfResolution)
   useLayoutEffect(() => {
     if (showPdfOutline) {
       outlinePanelRef.current?.expand()
@@ -340,7 +340,7 @@ function PdfPage() {
   return (
     <Root
       ref={rootRef}
-      resolution={3}
+      resolution={pdfResolution}
       isZoomFitWidth={pdf.isZoomFitWidth}
       zoom={pdf.zoom}
       source={pdf.src}
@@ -363,6 +363,7 @@ function PdfPage() {
       >
         <ResizablePanel minSize={30} order={1} id="pdf-page-panel" className="relative">
           <Pages
+            gap={0}
             id={PAGES_COMPONENT_ID}
             className={cn(
               'h-full',
