@@ -17,7 +17,7 @@ import { CursorOverlayKit } from '@renderer/components/editor/plugins/cursor-ove
 import { DateKit } from '@renderer/components/editor/plugins/date-kit'
 import { DiscussionKit } from '@renderer/components/editor/plugins/discussion-kit'
 // import { DndKit } from '@renderer/components/editor/plugins/dnd-kit'
-import { DocxKit } from '@renderer/components/editor/plugins/docx-kit'
+// import { DocxKit } from '@renderer/components/editor/plugins/docx-kit'
 import { EmojiKit } from '@renderer/components/editor/plugins/emoji-kit'
 import { ExitBreakKit } from '@renderer/components/editor/plugins/exit-break-kit'
 import { FontKit } from '@renderer/components/editor/plugins/font-kit'
@@ -79,7 +79,7 @@ export const EditorKit = [
   TrailingBlockPlugin,
 
   // Parsers
-  ...DocxKit,
+  // ...DocxKit,
   ...MarkdownKit,
 
   // UI

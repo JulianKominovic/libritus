@@ -1,5 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, net, protocol } from 'electron'
+import { app, BrowserWindow, net, protocol, shell } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import attachIPCListeners from './listeners'
@@ -31,6 +31,14 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
   })
 
   // HMR for renderer base on electron-vite cli.

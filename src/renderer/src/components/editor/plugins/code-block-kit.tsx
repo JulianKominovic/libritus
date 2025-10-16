@@ -1,7 +1,7 @@
 'use client'
 
 import { CodeBlockPlugin, CodeLinePlugin, CodeSyntaxPlugin } from '@platejs/code-block/react'
-import { all, createLowlight } from 'lowlight'
+import { common, createLowlight } from 'lowlight'
 
 import {
   CodeBlockElement,
@@ -9,7 +9,7 @@ import {
   CodeSyntaxLeaf
 } from '@renderer/components/ui/code-block-node'
 
-const lowlight = createLowlight(all)
+const lowlight = createLowlight(common)
 
 export const CodeBlockKit = [
   CodeBlockPlugin.configure({

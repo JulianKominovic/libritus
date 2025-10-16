@@ -40,7 +40,7 @@ function App() {
             <Redirect to="/" />
           </Route>
           <Route path="/category/:categoryId" key={'category-page'}>
-            <div className="overflow-y-auto pb-48 px-8">
+            <div className="px-8 pb-48 overflow-y-auto">
               <Category />
             </div>
           </Route>
@@ -48,7 +48,9 @@ function App() {
             <PdfPage />
           </Route>
           <Route path="/settings" key={'settings-page'}>
-            <SettingsPage />
+            <div className="px-8 pb-48 overflow-y-auto">
+              <SettingsPage />
+            </div>
           </Route>
           <Route path="/trash" key={'trash-page'}></Route>
           <Route path="*" key={'not-found-page'}>

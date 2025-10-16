@@ -2,23 +2,23 @@
 
 import { CaptionPlugin } from '@platejs/caption/react'
 import {
-  AudioPlugin,
-  FilePlugin,
+  // AudioPlugin,
+  // FilePlugin,
   ImagePlugin,
   MediaEmbedPlugin,
-  PlaceholderPlugin,
-  VideoPlugin
+  PlaceholderPlugin
+  // VideoPlugin
 } from '@platejs/media/react'
 import { KEYS } from 'platejs'
 
-import { AudioElement } from '@renderer/components/ui/media-audio-node'
+// import { AudioElement } from '@renderer/components/ui/media-audio-node'
 import { MediaEmbedElement } from '@renderer/components/ui/media-embed-node'
-import { FileElement } from '@renderer/components/ui/media-file-node'
+// import { FileElement } from '@renderer/components/ui/media-file-node'
 import { ImageElement } from '@renderer/components/ui/media-image-node'
 import { PlaceholderElement } from '@renderer/components/ui/media-placeholder-node'
 import { MediaPreviewDialog } from '@renderer/components/ui/media-preview-dialog'
 import { MediaUploadToast } from '@renderer/components/ui/media-upload-toast'
-import { VideoElement } from '@renderer/components/ui/media-video-node'
+// import { VideoElement } from '@renderer/components/ui/media-video-node'
 
 export const MediaKit = [
   ImagePlugin.configure({
@@ -26,9 +26,9 @@ export const MediaKit = [
     render: { afterEditable: MediaPreviewDialog, node: ImageElement }
   }),
   MediaEmbedPlugin.withComponent(MediaEmbedElement),
-  VideoPlugin.withComponent(VideoElement),
-  AudioPlugin.withComponent(AudioElement),
-  FilePlugin.withComponent(FileElement),
+  // VideoPlugin.withComponent(VideoElement),
+  // AudioPlugin.withComponent(AudioElement),
+  // FilePlugin.withComponent(FileElement),
   PlaceholderPlugin.configure({
     options: { disableEmptyPlaceholder: true },
     render: { afterEditable: MediaUploadToast, node: PlaceholderElement }

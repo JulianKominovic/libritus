@@ -1,6 +1,6 @@
 'use client'
 
 import { DocxPlugin } from '@platejs/docx'
-import { JuicePlugin } from '@platejs/juice'
+// import { JuicePlugin } from '@platejs/juice'
 
-export const DocxKit = [DocxPlugin, JuicePlugin]
+export const DocxKit = [DocxPlugin] //, JuicePlugin]

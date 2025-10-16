@@ -1,6 +1,5 @@
 'use client'
 
-import { faker } from '@faker-js/faker'
 import { CopilotPlugin } from '@platejs/ai/react'
 import { serializeMd, stripMarkdown } from '@platejs/markdown'
 import type { TElement } from 'platejs'
@@ -30,9 +29,9 @@ export const CopilotKit = [
         },
         onError: () => {
           // Mock the API response. Remove it when you implement the route /api/ai/copilot
-          api.copilot.setBlockSuggestion({
-            text: stripMarkdown(faker.lorem.sentence())
-          })
+          // api.copilot.setBlockSuggestion({
+          //   text: stripMarkdown(faker.lorem.sentence())
+          // })
         },
         onFinish: (_, completion) => {
           if (completion === '0') return

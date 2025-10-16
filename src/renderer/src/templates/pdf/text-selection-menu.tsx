@@ -50,14 +50,14 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
     })
   return (
     <div className="max-w-sm">
-      <h4 className="text-morphing-900 font-semibold mb-1">
+      <h4 className="mb-1 font-semibold text-morphing-900">
         {source === 'wikipedia' && definition.url ? (
           <>
             {definition.image && (
               <img
                 src={definition.image}
                 alt={text}
-                className="size-20 mb-2 rounded-lg object-cover"
+                className="object-cover mb-2 rounded-lg size-20"
               />
             )}
             <a
@@ -80,7 +80,7 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
           {definition.sentences.slice(0, 3).map((definition, i) => (
             <li
               key={'definition-' + i}
-              className="text-morphing-700 line-clamp-4 text-sm list-item list-inside list-disc"
+              className="text-sm list-disc list-inside text-morphing-700 line-clamp-4 list-item"
             >
               {definition}
             </li>
@@ -91,17 +91,17 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
           {flatDictionaryDefinition.map((meaning, i) => (
             <li
               key={'meaning-' + i}
-              className="text-morphing-800 line-clamp-4 text-sm list-item list-inside list-disc"
+              className="text-sm list-disc list-inside text-morphing-800 line-clamp-4 list-item"
             >
               <u>{meaning.partOfSpeech}</u> {meaning.definition}
-              {meaning.example && <p className="text-morphing-700 text-xs">{meaning.example}</p>}
+              {meaning.example && <p className="text-xs text-morphing-700">{meaning.example}</p>}
               {meaning.synonyms.length > 0 && (
-                <p className="text-green-700 text-xs">
+                <p className="text-xs text-green-700">
                   Synonyms: {Array.from(new Set(meaning.synonyms)).join(', ')}
                 </p>
               )}
               {meaning.antonyms.length > 0 && (
-                <p className="text-red-700 text-xs">
+                <p className="text-xs text-red-700">
                   Antonyms: {Array.from(new Set(meaning.antonyms)).join(', ')}
                 </p>
               )}
@@ -115,7 +115,7 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
         </audio>
       )}
       {source === 'wikipedia' ? (
-        <small className="text-morphing-700 text-xs">
+        <small className="text-xs text-morphing-700">
           Search can be inaccurate. Extracted from{' '}
           <a
             href={'https://wikipedia.org/'}
@@ -127,7 +127,7 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
           </a>
         </small>
       ) : (
-        <small className="text-morphing-700 text-xs">
+        <small className="text-xs text-morphing-700">
           Search can be inaccurate. Extracted from{' '}
           <a
             href={'https://dictionaryapi.dev/'}
@@ -152,10 +152,10 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
 //   };
 //   return (
 //     <div
-//       className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl text-sm max-w-sm p-2 flex-wrap w-fit"
+//       className="flex-wrap max-w-sm p-2 mb-2 text-sm bg-white border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl w-fit"
 //       data-annotation-tooltip
 //     >
-//       <header className="flex items-center gap-2 pr-2 mb-2 w-full">
+//       <header className="flex items-center w-full gap-2 pr-2 mb-2">
 //         <Button
 //           variant={"ghost"}
 //           className="!px-2 !text-xs rounded-lg aspect-square size-8"
@@ -163,7 +163,7 @@ function DictionaryEntry({ text, definition, source, loading }: DefinitionState)
 //         >
 //           <DynamicIcon name="chevron-left" className="size-4" />
 //         </Button>
-//         <h4 className="text-morphing-900 font-semibold text-end">Add note</h4>
+//         <h4 className="font-semibold text-morphing-900 text-end">Add note</h4>
 //       </header>
 //       <form onSubmit={handleSubmit}>
 //         <Textarea tabIndex={0} placeholder="Write your note here..." />
@@ -267,7 +267,7 @@ export default function SelectionMenu({
 
   return (
     <SelectionTooltip>
-      <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl text-sm max-w-sm p-1 flex items-center gap-2 flex-wrap w-fit pl-3">
+      <div className="flex flex-wrap items-center max-w-sm gap-2 p-1 pl-3 mb-2 text-sm bg-white border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl w-fit">
         <button
           type="button"
           className="rounded-[50%] size-5 cursor-pointer bg-fuchsia-500"
@@ -300,7 +300,7 @@ export default function SelectionMenu({
           <DynamicIcon name="pencil" className="size-4" />
           <p>Add note</p>
         </Button>
-        <div className="w-px h-7 bg-black/20 -mx-1" />
+        <div className="w-px -mx-1 h-7 bg-black/20" />
         <Button variant={'ghost'} className="!px-2 !text-xs rounded-lg aspect-square" asChild>
           <a
             title="Search on Google"
@@ -314,15 +314,15 @@ export default function SelectionMenu({
       </div>
 
       {definition && (
-        <div className="bg-white border border-morphing-300 shadow-lg shadow-morphing-900/20 mb-2 rounded-xl max-w-sm p-3">
+        <div className="max-w-sm p-3 mb-2 bg-white border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl">
           {definition.loading ? (
-            <div className="animate-pulse bg-morphing-100 rounded-md h-4 w-full"></div>
+            <div className="w-full h-4 rounded-md animate-pulse bg-morphing-100"></div>
           ) : (
             <DictionaryEntry {...definition} />
           )}
         </div>
       )}
-      <div className="bg-gradient-to-tr from-white via-violet-50 to-white border border-violet-300 shadow-lg shadow-violet-900/20 mb-2 rounded-xl max-w-sm p-1 flex items-center flex-wrap w-fit">
+      <div className="flex flex-wrap items-center max-w-sm p-1 mb-2 border shadow-lg bg-gradient-to-tr from-white via-violet-50 to-white border-violet-300 shadow-violet-900/20 rounded-xl w-fit">
         <Button
           variant={'ghost'}
           className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"

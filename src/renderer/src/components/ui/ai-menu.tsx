@@ -105,7 +105,7 @@ export function AIMenu() {
       <PopoverAnchor virtualRef={{ current: anchorElement! }} />
 
       <PopoverContent
-        className="border-none bg-transparent p-0 shadow-none"
+        className="p-0 bg-transparent border-none shadow-none"
         style={{
           width: anchorElement?.offsetWidth
         }}
@@ -118,14 +118,14 @@ export function AIMenu() {
         side="bottom"
       >
         <Command
-          className="w-full rounded-lg border shadow-md"
+          className="w-full border rounded-lg shadow-md"
           value={value}
           onValueChange={setValue}
         >
           {mode === 'chat' && isSelecting && content && <AIChatEditor content={content} />}
 
           {isLoading ? (
-            <div className="flex grow items-center gap-2 p-2 text-sm text-muted-foreground select-none">
+            <div className="flex items-center gap-2 p-2 text-sm select-none grow text-muted-foreground">
               <DynamicIcon name="loader-2" className="size-4 animate-spin" />
               {messages.length > 1 ? 'Editing...' : 'Thinking...'}
             </div>
@@ -478,7 +478,7 @@ export function AILoadingBar() {
         'absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-md border border-border bg-muted px-3 py-1.5 text-sm text-muted-foreground shadow-md transition-all duration-300'
       )}
     >
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+      <span className="w-4 h-4 border-2 rounded-full animate-spin border-muted-foreground border-t-transparent" />
       <span>{status === 'submitted' ? 'Thinking...' : 'Writing...'}</span>
       <Button
         size="sm"
@@ -486,7 +486,7 @@ export function AILoadingBar() {
         className="flex items-center gap-1 text-xs"
         onClick={() => api.aiChat.stop()}
       >
-        <DynamicIcon name="pause" className="h-4 w-4" />
+        <DynamicIcon name="pause" className="w-4 h-4" />
         Stop
         <kbd className="ml-1 rounded bg-border px-1 font-mono text-[10px] text-muted-foreground shadow-sm">
           Esc

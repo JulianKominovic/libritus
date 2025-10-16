@@ -1,5 +1,5 @@
 import { BaseCodeBlockPlugin, BaseCodeLinePlugin, BaseCodeSyntaxPlugin } from '@platejs/code-block'
-import { all, createLowlight } from 'lowlight'
+import { common, createLowlight } from 'lowlight'
 
 import {
   CodeBlockElementStatic,
@@ -7,7 +7,7 @@ import {
   CodeSyntaxLeafStatic
 } from '@renderer/components/ui/code-block-node-static'
 
-const lowlight = createLowlight(all)
+const lowlight = createLowlight(common)
 
 export const BaseCodeBlockKit = [
   BaseCodeBlockPlugin.configure({
