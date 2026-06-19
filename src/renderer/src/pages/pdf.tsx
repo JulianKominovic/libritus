@@ -18,7 +18,6 @@ import {
 import { Button } from '@renderer/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { useDebounceFunction } from '@renderer/hooks/use-debounce-function'
-import { centerScrollX } from '@renderer/lib/dom'
 import { cn } from '@renderer/lib/utils'
 import CommentMarginLayer, {
   COMMENT_GUTTER_WIDTH
@@ -235,24 +234,24 @@ function AttachListeners({
   const updatePdf = usePdfs((s) => s.updatePdf)
   const currentPage = usePdf((s) => s.currentPage)
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages)
-  const pagesElement = document.getElementById(PAGES_COMPONENT_ID) as HTMLDivElement | null
+  // const pagesElement = document.getElementById(PAGES_COMPONENT_ID) as HTMLDivElement | null
 
-  useEffect(() => {
-    if (pagesElement) {
-      centerScrollX(pagesElement)
-    }
-  }, [pagesElement, zoom, isZoomFitWidth, showPdfOutline])
+  // useEffect(() => {
+  //   if (pagesElement) {
+  //     centerScrollX(pagesElement)
+  //   }
+  // }, [pagesElement, zoom, isZoomFitWidth, showPdfOutline])
 
-  useEffect(() => {
-    const pdfPagePanel = document.getElementById('pdf-page-panel')
-    if (!pdfPagePanel || !pagesElement) return
+  // useEffect(() => {
+  //   const pdfPagePanel = document.getElementById('pdf-page-panel')
+  //   if (!pdfPagePanel || !pagesElement) return
 
-    const resizeObserver = new ResizeObserver(() => {
-      centerScrollX(pagesElement)
-    })
-    resizeObserver.observe(pdfPagePanel)
-    return () => resizeObserver.disconnect()
-  }, [pagesElement])
+  //   const resizeObserver = new ResizeObserver(() => {
+  //     centerScrollX(pagesElement)
+  //   })
+  //   resizeObserver.observe(pdfPagePanel)
+  //   return () => resizeObserver.disconnect()
+  // }, [pagesElement])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
@@ -347,8 +346,7 @@ function PdfPage() {
     <Root
       // ref={rootRef}
       // resolution={pdfResolution}
-      // isZoomFitWidth={pdf.isZoomFitWidth}
-      isZoomFitWidth={true}
+      isZoomFitWidth={pdf.isZoomFitWidth}
       zoom={pdf.zoom}
       source={pdf.src}
       loader={
@@ -362,7 +360,6 @@ function PdfPage() {
           <DynamicIcon name="loader-2" className="mx-auto size-8 animate-spin text-morphing-700" />
         </div>
       }
-      onDocumentLoad={() => {}}
     >
       {/* <ResizablePanelGroup
         direction="horizontal"
@@ -417,7 +414,7 @@ function PdfPage() {
             <CanvasLayer background={'transparent'} />
             <TextLayer className="bg-transparent" />
             <AnnotationLayer />
-            <HighlightLayer className="pointer-events-none bg-amber-500/20!" />
+            <HighlightLayer className="pointer-events-none bg-morphing-400/30!" />
             <CustomHighlightLayer
               highlights={pdf.highlights}
               selectedHighlight={selectedHighlight}

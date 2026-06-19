@@ -17,6 +17,9 @@ import { Link, Redirect, useParams } from 'wouter'
 const SLOW_DEBOUNCE_TIME = 350
 const FAST_DEBOUNCE_TIME = 50
 
+const pdfStatPillClassName =
+  'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1'
+
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
   const [, drag, preview] = useDrag(() => ({
     type: NativeTypes.HTML,
@@ -47,24 +50,24 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
           />
           <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
             {essaysNumber && essaysNumber > 0 ? (
-              <p className="px-2 text-blue-600 h-6 bg-blue-100 border border-blue-200 backdrop-blur-lg rounded-full flex items-center gap-1">
-                <DynamicIcon name="file-pen-line" className="size-4" />
+              <p className={pdfStatPillClassName}>
+                <DynamicIcon name="file-pen-line" className="size-4 text-morphing-700" />
                 {essaysNumber}
               </p>
             ) : null}
             {commentsNumber && commentsNumber > 0 ? (
-              <p className="px-2 text-violet-600 h-6 bg-violet-100 border border-violet-200 backdrop-blur-lg rounded-full flex items-center gap-1">
-                <DynamicIcon name="message-circle" className="size-4" />
+              <p className={pdfStatPillClassName}>
+                <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
                 {commentsNumber}
               </p>
             ) : null}
             {highlightsNumber && highlightsNumber > 0 ? (
-              <p className="px-2 text-orange-600 h-6 bg-orange-100 border border-orange-200 backdrop-blur-lg rounded-full flex items-center gap-1">
-                <DynamicIcon name="highlighter" className="size-4" />
+              <p className={pdfStatPillClassName}>
+                <DynamicIcon name="highlighter" className="size-4 text-morphing-700" />
                 {highlightsNumber}
               </p>
             ) : null}
-            <p className="text-green-600 px-2 h-6 bg-green-100 border border-green-200 backdrop-blur-lg rounded-full flex items-center gap-1">
+            <p className={pdfStatPillClassName}>
               {pdf.progress.percentage > 0 ? (
                 `${pdf.progress.percentage.toFixed(0)}%`
               ) : (
@@ -172,7 +175,7 @@ function Category() {
         readOnly={isDefault}
         rows={3}
       />
-      <h2 className="text-sm text- mb-6">{category.pdfs.length} pdfs</h2>
+      <h2 className="text-sm text-muted-foreground mb-6">{category.pdfs.length} pdfs</h2>
       <div className="flex flex-wrap gap-8 group/container">
         {category.pdfs
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -181,7 +184,7 @@ function Category() {
           ))}
         <label
           htmlFor={`pdf-upload-${categoryId}`}
-          className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-52 bg-morphing-100 hover:bg-morphing-200 transition-colors"
+          className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-56 bg-morphing-100 hover:bg-morphing-200 transition-colors duration-200"
         >
           <DynamicIcon name="plus" className="size-10 text-morphing-600" />
           <p className="text-morphing-800 text-lg font-medium">Upload a PDF</p>

@@ -51,7 +51,7 @@ function ButtonGroupItem({
       {...props}
       data-active={active}
       className={cn(
-        'flex items-center justify-center rounded-lg transition-all data-[active=true]:bg-light data-[active=true]:text-primary-foreground data-[active=true]:shadow',
+        'flex items-center justify-center rounded-lg transition-all duration-200 data-[active=true]:bg-morphing-100 data-[active=true]:text-morphing-900 data-[active=true]:shadow-sm',
         className
       )}
     >

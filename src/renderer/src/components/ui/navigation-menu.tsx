@@ -55,7 +55,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  'group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium hover:bg-light hover:text-dark focus:bg-light focus:text-dark disabled:pointer-events-none disabled:opacity-50 data-[state=open]:hover:bg-light data-[state=open]:text-dark data-[state=open]:focus:bg-light data-[state=open]:bg-light/50 ring-ring/10 dark:ring-ring/20 dark:outline-ring/40 outline-ring/50 transition-[color,box-shadow] focus-visible:ring-4 focus-visible:outline-1'
+  'group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium hover:bg-morphing-100 hover:text-morphing-900 focus:bg-morphing-100 focus:text-morphing-900 disabled:pointer-events-none disabled:opacity-50 data-[state=open]:hover:bg-morphing-100 data-[state=open]:text-morphing-900 data-[state=open]:focus:bg-morphing-100 data-[state=open]:bg-morphing-100/50 ring-ring/10 outline-ring/50 transition-[color,box-shadow] duration-200 focus-visible:ring-4 focus-visible:outline-1'
 )
 
 function NavigationMenuTrigger({
@@ -87,7 +87,7 @@ function NavigationMenuContent({
       data-slot="navigation-menu-content"
       className={cn(
         'data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 top-0 left-0 w-screen p-2 pr-2.5 md:absolute md:w-auto',
-        'group-data-[viewport=false]/navigation-menu:bg-light group-data-[viewport=false]/navigation-menu:text-popover-foreground group-data-[viewport=false]/navigation-menu:data-[state=open]:animate-in group-data-[viewport=false]/navigation-menu:data-[state=closed]:animate-out group-data-[viewport=false]/navigation-menu:data-[state=closed]:zoom-out-95 group-data-[viewport=false]/navigation-menu:data-[state=open]:zoom-in-95 group-data-[viewport=false]/navigation-menu:data-[state=open]:fade-in-0 group-data-[viewport=false]/navigation-menu:data-[state=closed]:fade-out-0 group-data-[viewport=false]/navigation-menu:top-full group-data-[viewport=false]/navigation-menu:mt-1.5 group-data-[viewport=false]/navigation-menu:overflow-hidden group-data-[viewport=false]/navigation-menu:rounded-md group-data-[viewport=false]/navigation-menu:border group-data-[viewport=false]/navigation-menu:shadow group-data-[viewport=false]/navigation-menu:duration-200 **:data-[slot=navigation-menu-link]:focus:ring-0 **:data-[slot=navigation-menu-link]:focus:outline-none overflow-auto overscroll-contain',
+        'group-data-[viewport=false]/navigation-menu:bg-morphing-50 group-data-[viewport=false]/navigation-menu:text-popover-foreground group-data-[viewport=false]/navigation-menu:data-[state=open]:animate-in group-data-[viewport=false]/navigation-menu:data-[state=closed]:animate-out group-data-[viewport=false]/navigation-menu:data-[state=closed]:zoom-out-95 group-data-[viewport=false]/navigation-menu:data-[state=open]:zoom-in-95 group-data-[viewport=false]/navigation-menu:data-[state=open]:fade-in-0 group-data-[viewport=false]/navigation-menu:data-[state=closed]:fade-out-0 group-data-[viewport=false]/navigation-menu:top-full group-data-[viewport=false]/navigation-menu:mt-1.5 group-data-[viewport=false]/navigation-menu:overflow-hidden group-data-[viewport=false]/navigation-menu:rounded-md group-data-[viewport=false]/navigation-menu:border group-data-[viewport=false]/navigation-menu:shadow group-data-[viewport=false]/navigation-menu:duration-200 **:data-[slot=navigation-menu-link]:focus:ring-0 **:data-[slot=navigation-menu-link]:focus:outline-none overflow-auto overscroll-contain',
         className
       )}
       {...props}
@@ -108,7 +108,7 @@ function NavigationMenuViewport({
       <NavigationMenuPrimitive.Viewport
         data-slot="navigation-menu-viewport"
         className={cn(
-          'origin-top-center bg-light border-dark-muted/10 text-dark data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-xl border shadow-note-card md:w-[var(--radix-navigation-menu-viewport-width)]',
+          'origin-top-center bg-morphing-50 border-morphing-300 text-morphing-900 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-xl border shadow-note-card md:w-[var(--radix-navigation-menu-viewport-width)]',
           className
         )}
         {...props}
@@ -130,7 +130,7 @@ function NavigationMenuLink({
       className={cn(
         ignoreDefaultClasses
           ? ''
-          : "data-[active=true]:focus:bg-light-muted data-[active=true]:hover:bg-light-muted data-[active=true]:bg-light-muted/50 data-[active=true]:text-dark hover:bg-light-muted hover:text-dark focus:bg-light-muted focus:text-dark ring-ring/10 dark:ring-ring/20 dark:outline-ring/40 outline-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 text-sm transition-[color,box-shadow] focus-visible:ring-4 focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
+          : "data-[active=true]:focus:bg-morphing-100 data-[active=true]:hover:bg-morphing-100 data-[active=true]:bg-morphing-100/50 data-[active=true]:text-morphing-900 hover:bg-morphing-100 hover:text-morphing-900 focus:bg-morphing-100 focus:text-morphing-900 ring-ring/10 outline-ring/50 [&_svg:not([class*='text-'])]:text-muted-foreground flex flex-col gap-1 rounded-sm p-2 text-sm transition-[color,box-shadow] duration-200 focus-visible:ring-4 focus-visible:outline-1 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
         className
       )}
       {...props}

@@ -73,7 +73,7 @@ ToolbarSeparator.displayName = 'ToolbarSeparator'
 
 // From toggleVariants
 const toolbarButtonVariants = cva(
-  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-black/5 hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-checked:bg-black/5 aria-checked:text-accent-foreground aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 flex-shrink-0",
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,box-shadow] duration-200 outline-none hover:bg-morphing-100 hover:text-morphing-900 focus-visible:border-morphing-300 focus-visible:ring-[3px] focus-visible:ring-morphing-200 disabled:pointer-events-none disabled:opacity-50 aria-checked:bg-morphing-100 aria-checked:text-morphing-900 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 flex-shrink-0",
   {
     defaultVariants: {
       size: 'default',

@@ -21,17 +21,17 @@ function Calendar({
         months: 'flex flex-col sm:flex-row gap-2',
         month: 'flex flex-col gap-4',
         caption: 'flex justify-center pt-1 relative items-center w-full',
-        caption_label: 'text-sm font-medium text-black/80',
+        caption_label: 'text-sm font-medium text-morphing-800',
         nav: 'flex items-center gap-1',
         nav_button: cn(
           buttonVariants({ variant: 'ghost' }),
-          'size-10 bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-light-muted'
+          'size-10 bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-morphing-100'
         ),
         nav_button_previous: 'absolute left-1',
         nav_button_next: 'absolute right-1',
         table: 'w-full border-collapse space-x-1',
         head_row: 'flex',
-        head_cell: 'text-black/40 rounded-md w-8 font-medium text-xs',
+        head_cell: 'text-morphing-600 rounded-md w-8 font-medium text-xs',
         row: 'flex w-full mt-2',
         cell: cn(
           'relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md',
@@ -41,7 +41,7 @@ function Calendar({
         ),
         day: cn(
           buttonVariants({ variant: 'ghost' }),
-          'size-8 p-0 font-normal aria-selected:opacity-100 hover:bg-light-muted',
+          'size-8 p-0 font-normal aria-selected:opacity-100 hover:bg-morphing-100',
           dayClassName
         ),
         day_range_start:
@@ -51,9 +51,9 @@ function Calendar({
         day_selected:
           'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
         day_today:
-          "after:content-['•'] after:absolute after:-bottom-2 after:left-1/2 after:-translate-x-1/2 after:text-dark after:text-lg",
-        day_outside: 'day-outside text-black/20 aria-selected:text-black/20',
-        day_disabled: 'text-black/20 opacity-50',
+          "after:content-['•'] after:absolute after:-bottom-2 after:left-1/2 after:-translate-x-1/2 after:text-morphing-900 after:text-lg",
+        day_outside: 'day-outside text-morphing-400 aria-selected:text-morphing-400',
+        day_disabled: 'text-morphing-400 opacity-50',
         day_range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
         day_hidden: 'invisible',
         ...classNames

@@ -46,7 +46,7 @@ export function HighlightCommentCard({
       }}
       onClick={onSelect}
     >
-      <ol className="px-2 text-black/80">
+      <ol className="px-2 text-morphing-800">
         {highlight.comments.map((comment) => (
           <ContextMenu key={comment.id}>
             <ContextMenuTrigger asChild>
@@ -55,7 +55,7 @@ export function HighlightCommentCard({
                 style={{ borderColor: `rgb(${bg[200]})` }}
               >
                 <pre className="mb-1 font-sans text-xs whitespace-pre-wrap">{comment.text}</pre>
-                <time className="text-xs text-black/40" dateTime={comment.createdAt.toString()}>
+                <time className="text-xs text-morphing-500" dateTime={comment.createdAt.toString()}>
                   {getRelativeTimeString(new Date(comment.createdAt))}
                 </time>
               </li>

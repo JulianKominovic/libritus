@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Redirect, Route, Switch } from 'wouter'
 import './App.css'
+import { useRouteTheme } from './hooks/use-route-theme'
 import { cn } from './lib/utils'
 import Category from './pages/category'
 import HomePage from './pages/home'
@@ -11,8 +12,11 @@ import DragAndDropZone from './templates/drag-and-drop'
 import Navbar from './templates/navbar'
 import Sidebar from './templates/sidebar'
 
+const scrollPageClassName = 'px-6 md:px-8 pb-32 max-w-5xl overflow-y-auto'
+
 function App() {
   const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar)
+  useRouteTheme()
   return (
     <>
       <Navbar />
@@ -40,7 +44,7 @@ function App() {
             <Redirect to="/" />
           </Route>
           <Route path="/category/:categoryId" key={'category-page'}>
-            <div className="px-8 pb-48 overflow-y-auto">
+            <div className={scrollPageClassName}>
               <Category />
             </div>
           </Route>
@@ -48,7 +52,7 @@ function App() {
             <PdfPage />
           </Route>
           <Route path="/settings" key={'settings-page'}>
-            <div className="px-8 pb-48 overflow-y-auto">
+            <div className={scrollPageClassName}>
               <SettingsPage />
             </div>
           </Route>

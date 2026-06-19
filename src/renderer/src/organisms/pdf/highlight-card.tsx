@@ -89,7 +89,7 @@ function HighlightCardsTemplate({
                     'cursor-pointer rounded-xl overflow-clip p-2 w-full font-serif tracking-tight border whitespace-pre-wrap text-left select-none'
                   }
                   style={{
-                    color: 'rgba(0, 0, 0, 0.7)',
+                    color: `rgb(${bg[800]})`,
                     backgroundColor: `rgb(${bg[200]})`,
                     borderColor: `rgb(${bg[300]})`
                   }}
@@ -141,7 +141,7 @@ function HighlightCardsTemplate({
           </ContextMenu>
 
           <ol
-            className="w-[calc(100%-20px)] text-black/80 border px-2 mx-auto rounded-b-xl text-sm"
+            className="w-[calc(100%-20px)] text-morphing-800 border px-2 mx-auto rounded-b-xl text-sm"
             style={{
               backgroundColor: `rgb(${bg[50]})`,
               borderColor: `rgb(${bg[200]})`
@@ -158,7 +158,7 @@ function HighlightCardsTemplate({
                     }}
                   >
                     <pre className="mb-1 font-sans whitespace-pre-wrap">{comment.text}</pre>
-                    <time className="text-black/40 text-xs" dateTime={comment.createdAt.toString()}>
+                    <time className="text-morphing-500 text-xs" dateTime={comment.createdAt.toString()}>
                       {getRelativeTimeString(new Date(comment.createdAt))}
                     </time>
                   </li>
@@ -176,13 +176,13 @@ function HighlightCardsTemplate({
                 </ContextMenuContent>
               </ContextMenu>
             ))}
-            <li className="text-black/40 py-2">
+            <li className="text-morphing-500 py-2">
               <button
                 onClick={() => {
                   goToHighlight(highlight)
                 }}
                 type="button"
-                className="hover:text-black/80 transition-colors duration-200 cursor-pointer"
+                className="hover:text-morphing-800 transition-colors duration-200 cursor-pointer"
               >
                 Add comment
               </button>

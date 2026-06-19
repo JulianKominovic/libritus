@@ -20,7 +20,7 @@ export function SuggestionLeafStatic(props: SlateLeafProps<TSuggestionText>) {
       as={Component}
       className={cn(
         'border-b-2 border-b-brand/[.24] bg-brand/[.08] text-brand/80 no-underline transition-colors duration-200',
-        hasRemove && 'border-b-gray-300 bg-gray-300/25 text-gray-400 line-through'
+        hasRemove && 'border-b-morphing-300 bg-morphing-200/25 text-morphing-500 line-through'
       )}
     >
       {props.children}

@@ -318,7 +318,7 @@ const IconPicker = React.forwardRef<React.ComponentRef<typeof PopoverTrigger>, I
 
     const renderVirtualContent = useCallback(() => {
       if (filteredIcons.length === 0) {
-        return <div className="text-center text-gray-500">No icon found</div>
+        return <div className="text-center text-muted-foreground">No icon found</div>
       }
 
       return (

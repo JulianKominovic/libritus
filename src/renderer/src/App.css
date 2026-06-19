@@ -41,8 +41,6 @@
   src: url('./assets/notoserif-italic.woff2') format('woff2');
 }
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Noto Serif', serif;
@@ -122,39 +120,16 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
+/*
+ * Surface scale (morphing palette):
+ * - App shell: bg-morphing-50 text-morphing-900
+ * - Elevated surface: bg-morphing-100 border-morphing-300 rounded-xl
+ * - Controls: border-morphing-300 rounded-md
+ * - Pills/badges: bg-morphing-100/80 backdrop-blur rounded-full
+ * - Overlays: bg-morphing-900/20 backdrop-blur-md
+ * - Shadow standard: shadow-md shadow-morphing-900/10
+ * - Shadow floating: shadow-lg shadow-morphing-900/15
+ */
 
 @theme {
   --color-morphing-50: rgb(235 235 235);
@@ -252,6 +227,12 @@
       rgba(244, 244, 244, 0) 6.96%
     );
   }
+  .shadow-note-card {
+    box-shadow:
+      0 1px 3px 0 color-mix(in srgb, var(--color-morphing-900) 10%, transparent),
+      0 1px 2px -1px color-mix(in srgb, var(--color-morphing-900) 10%, transparent);
+  }
+
   .paper-decoration {
     background-image:
       linear-gradient(

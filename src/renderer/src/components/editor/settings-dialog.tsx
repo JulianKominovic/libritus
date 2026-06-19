@@ -165,10 +165,10 @@ export function SettingsDialog() {
           {/* AI Settings Group */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-full bg-purple-100 p-2 dark:bg-purple-900">
+              <div className="size-8 rounded-full bg-morphing-100 p-2">
                 <DynamicIcon
                   name="wand-2"
-                  className="size-4 text-purple-600 dark:text-purple-400"
+                  className="size-4 text-morphing-700"
                 />
               </div>
               <h4 className="font-semibold">AI</h4>
@@ -237,8 +237,8 @@ export function SettingsDialog() {
           {/* Upload Settings Group */}
           {/* <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-full bg-red-100 p-2 dark:bg-red-900">
-                <Upload className="size-4 text-red-600 dark:text-red-400" />
+              <div className="size-8 rounded-full bg-morphing-100 p-2">
+                <Upload className="size-4 text-morphing-700" />
               </div>
               <h4 className="font-semibold">Upload</h4>
             </div>

@@ -2,6 +2,7 @@ import { Slider } from '@renderer/components/ui/slider'
 import { Switch } from '@renderer/components/ui/switch'
 import { useLang } from '@renderer/i18n/lang-context'
 import { TranslationsKeys } from '@renderer/i18n/translations-keys'
+import { cn } from '@renderer/lib/utils'
 import { useSettings } from '@renderer/stores/settings'
 import React from 'react'
 
@@ -26,6 +27,9 @@ type SettingsField =
       children?: React.ReactNode
     }
 
+const settingsFieldClassName =
+  'flex w-full gap-3 rounded-xl border border-morphing-300 bg-morphing-100 p-3 select-none transition-colors duration-200'
+
 function SettingsPage() {
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
   const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
@@ -48,7 +52,7 @@ function SettingsPage() {
         name: 'PDF Resolution',
         description: 'Control the sharpness and quality of the PDF rendering.',
         children: (
-          <p className="text-sm text-orange-700">
+          <p className="text-sm text-destructive">
             Be careful, higher values means more memory usage, GPU and CPU usage.
           </p>
         ),
@@ -72,24 +76,26 @@ function SettingsPage() {
   }
 
   return (
-    <div className="w-full max-w-lg px-8 select-none">
-      <h1 className="mb-8 font-serif text-4xl font-bold tracking-tighter text-neutral-900">
+    <div className="w-full max-w-lg select-none">
+      <h1 className="mb-8 font-serif text-4xl font-bold tracking-tighter text-morphing-900">
         Settings
       </h1>
-      <div className="w-full space-y-16">
+      <div className="w-full space-y-10">
         {Object.entries(settingsFields).map(([key, value]) => (
           <div key={key + 'settings-section'} className="flex flex-col w-full gap-4">
-            <h2 className="text-2xl font-bold text-neutral-900">{t(key as TranslationsKeys)}</h2>
+            <h2 className="font-serif text-2xl font-bold tracking-tighter text-morphing-900">
+              {t(key as TranslationsKeys)}
+            </h2>
             {value.map((field) => {
               if (field.type === 'boolean') {
                 return (
                   <label
                     key={field.name + 'settings-field'}
-                    className="flex items-center justify-between w-full gap-2 p-2 border rounded-md select-none border-neutral-300 bg-neutral-200"
+                    className={cn(settingsFieldClassName, 'items-center justify-between')}
                   >
                     <div>
-                      <p className="font-medium text-neutral-900">{field.name}</p>
-                      <p className="text-sm text-neutral-600">{field.description}</p>
+                      <p className="font-medium text-morphing-900">{field.name}</p>
+                      <p className="text-sm text-muted-foreground">{field.description}</p>
                       {field.children}
                     </div>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -100,10 +106,10 @@ function SettingsPage() {
                 return (
                   <hgroup
                     key={field.name + 'settings-field'}
-                    className="flex flex-col items-start justify-between w-full gap-2 p-2 border rounded-md select-none border-neutral-300 bg-neutral-200"
+                    className={cn(settingsFieldClassName, 'flex-col items-start')}
                   >
-                    <p className="font-medium text-neutral-900">{field.name}</p>
-                    <p className="text-sm text-neutral-600">{field.description}</p>
+                    <p className="font-medium text-morphing-900">{field.name}</p>
+                    <p className="text-sm text-muted-foreground">{field.description}</p>
                     {field.children}
                     <Slider
                       min={field.min}
@@ -112,7 +118,7 @@ function SettingsPage() {
                       value={[field.value]}
                       onValueChange={(value) => field.onChange(value[0])}
                     />
-                    <p className="text-sm text-neutral-600">{field.value}</p>
+                    <p className="text-sm text-muted-foreground">{field.value}</p>
                   </hgroup>
                 )
               }
@@ -120,14 +126,14 @@ function SettingsPage() {
           </div>
         ))}
         <div className="flex flex-col w-full gap-4">
-          <h2 className="text-2xl font-bold text-neutral-900">About</h2>
+          <h2 className="font-serif text-2xl font-bold tracking-tighter text-morphing-900">About</h2>
 
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             All the data is stored locally in your PC{' '}
             <a
               target="_blank"
               rel="noopener noreferrer"
-              className="underline"
+              className="underline text-morphing-900"
               onClick={() => {
                 window.electron.ipcRenderer.invoke('open-path', { path: appDataDir })
               }}

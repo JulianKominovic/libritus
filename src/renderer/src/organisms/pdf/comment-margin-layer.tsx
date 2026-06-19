@@ -75,7 +75,7 @@ function HighlightGutterSlot({
       {isSelected ? (
         <>
           <form
-            className="p-2 mb-1 bg-white border border-morphing-300 rounded-xl"
+            className="p-2 mb-1 bg-morphing-50 border border-morphing-300 rounded-xl shadow-md shadow-morphing-900/10"
             onSubmit={(e) => {
               e.preventDefault()
               const formData = new FormData(e.target as HTMLFormElement)
@@ -97,11 +97,11 @@ function HighlightGutterSlot({
             </Button>
           </form>
 
-          <div className="flex flex-col w-full gap-1 p-1 mb-1 border shadow-lg bg-gradient-to-tr from-white via-violet-50 to-white border-violet-300 shadow-violet-900/20 rounded-xl">
+          <div className="flex flex-col w-full gap-1 p-1 mb-1 border border-morphing-300 shadow-lg bg-morphing-100 shadow-morphing-900/10 rounded-xl">
             <Button
               variant="ghost"
               type="button"
-              className="w-full justify-start !px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
+              className="w-full justify-start !px-2 !text-xs rounded-lg"
             >
               <DynamicIcon name="bot-message-square" className="size-4" />
               <p>Chat with AI</p>
@@ -109,14 +109,14 @@ function HighlightGutterSlot({
             <Button
               variant="ghost"
               type="button"
-              className="w-full justify-start !px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
+              className="w-full justify-start !px-2 !text-xs rounded-lg"
             >
               <DynamicIcon name="help-circle" className="size-4" />
               <p>What does this mean?</p>
             </Button>
           </div>
 
-          <div className="flex flex-col w-full gap-1 p-1 text-sm border border-red-300 shadow-lg bg-gradient-to-tr from-white via-red-50 to-white shadow-red-900/20 rounded-xl">
+          <div className="flex flex-col w-full gap-1 p-1 text-sm border border-destructive/30 shadow-lg bg-morphing-50 shadow-morphing-900/10 rounded-xl">
             {confirmDelete ? (
               <Button
                 variant="none"
@@ -130,7 +130,7 @@ function HighlightGutterSlot({
             <Button
               variant="ghost"
               type="button"
-              className="w-full !text-sm rounded-lg hover:bg-red-100 text-red-700 hover:text-red-700"
+              className="w-full !text-sm rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={() => {
                 if (confirmDelete) {
                   setConfirmDelete(false)

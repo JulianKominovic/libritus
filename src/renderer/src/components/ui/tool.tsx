@@ -51,7 +51,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
           <span
             className={cn(
               baseClasses,
-              'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+              'bg-morphing-100 text-morphing-700'
             )}
           >
             Processing
@@ -62,7 +62,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
           <span
             className={cn(
               baseClasses,
-              'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+              'bg-morphing-200 text-morphing-800'
             )}
           >
             Ready
@@ -73,7 +73,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
           <span
             className={cn(
               baseClasses,
-              'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              'bg-morphing-100 text-morphing-900'
             )}
           >
             Completed
@@ -84,7 +84,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
           <span
             className={cn(
               baseClasses,
-              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              'bg-destructive/10 text-destructive'
             )}
           >
             Error
@@ -95,7 +95,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
           <span
             className={cn(
               baseClasses,
-              'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+              'bg-morphing-100 text-morphing-600'
             )}
           >
             Pending
@@ -163,7 +163,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
             {state === 'output-error' && toolPart.errorText && (
               <div>
                 <h4 className="mb-2 text-sm font-medium text-red-500">Error</h4>
-                <div className="bg-background rounded border border-red-200 p-2 text-sm dark:border-red-950 dark:bg-red-900/20">
+                <div className="bg-morphing-50 rounded border border-destructive/30 p-2 text-sm">
                   {toolPart.errorText}
                 </div>
               </div>

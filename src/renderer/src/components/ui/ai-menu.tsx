@@ -132,8 +132,8 @@ export function AIMenu() {
           ) : (
             <CommandPrimitive.Input
               className={cn(
-                'flex h-9 w-full min-w-0 border-input bg-transparent px-3 py-1 text-base transition-[color,box-shadow] outline-none placeholder:text-muted-foreground md:text-sm dark:bg-input/30',
-                'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
+                'flex h-9 w-full min-w-0 border-morphing-300 bg-transparent px-3 py-1 text-base transition-[color,box-shadow] duration-200 outline-none placeholder:text-muted-foreground md:text-sm',
+                'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
                 'border-b focus-visible:ring-transparent'
               )}
               value={input}

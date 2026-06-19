@@ -267,7 +267,7 @@ export default function SelectionMenu({
 
   return (
     <SelectionTooltip>
-      <div className="flex flex-wrap items-center max-w-sm gap-2 p-1 pl-3 mb-2 text-sm bg-white border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl w-fit">
+      <div className="flex flex-wrap items-center max-w-sm gap-2 p-1 pl-3 mb-2 text-sm bg-morphing-50 border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl w-fit">
         <button
           type="button"
           className="rounded-[50%] size-5 cursor-pointer bg-fuchsia-500"
@@ -300,7 +300,7 @@ export default function SelectionMenu({
           <DynamicIcon name="pencil" className="size-4" />
           <p>Add note</p>
         </Button>
-        <div className="w-px -mx-1 h-7 bg-black/20" />
+        <div className="w-px -mx-1 h-7 bg-morphing-300" />
         <Button variant={'ghost'} className="!px-2 !text-xs rounded-lg aspect-square" asChild>
           <a
             title="Search on Google"
@@ -314,7 +314,7 @@ export default function SelectionMenu({
       </div>
 
       {definition && (
-        <div className="max-w-sm p-3 mb-2 bg-white border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl">
+        <div className="max-w-sm p-3 mb-2 bg-morphing-50 border shadow-lg border-morphing-300 shadow-morphing-900/20 rounded-xl">
           {definition.loading ? (
             <div className="w-full h-4 rounded-md animate-pulse bg-morphing-100"></div>
           ) : (
@@ -322,18 +322,12 @@ export default function SelectionMenu({
           )}
         </div>
       )}
-      <div className="flex flex-wrap items-center max-w-sm p-1 mb-2 border shadow-lg bg-gradient-to-tr from-white via-violet-50 to-white border-violet-300 shadow-violet-900/20 rounded-xl w-fit">
-        <Button
-          variant={'ghost'}
-          className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
-        >
+      <div className="flex flex-wrap items-center max-w-sm p-1 mb-2 border border-morphing-300 shadow-lg bg-morphing-100 shadow-morphing-900/10 rounded-xl w-fit">
+        <Button variant={'ghost'} className="!px-2 !text-xs rounded-lg">
           <DynamicIcon name="bot-message-square" className="size-4" />
           <p>Chat with AI</p>
         </Button>
-        <Button
-          variant={'ghost'}
-          className="!px-2 !text-xs rounded-lg hover:bg-violet-100 text-violet-900 hover:text-violet-900"
-        >
+        <Button variant={'ghost'} className="!px-2 !text-xs rounded-lg">
           <DynamicIcon name="help-circle" className="size-4" />
           <p>What does this mean?</p>
         </Button>

@@ -85,7 +85,7 @@ function EssayItem({
   return (
     <li
       key={essay.id}
-      className="border rounded-xl bg-white pt-8 px-2 mb-8 paper-decoration"
+      className="border border-morphing-300 rounded-xl bg-morphing-50 pt-8 px-2 mb-8 paper-decoration"
       onDoubleClick={() => setIsEditing(true)}
       onKeyDownCapture={(e) => {
         const metaKey = e.metaKey || e.ctrlKey
@@ -102,7 +102,7 @@ function EssayItem({
         <EssayItemReadOnly essay={essay} />
       )}
 
-      <footer className="flex items-center gap-1 h-12 border-t border-black/5 px-1">
+      <footer className="flex items-center gap-1 h-12 border-t border-morphing-200 px-1">
         {isEditing ? null : (
           <time
             dateTime={new Date(essay.createdAt).toISOString()}
