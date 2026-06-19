@@ -1,10 +1,8 @@
 import { CurrentPage, CurrentZoom, TotalPages, usePdf, ZoomIn, ZoomOut } from '@anaralabs/lector'
-import { Button, buttonVariants } from '@renderer/components/ui/button'
+import { buttonVariants } from '@renderer/components/ui/button'
 import Shortcut from '@renderer/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { Keys } from '@renderer/lib/keymaps'
-import { cn } from '@renderer/lib/utils'
-import { useSettings } from '@renderer/stores/settings'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { forwardRef, useMemo } from 'react'
 
@@ -34,8 +32,6 @@ const ZoomFitWidth = forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HT
 )
 
 export default function FloatingControls() {
-  const setLockPdfHorizontalScroll = useSettings((s) => s.setLockPdfHorizontalScroll)
-  const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center gap-2">
       <div className="flex gap-2 p-2 bg-morphing-100 border border-morphing-300 shadow-md shadow-morphing-900/20 rounded-full">
@@ -100,25 +96,6 @@ export default function FloatingControls() {
               keys={[Keys.CONTROL_OR_META, '0']}
               className="ml-1 border border-white/40 text-white bg-white/20 rounded-sm px-1"
             />
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="flex gap-2 p-2 bg-morphing-100 border border-morphing-300 shadow-md shadow-morphing-900/20 rounded-full">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={'none'}
-              className={cn(
-                '!p-0 !size-6 text-morphing-900',
-                lockPdfHorizontalScroll ? 'opacity-20' : ''
-              )}
-              onClick={() => setLockPdfHorizontalScroll(!lockPdfHorizontalScroll)}
-            >
-              <DynamicIcon name={'move-horizontal'} className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {lockPdfHorizontalScroll ? 'Allow horizontal scroll' : 'Disable horizontal scroll'}
           </TooltipContent>
         </Tooltip>
       </div>

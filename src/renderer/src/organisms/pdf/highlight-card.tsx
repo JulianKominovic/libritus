@@ -9,6 +9,7 @@ import {
 import { createColorPalette } from '@renderer/lib/colors'
 import { getRelativeTimeString } from '@renderer/lib/date'
 import { getHighlightColor } from '@renderer/lib/highlight-colors'
+import { compareHighlightsByPosition } from '@renderer/lib/sort-highlights'
 import { type Pdf, usePdfs } from '@renderer/stores/categories'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useEffect } from 'react'
@@ -53,14 +54,7 @@ function HighlightCardsTemplate({
   }
 
   return highlights
-    ?.sort((a, b) => {
-      // Sort by page number and then by top and the by left
-      return (
-        a.rects[0]?.pageNumber - b.rects[0]?.pageNumber ||
-        a.rects[0]?.top - b.rects[0]?.top ||
-        a.rects[0]?.left - b.rects[0]?.left
-      )
-    })
+    ?.sort((a, b) => compareHighlightsByPosition(a, b))
     .map((highlight) => {
       const isSelected = selectedHighlight?.id === highlight.id
       const { bg } = isSelected ? createColorPalette('#fff') : getHighlightColor(highlight.color)

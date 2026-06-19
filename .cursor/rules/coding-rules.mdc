@@ -1,0 +1,20 @@
+---
+description: Coding rules for the project.
+alwaysApply: true
+---
+
+
+# Do not support darkmode.
+
+- Use light mode only.
+- Use light colors only.
+- Use light themes only.
+- Use light components only.
+- Use light styles only.
+- Use light utilities only.
+
+Do not add dark: prefixes to any tailwind classes.
+
+# Always write code in english.
+
+Always write code in english no matter what language the user is using.

@@ -16,15 +16,13 @@ import {
   useSearch
 } from '@anaralabs/lector'
 import { Button } from '@renderer/components/ui/button'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup
-} from '@renderer/components/ui/resizable'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import { useDebounceFunction } from '@renderer/hooks/use-debounce-function'
 import { centerScrollX } from '@renderer/lib/dom'
 import { cn } from '@renderer/lib/utils'
+import CommentMarginLayer, {
+  COMMENT_GUTTER_WIDTH
+} from '@renderer/organisms/pdf/comment-margin-layer'
 import CustomHighlightLayer from '@renderer/organisms/pdf/custom-highlight-layer'
 import EssayTab from '@renderer/organisms/pdf/essays-tab'
 import HighlightCardsTemplate from '@renderer/organisms/pdf/highlight-card'
@@ -222,11 +220,13 @@ function SearchUi() {
 function AttachListeners({
   categoryId,
   pdfId,
-  pdf
+  pdf,
+  showPdfOutline
 }: {
   categoryId: string
   pdfId: string
   pdf: Pdf
+  showPdfOutline: boolean
 }) {
   const updateZoom = usePdf((s) => s.updateZoom)
   const zoomFitWidth = usePdf((s) => s.zoomFitWidth)
@@ -235,16 +235,24 @@ function AttachListeners({
   const updatePdf = usePdfs((s) => s.updatePdf)
   const currentPage = usePdf((s) => s.currentPage)
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages)
-  const pagesElement = document.getElementById(PAGES_COMPONENT_ID) as HTMLDivElement
-  const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
-  //   if (lockPdfHorizontalScroll && pagesElement) {
-  //     centerScrollX(pagesElement)
-  //   }
+  const pagesElement = document.getElementById(PAGES_COMPONENT_ID) as HTMLDivElement | null
+
   useEffect(() => {
-    if (lockPdfHorizontalScroll && pagesElement) {
+    if (pagesElement) {
       centerScrollX(pagesElement)
     }
-  }, [lockPdfHorizontalScroll, pagesElement, zoom, isZoomFitWidth])
+  }, [pagesElement, zoom, isZoomFitWidth, showPdfOutline])
+
+  useEffect(() => {
+    const pdfPagePanel = document.getElementById('pdf-page-panel')
+    if (!pdfPagePanel || !pagesElement) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      centerScrollX(pagesElement)
+    })
+    resizeObserver.observe(pdfPagePanel)
+    return () => resizeObserver.disconnect()
+  }, [pagesElement])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
@@ -307,8 +315,6 @@ function PdfPage() {
   const [minSize, setMinSize] = useState(20)
   const rootRef = useRef<HTMLDivElement>(null)
   const outlinePanelRef = useRef<ImperativePanelHandle>(null)
-  const lockPdfHorizontalScroll = useSettings((s) => s.lockPdfHorizontalScroll)
-  const pdfResolution = useSettings((s) => s.pdfResolution)
   useLayoutEffect(() => {
     if (showPdfOutline) {
       outlinePanelRef.current?.expand()
@@ -339,12 +345,12 @@ function PdfPage() {
 
   return (
     <Root
-      ref={rootRef}
+      // ref={rootRef}
       // resolution={pdfResolution}
-      isZoomFitWidth={pdf.isZoomFitWidth}
+      // isZoomFitWidth={pdf.isZoomFitWidth}
+      isZoomFitWidth={true}
       zoom={pdf.zoom}
       source={pdf.src}
-      className={cn('w-full h-full overflow-hidden relative select-auto gap-0 pl-4')}
       loader={
         <div className="w-full max-w-sm p-4 mx-auto">
           <img
@@ -356,50 +362,14 @@ function PdfPage() {
           <DynamicIcon name="loader-2" className="mx-auto size-8 animate-spin text-morphing-700" />
         </div>
       }
+      onDocumentLoad={() => {}}
     >
-      <ResizablePanelGroup
+      {/* <ResizablePanelGroup
         direction="horizontal"
         className="relative w-full h-full px-0 overflow-x-hidden overflow-y-auto"
       >
         <ResizablePanel minSize={30} order={1} id="pdf-page-panel" className="relative">
-          <Pages
-            gap={0}
-            id={PAGES_COMPONENT_ID}
-            className={cn(
-              'h-full',
-              lockPdfHorizontalScroll ? '!overflow-x-hidden' : '!overflow-x-auto'
-            )}
-            onOffsetChange={(offset) => {
-              if (offset === lastOffset.current) return
-              debouncedUpdatePdfProgress(() => {
-                updatePdf(categoryId, pdfId, {
-                  progress: {
-                    ...pdf.progress,
-                    offset
-                  }
-                })
-              })
-              lastOffset.current = offset
-            }}
-            initialOffset={pdf.progress.offset}
-          >
-            <Page data-pdf-page className="bg-transparent!">
-              <CanvasLayer background={'transparent'} />
-              <TextLayer className="bg-transparent" />
-              <AnnotationLayer />
-              <HighlightLayer className="pointer-events-none bg-amber-500/20!" />
-              <CustomHighlightLayer
-                highlights={pdf.highlights}
-                selectedHighlight={selectedHighlight}
-                setSelectedHighlight={setSelectedHighlight}
-                categoryId={categoryId}
-                pdfId={pdfId}
-              />
-            </Page>
-          </Pages>
-          <Search>
-            <SearchUi />
-          </Search>
+         
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel
@@ -422,12 +392,63 @@ function PdfPage() {
           />
         </ResizablePanel>
       </ResizablePanelGroup>
+       */}
+      <div className={cn('w-full h-screen overflow-hidden relative select-auto gap-0')}>
+        <Pages
+          gap={0}
+          id={PAGES_COMPONENT_ID}
+          className="h-full !overflow-x-auto"
+          style={{ paddingLeft: COMMENT_GUTTER_WIDTH }}
+          onOffsetChange={(offset) => {
+            if (offset === lastOffset.current) return
+            debouncedUpdatePdfProgress(() => {
+              updatePdf(categoryId, pdfId, {
+                progress: {
+                  ...pdf.progress,
+                  offset
+                }
+              })
+            })
+            lastOffset.current = offset
+          }}
+          initialOffset={pdf.progress.offset}
+        >
+          <Page data-pdf-page className="bg-transparent!">
+            <CanvasLayer background={'transparent'} />
+            <TextLayer className="bg-transparent" />
+            <AnnotationLayer />
+            <HighlightLayer className="pointer-events-none bg-amber-500/20!" />
+            <CustomHighlightLayer
+              highlights={pdf.highlights}
+              selectedHighlight={selectedHighlight}
+              setSelectedHighlight={setSelectedHighlight}
+              categoryId={categoryId}
+              pdfId={pdfId}
+            />
+            <CommentMarginLayer
+              highlights={pdf.highlights}
+              selectedHighlight={selectedHighlight}
+              setSelectedHighlight={setSelectedHighlight}
+              categoryId={categoryId}
+              pdfId={pdfId}
+            />
+          </Page>
+        </Pages>
+      </div>
+      <Search>
+        <SearchUi />
+      </Search>
 
       <SelectionMenu categoryId={categoryId} pdfId={pdfId} />
 
       <FloatingControls />
 
-      <AttachListeners categoryId={categoryId} pdfId={pdfId} pdf={pdf} />
+      <AttachListeners
+        categoryId={categoryId}
+        pdfId={pdfId}
+        pdf={pdf}
+        showPdfOutline={showPdfOutline}
+      />
     </Root>
   )
 }
