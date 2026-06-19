@@ -30,8 +30,7 @@ import { useSettings } from '@renderer/stores/settings'
 import FloatingControls from '@renderer/templates/pdf/floating-controls'
 import SelectionMenu from '@renderer/templates/pdf/text-selection-menu'
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ImperativePanelHandle } from 'react-resizable-panels'
+import { useEffect, useRef, useState } from 'react'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Redirect, useParams } from 'wouter'
 
@@ -160,7 +159,7 @@ function SearchUi() {
     // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
     <div
       className={cn(
-        'absolute top-2 right-2 w-fit h-10 flex items-center z-10 bg-morphing-50 border border-morphing-300 shadow-md shadow-morphing-900/10 rounded-lg px-2 gap-2',
+        'absolute top-8 right-4 w-fit h-10 flex items-center z-10 bg-morphing-50 border border-morphing-300 shadow-md shadow-morphing-900/10 rounded-lg px-2 gap-2',
         open ? 'scale-100 drop-shadow-md shadow-morphing-900/10' : 'scale-0'
       )}
     >
@@ -194,21 +193,22 @@ function SearchUi() {
       <Button
         onClick={handlePrevResult}
         variant="ghost"
-        className="rounded-[50%] aspect-square !size-6"
+        className="rounded-[50%] aspect-square !size-6 p-0!"
       >
         <DynamicIcon name="chevron-up" className="size-4" />
       </Button>
       <Button
         onClick={handleNextResult}
         variant="ghost"
-        className="rounded-[50%] aspect-square !size-6"
+        className="rounded-[50%] aspect-square !size-6 p-0!"
       >
         <DynamicIcon name="chevron-down" className="size-4" />
       </Button>
       <Button
         onClick={() => setOpen(false)}
         variant="ghost"
-        className="rounded-[50%] aspect-square !size-6"
+        size={'icon'}
+        className="rounded-[50%] aspect-square !size-6 p-0!"
       >
         <DynamicIcon name="x" className="size-4" />
       </Button>
@@ -218,9 +218,9 @@ function SearchUi() {
 
 function AttachListeners({
   categoryId,
-  pdfId,
-  pdf,
-  showPdfOutline
+  pdfId
+  // pdf,
+  // showPdfOutline
 }: {
   categoryId: string
   pdfId: string
@@ -234,31 +234,35 @@ function AttachListeners({
   const updatePdf = usePdfs((s) => s.updatePdf)
   const currentPage = usePdf((s) => s.currentPage)
   const numPages = usePdf((s) => s.pdfDocumentProxy.numPages)
-  // const pagesElement = document.getElementById(PAGES_COMPONENT_ID) as HTMLDivElement | null
+  const virtualizer = usePdf((s) => s.virtualizer)
+  const isResizing = usePdf((s) => s.isResizing)
 
-  // useEffect(() => {
-  //   if (pagesElement) {
-  //     centerScrollX(pagesElement)
-  //   }
-  // }, [pagesElement, zoom, isZoomFitWidth, showPdfOutline])
-
-  // useEffect(() => {
-  //   const pdfPagePanel = document.getElementById('pdf-page-panel')
-  //   if (!pdfPagePanel || !pagesElement) return
-
-  //   const resizeObserver = new ResizeObserver(() => {
-  //     centerScrollX(pagesElement)
-  //   })
-  //   resizeObserver.observe(pdfPagePanel)
-  //   return () => resizeObserver.disconnect()
-  // }, [pagesElement])
+  // ponytail: lector reports a bogus offset while zoom/layout settles; re-apply once
+  useEffect(() => {
+    const offset = usePdfs
+      .getState()
+      .categories.find((c) => c.id === categoryId)
+      ?.pdfs.find((p) => p.id === pdfId)?.progress.offset
+    if (!virtualizer || !offset || isResizing) return
+    const t = setTimeout(
+      () => virtualizer.scrollToOffset(offset, { align: 'start', behavior: 'auto' }),
+      100
+    )
+    return () => clearTimeout(t)
+  }, [virtualizer, isResizing, categoryId, pdfId])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: No need to add all dependencies
   useEffect(() => {
+    const currentPdf = usePdfs
+      .getState()
+      .categories.find((c) => c.id === categoryId)
+      ?.pdfs.find((p) => p.id === pdfId)
+    if (!currentPdf) return
+
     updatePdf(categoryId, pdfId, {
       zoom,
       progress: {
-        ...pdf.progress,
+        ...currentPdf.progress,
         percentage: Math.round((currentPage / numPages) * 100),
         pages: currentPage
       },
@@ -296,52 +300,60 @@ function AttachListeners({
   return null
 }
 
-const MAX_OUTLINE_SIZE_PERCENTAGE = 60
+// const MAX_OUTLINE_SIZE_PERCENTAGE = 60
 const PAGES_COMPONENT_ID = 'pdf-pages'
+const DEBOUNCE_UPDATE_PDF_PROGRESS_MS_FROM_MOUNT = 2500
+const DEBOUNCE_UPDATE_PDF_PROGRESS_MS_FROM_OFFSET_CHANGE = 500
 function PdfPage() {
   const { categoryId, pdfId } = useParams()
   const categories = usePdfs((p) => p.categories)
   const category = categories.find((c) => c.id === categoryId)
   const pdf = category?.pdfs.find((p) => p.id === pdfId)
   const lastOffset = useRef<number>(pdf?.progress.offset || 0)
+  const mountTime = useRef(Date.now())
   const updatePdf = usePdfs((s) => s.updatePdf)
   const [selectedHighlight, setSelectedHighlight] = useState<
     NonNullable<Pdf['highlights']>[0] | null
   >(null)
   const { debounce: debouncedUpdatePdfProgress } = useDebounceFunction(1000)
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
-  const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
-  const [minSize, setMinSize] = useState(20)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const outlinePanelRef = useRef<ImperativePanelHandle>(null)
-  useLayoutEffect(() => {
-    if (showPdfOutline) {
-      outlinePanelRef.current?.expand()
-    } else {
-      outlinePanelRef.current?.collapse()
-    }
-  }, [showPdfOutline, outlinePanelRef.current])
+  // const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
+  // const [minSize, setMinSize] = useState(20)
+  // const rootRef = useRef<HTMLDivElement>(null)
+  // const outlinePanelRef = useRef<ImperativePanelHandle>(null)
+  // useLayoutEffect(() => {
+  //   if (showPdfOutline) {
+  //     outlinePanelRef.current?.expand()
+  //   } else {
+  //     outlinePanelRef.current?.collapse()
+  //   }
+  // }, [showPdfOutline, outlinePanelRef.current])
 
   // This makes sure the outline panel is at a reasonable size
+  // useEffect(() => {
+  //   if (rootRef.current) {
+  //     function calculateMinSize() {
+  //       const rootWidth = rootRef.current?.getBoundingClientRect().width
+  //       if (!rootWidth) return
+  //       const minOutlinePercentage = (350 * 100) / rootWidth
+  //       setMinSize(Math.min(minOutlinePercentage, MAX_OUTLINE_SIZE_PERCENTAGE))
+  //     }
+  //     const resizeObserver = new ResizeObserver(calculateMinSize)
+  //     calculateMinSize()
+  //     resizeObserver.observe(rootRef.current)
+  //     return () => resizeObserver.disconnect()
+  //   }
+  // }, [rootRef])
+
   useEffect(() => {
-    if (rootRef.current) {
-      function calculateMinSize() {
-        const rootWidth = rootRef.current?.getBoundingClientRect().width
-        if (!rootWidth) return
-        const minOutlinePercentage = (350 * 100) / rootWidth
-        setMinSize(Math.min(minOutlinePercentage, MAX_OUTLINE_SIZE_PERCENTAGE))
-      }
-      const resizeObserver = new ResizeObserver(calculateMinSize)
-      calculateMinSize()
-      resizeObserver.observe(rootRef.current)
-      return () => resizeObserver.disconnect()
-    }
-  }, [rootRef])
+    mountTime.current = Date.now()
+    lastOffset.current = pdf?.progress.offset ?? 0
+  }, [pdfId])
 
   if (!pdf || !categoryId || !pdfId) {
     return <Redirect to="/" />
   }
-
+  console.log('isZoomFitWidth', pdf.isZoomFitWidth, pdf.zoom)
   return (
     <Root
       // ref={rootRef}
@@ -394,14 +406,29 @@ function PdfPage() {
         <Pages
           gap={0}
           id={PAGES_COMPONENT_ID}
-          className="h-full !overflow-x-auto"
-          style={{ paddingLeft: COMMENT_GUTTER_WIDTH }}
+          className="h-full !overflow-x-auto "
+          style={{ paddingRight: COMMENT_GUTTER_WIDTH }}
           onOffsetChange={(offset) => {
             if (offset === lastOffset.current) return
+
+            if (
+              Date.now() - mountTime.current < DEBOUNCE_UPDATE_PDF_PROGRESS_MS_FROM_MOUNT &&
+              Math.abs(offset - lastOffset.current) >
+                DEBOUNCE_UPDATE_PDF_PROGRESS_MS_FROM_OFFSET_CHANGE
+            ) {
+              return
+            }
+
             debouncedUpdatePdfProgress(() => {
+              const currentPdf = usePdfs
+                .getState()
+                .categories.find((c) => c.id === categoryId)
+                ?.pdfs.find((p) => p.id === pdfId)
+              if (!currentPdf) return
+
               updatePdf(categoryId, pdfId, {
                 progress: {
-                  ...pdf.progress,
+                  ...currentPdf.progress,
                   offset
                 }
               })
@@ -414,7 +441,7 @@ function PdfPage() {
             <CanvasLayer background={'transparent'} />
             <TextLayer className="bg-transparent" />
             <AnnotationLayer />
-            <HighlightLayer className="pointer-events-none bg-morphing-400/30!" />
+            <HighlightLayer className="pointer-events-none bg-amber-400/30!" />
             <CustomHighlightLayer
               highlights={pdf.highlights}
               selectedHighlight={selectedHighlight}

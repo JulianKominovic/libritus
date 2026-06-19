@@ -17,6 +17,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 export const COMMENT_GUTTER_WIDTH = 260
 
 function HighlightGutterSlot({
+  index,
   highlight,
   anchorTop,
   top,
@@ -26,6 +27,7 @@ function HighlightGutterSlot({
   pdfId,
   onHeightChange
 }: {
+  index: number
   highlight: NonNullable<Pdf['highlights']>[0]
   anchorTop: number
   top: number
@@ -56,8 +58,8 @@ function HighlightGutterSlot({
   return (
     <div
       ref={slotRef}
-      className="absolute left-0 right-0 pointer-events-auto"
-      style={{ top }}
+      className="absolute left-0 pointer-events-auto right-2"
+      style={{ top, zIndex: index + 1 }}
       data-gutter-highlight-id={highlight.id}
       data-gutter-anchor-top={anchorTop}
     >
@@ -75,7 +77,7 @@ function HighlightGutterSlot({
       {isSelected ? (
         <>
           <form
-            className="p-2 mb-1 bg-morphing-50 border border-morphing-300 rounded-xl shadow-md shadow-morphing-900/10"
+            className="p-2 mb-1 border shadow-md bg-morphing-50 border-morphing-300 rounded-xl shadow-morphing-900/10"
             onSubmit={(e) => {
               e.preventDefault()
               const formData = new FormData(e.target as HTMLFormElement)
@@ -97,7 +99,7 @@ function HighlightGutterSlot({
             </Button>
           </form>
 
-          <div className="flex flex-col w-full gap-1 p-1 mb-1 border border-morphing-300 shadow-lg bg-morphing-100 shadow-morphing-900/10 rounded-xl">
+          <div className="flex flex-col w-full gap-1 p-1 mb-1 border shadow-lg border-morphing-300 bg-morphing-100 shadow-morphing-900/10 rounded-xl">
             <Button
               variant="ghost"
               type="button"
@@ -116,7 +118,7 @@ function HighlightGutterSlot({
             </Button>
           </div>
 
-          <div className="flex flex-col w-full gap-1 p-1 text-sm border border-destructive/30 shadow-lg bg-morphing-50 shadow-morphing-900/10 rounded-xl">
+          <div className="flex flex-col w-full gap-1 p-1 text-sm border shadow-lg border-destructive/30 bg-morphing-50 shadow-morphing-900/10 rounded-xl">
             {confirmDelete ? (
               <Button
                 variant="none"
@@ -205,12 +207,12 @@ export default function CommentMarginLayer({
     <div
       className="absolute top-0 z-20 pointer-events-none"
       style={{
-        left: -COMMENT_GUTTER_WIDTH,
+        right: -COMMENT_GUTTER_WIDTH,
         width: COMMENT_GUTTER_WIDTH,
         height: '100%'
       }}
     >
-      {sortedPositions.map((position) => {
+      {sortedPositions.map((position, index) => {
         const item = gutterItems.find((i) => i.id === position.id)
         if (!item) return null
         const isSelected = selectedHighlight?.id === item.highlight.id
@@ -218,6 +220,7 @@ export default function CommentMarginLayer({
         return (
           <HighlightGutterSlot
             key={item.id}
+            index={sortedPositions.length - index}
             highlight={item.highlight}
             anchorTop={item.anchorTop}
             top={position.top}
