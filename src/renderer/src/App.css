@@ -171,14 +171,14 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50 min-w-0;
+    @apply min-w-0 border-border outline-ring/50;
     -electron-corner-smoothing: system-ui;
   }
   html {
-    @apply overscroll-none cursor-default;
+    @apply cursor-default overscroll-none;
   }
   body {
-    @apply bg-morphing-50 text-morphing-900 h-screen;
+    @apply h-screen bg-morphing-50 text-morphing-900;
   }
   #root {
     @apply h-full overflow-hidden;

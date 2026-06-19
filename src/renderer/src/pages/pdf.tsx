@@ -179,7 +179,7 @@ function SearchUi() {
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             setOpen(false)
-              ; (e.target as HTMLInputElement).blur()
+            ;(e.target as HTMLInputElement).blur()
             setResultsCursor(0)
           }
           if (e.key === 'Enter') {
@@ -340,7 +340,7 @@ function PdfPage() {
   return (
     <Root
       ref={rootRef}
-      resolution={pdfResolution}
+      // resolution={pdfResolution}
       isZoomFitWidth={pdf.isZoomFitWidth}
       zoom={pdf.zoom}
       source={pdf.src}
@@ -383,11 +383,11 @@ function PdfPage() {
             }}
             initialOffset={pdf.progress.offset}
           >
-            <Page data-pdf-page>
+            <Page data-pdf-page className="bg-transparent!">
               <CanvasLayer background={'transparent'} />
-              <TextLayer className="bg-morphing-50 mix-blend-multiply" />
+              <TextLayer className="bg-transparent" />
               <AnnotationLayer />
-              <HighlightLayer className="pointer-events-none bg-amber-500/20" />
+              <HighlightLayer className="pointer-events-none bg-amber-500/20!" />
               <CustomHighlightLayer
                 highlights={pdf.highlights}
                 selectedHighlight={selectedHighlight}
