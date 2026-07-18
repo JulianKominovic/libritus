@@ -5,6 +5,8 @@ import {
   sceneCoordsToViewportCoords
 } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI, NormalizedZoomValue } from '@excalidraw/excalidraw/types'
+import { readFile } from '@renderer/integrations/fs'
+import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
@@ -21,12 +23,13 @@ import {
 } from '@renderer/lib/pdf-canvas/session'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
-import { readFile } from '@renderer/integrations/fs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'wouter'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 
 import '@excalidraw/excalidraw/index.css'
+import '@renderer/excalidraw.css'
 import '@renderer/lib/pdf-canvas/textLayer.css'
 
 const INITIAL_CAMERA: CameraState = {
@@ -55,7 +58,6 @@ type RuntimeSession = {
 
 type PdfCanvasAppProps = {
   pdfId: string
-  onBack: () => void
 }
 
 /**
@@ -66,7 +68,8 @@ type PdfCanvasAppProps = {
  *
  * Everything else (camera, page, highlight chip) is ref + DOM.
  */
-export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
+export function PdfCanvasApp({ pdfId }: PdfCanvasAppProps) {
+  const [, setLocation] = useLocation()
   const containerRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<RuntimeSession | null>(null)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
@@ -187,10 +190,7 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
   const roundCam = (n: number) => Math.round(n * 1000) / 1000
 
   const persistSignature = useCallback(
-    (
-      elements: readonly unknown[],
-      camera: { scrollX: number; scrollY: number; zoom: number }
-    ) =>
+    (elements: readonly unknown[], camera: { scrollX: number; scrollY: number; zoom: number }) =>
       JSON.stringify({
         elements,
         camera: {
@@ -339,10 +339,7 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
       clearScene()
 
       try {
-        const [bytes, snapshot] = await Promise.all([
-          readFile(`${pdfId}.pdf`),
-          readSession(pdfId)
-        ])
+        const [bytes, snapshot] = await Promise.all([readFile(`${pdfId}.pdf`), readSession(pdfId)])
         if (cancelled || generation !== openGenerationRef.current) return
 
         if (!bytes) {
@@ -505,6 +502,44 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [flushSave])
 
+  useEffect(() => {
+    setActiveSessionFlush(flushSave)
+    return () => setActiveSessionFlush(null)
+  }, [flushSave])
+
+  // Flush before in-app <a> navigations (breadcrumbs, etc.) leave this PDF.
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (!dirtyRef.current) return
+      if (event.defaultPrevented) return
+      if (event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+      const el = event.target
+      if (!(el instanceof Element)) return
+      const anchor = el.closest('a[href]')
+      if (!(anchor instanceof HTMLAnchorElement)) return
+
+      const href = anchor.getAttribute('href')
+      if (!href || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('#')) {
+        return
+      }
+
+      const url = new URL(href, window.location.origin)
+      if (url.origin !== window.location.origin) return
+      if (url.pathname === window.location.pathname) return
+
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      void flushSave().then(() => {
+        setLocation(url.pathname + url.search + url.hash)
+      })
+    }
+
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [flushSave, setLocation])
+
   const handleScrollChange = useCallback(
     (scrollX: number, scrollY: number, zoom: { value: number }) => {
       pushCamera({
@@ -520,15 +555,6 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
   const handleExcalidrawChange = useCallback(() => {
     markUnsaved()
   }, [markUnsaved])
-
-  const handleBack = useCallback(async () => {
-    await flushSave()
-    hideHighlightToolbar()
-    readyRef.current = false
-    clearScene()
-    await destroyRuntimeSession()
-    onBack()
-  }, [clearScene, destroyRuntimeSession, flushSave, hideHighlightToolbar, onBack])
 
   const toggleTextSelectMode = useCallback(() => {
     setTextSelectMode((prev) => {
@@ -738,11 +764,14 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
           onChange={handleExcalidrawChange}
           onScrollChange={handleScrollChange}
           onPointerDown={handlePointerDown}
+          theme="light"
           UIOptions={{
             canvasActions: {
               loadScene: false,
               export: false,
-              saveAsImage: false
+              saveAsImage: false,
+              toggleTheme: false,
+              changeViewBackgroundColor: false
             }
           }}
         />
@@ -763,7 +792,7 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
       </div>
 
       {session && pageCount > 0 ? (
-        <div className="pointer-events-none absolute left-14 top-3 z-[100]">
+        <div className="pointer-events-none absolute bottom-3 left-1/2 z-[100] -translate-x-1/2">
           <PageNavigator
             ref={pageNavigatorRef}
             pageCount={pageCount}
@@ -775,27 +804,7 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
         </div>
       ) : null}
 
-      <div className="pointer-events-none absolute right-3 top-3 z-[100] flex items-center gap-2">
-        <button
-          type="button"
-          className="pointer-events-auto rounded-md bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 shadow hover:bg-neutral-100"
-          onClick={() => void handleBack()}
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          aria-pressed={textSelectMode}
-          disabled={!session}
-          className={`pointer-events-auto rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
-            textSelectMode
-              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
-              : 'bg-neutral-900 text-white hover:bg-neutral-800'
-          }`}
-          onClick={toggleTextSelectMode}
-        >
-          Select text
-        </button>
+      <div className="pointer-events-none absolute right-3 top-3 z-[100]">
         <span
           ref={saveChipRef}
           className={`rounded-md px-2 py-1 text-xs shadow ${
@@ -809,6 +818,20 @@ export function PdfCanvasApp({ pdfId, onBack }: PdfCanvasAppProps) {
           {SAVE_STATUS_LABEL[saveStatus]}
         </span>
       </div>
+
+      <button
+        type="button"
+        aria-pressed={textSelectMode}
+        disabled={!session}
+        className={`pointer-events-auto absolute bottom-16 right-4 z-[100] rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+          textSelectMode
+            ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
+            : 'bg-neutral-900 text-white hover:bg-neutral-800'
+        }`}
+        onClick={toggleTextSelectMode}
+      >
+        Select text
+      </button>
 
       {loadError ? (
         <div className="pointer-events-none absolute inset-0 z-[110] flex items-center justify-center bg-neutral-200/80">

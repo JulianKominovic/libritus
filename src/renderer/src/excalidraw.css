@@ -1,0 +1,66 @@
+/* Infinite PDF canvas — Excalidraw over virtualized PDF layer */
+.excalidraw {
+  --color-primary: var(--color-morphing-600, #525252);
+  background: transparent !important;
+}
+
+/* Text-select mode: clicks fall through the drawing surface to the PDF text layer */
+.text-select-mode .excalidraw .excalidraw__canvas.interactive,
+.text-select-mode .excalidraw canvas.interactive {
+  pointer-events: none !important;
+}
+
+/* Re-enable Excalidraw chrome while the host wrapper is pointer-events-none */
+.text-select-mode .excalidraw .Island,
+.text-select-mode .excalidraw .Stack,
+.text-select-mode .excalidraw .App-toolbar,
+.text-select-mode .excalidraw .App-toolbar-content,
+.text-select-mode .excalidraw .layer-ui__wrapper__footer,
+.text-select-mode .excalidraw .sidebar-trigger,
+.text-select-mode .excalidraw label,
+.text-select-mode .excalidraw button,
+.text-select-mode .excalidraw a,
+.text-select-mode .excalidraw input,
+.text-select-mode .excalidraw textarea,
+.text-select-mode .excalidraw select {
+  pointer-events: auto;
+}
+
+.excalidraw {
+  --ui-font: var(
+      --default-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif,
+      'Apple Color Emoji',
+      'Segoe UI Emoji',
+      'Segoe UI Symbol',
+      'Noto Color Emoji'
+    )
+    /* --color-on-surface: var(--color-morphing-900, #1b1b1f);
+  --color-surface-high: var(--color-morphing-200, #f1f0ff);
+  --color-surface-mid: var(--color-morphing-100, #f2f2f7);
+  --color-surface-low: var(--color-morphing-50, #ececf4);
+  --color-surface-lowest: var(--color-morphing-100, #ffffff); */;
+}
+
+.excalidraw .context-menu {
+  border-radius: var(--radius-xl);
+  font-size: 0.8em;
+  padding: 2px;
+}
+.excalidraw .context-menu li {
+  padding: 2px;
+}
+.excalidraw .context-menu li > button {
+  padding-inline-start: 8px;
+  padding-block: 6px;
+  border-radius: var(--radius-lg);
+}
+.excalidraw [data-testid='main-menu-trigger'] {
+  display: none;
+}
+
+.excalidraw .layer-ui__wrapper__top-right .sidebar-trigger {
+  display: none;
+}

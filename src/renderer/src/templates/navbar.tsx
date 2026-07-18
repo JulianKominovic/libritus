@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { useLang } from '@renderer/i18n/lang-context'
+import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
 import { DynamicIcon } from 'lucide-react/dynamic'
@@ -128,14 +129,18 @@ function Navbar() {
         <Button
           variant="ghost"
           className="!p-2 aspect-square !size-8 text-morphing-600"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            void flushActiveSession().then(() => window.history.back())
+          }}
         >
           <DynamicIcon name={'arrow-left'} />
         </Button>
         <Button
           variant="ghost"
           className="!p-2 aspect-square !size-8 text-morphing-600 -mx-2"
-          onClick={() => window.history.forward()}
+          onClick={() => {
+            void flushActiveSession().then(() => window.history.forward())
+          }}
         >
           <DynamicIcon name={'arrow-right'} />
         </Button>

@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Redirect, Route, Switch } from 'wouter'
 import './App.css'
+import { useQuitFlush } from './hooks/use-quit-flush'
 import { useRouteTheme } from './hooks/use-route-theme'
 import { cn } from './lib/utils'
 import Category from './pages/category'
@@ -17,6 +18,7 @@ const scrollPageClassName = 'px-6 md:px-8 pb-32 max-w-5xl overflow-y-auto'
 function App() {
   const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar)
   useRouteTheme()
+  useQuitFlush()
   return (
     <>
       <Navbar />

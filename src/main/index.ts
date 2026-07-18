@@ -1,5 +1,5 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, net, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, net, protocol, shell } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import attachIPCListeners from './listeners'
@@ -7,6 +7,40 @@ import attachIPCListeners from './listeners'
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const APP_ID = IS_DEV ? 'dev.jkominovic.libritus-dev' : 'dev.jkominovic.libritus'
 export const APP_DATA_DIR = join(app.getPath('appData'), APP_ID)
+
+let allowQuit = false
+let flushingForQuit = false
+let quitRequested = false
+
+const FLUSH_QUIT_TIMEOUT_MS = 15_000
+
+function finishQuitOrClose(): void {
+  allowQuit = true
+  flushingForQuit = false
+  if (quitRequested || process.platform !== 'darwin') {
+    app.quit()
+  } else {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.close()
+    }
+  }
+}
+
+function askRendererToFlushBeforeQuit(): void {
+  if (flushingForQuit || allowQuit) return
+  flushingForQuit = true
+
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  if (!win) {
+    finishQuitOrClose()
+    return
+  }
+
+  win.webContents.send('app-quit-request')
+  setTimeout(() => {
+    if (!allowQuit) finishQuitOrClose()
+  }, FLUSH_QUIT_TIMEOUT_MS)
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -31,6 +65,12 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  mainWindow.on('close', (e) => {
+    if (allowQuit) return
+    e.preventDefault()
+    askRendererToFlushBeforeQuit()
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -79,6 +119,10 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.on('app-quit-ready', () => {
+    finishQuitOrClose()
+  })
+
   attachIPCListeners()
 
   createWindow()
@@ -86,8 +130,20 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      allowQuit = false
+      quitRequested = false
+      flushingForQuit = false
+      createWindow()
+    }
   })
+})
+
+app.on('before-quit', (e) => {
+  if (allowQuit) return
+  e.preventDefault()
+  quitRequested = true
+  askRendererToFlushBeforeQuit()
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

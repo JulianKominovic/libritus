@@ -22,6 +22,7 @@ import {
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { useLang } from '@renderer/i18n/lang-context'
 import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
+import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { cn } from '@renderer/lib/utils'
 import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
@@ -161,6 +162,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
 
         if (dropTargetId === 'add-category') {
           const createdCategory = await createCategory()
+          await flushActiveSession()
           navigate(`/category/${createdCategory.id}`)
           dropTargetId = createdCategory.id
         }
@@ -214,8 +216,10 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                 <ContextMenuTrigger
                   onClick={() => {
                     onToggle()
-                    navigate(`/category/${node.parent}/${pdfNode.id}`, {
-                      replace: true
+                    void flushActiveSession().then(() => {
+                      navigate(`/category/${node.parent}/${pdfNode.id}`, {
+                        replace: true
+                      })
                     })
                   }}
                   className={cn(
@@ -255,7 +259,8 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                 isDropTarget ? 'bg-morphing-100 !px-2' : ''
               )}
               onClick={() => {
-                createCategory().then((category) => {
+                createCategory().then(async (category) => {
+                  await flushActiveSession()
                   navigate(`/category/${category.id}`)
                 })
               }}
@@ -278,7 +283,9 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               )}
               onClick={() => {
                 onToggle()
-                navigate(`/category/${node.id}`)
+                void flushActiveSession().then(() => {
+                  navigate(`/category/${node.id}`)
+                })
               }}
             >
               <DynamicIcon name={categoryNode.icon} size={16} />

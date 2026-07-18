@@ -267,31 +267,3 @@
       center 6px;
   }
 }
-
-/* Infinite PDF canvas — Excalidraw over virtualized PDF layer */
-.excalidraw {
-  --color-primary: var(--color-morphing-600, #525252);
-  background: transparent !important;
-}
-
-/* Text-select mode: clicks fall through the drawing surface to the PDF text layer */
-.text-select-mode .excalidraw .excalidraw__canvas.interactive,
-.text-select-mode .excalidraw canvas.interactive {
-  pointer-events: none !important;
-}
-
-/* Re-enable Excalidraw chrome while the host wrapper is pointer-events-none */
-.text-select-mode .excalidraw .Island,
-.text-select-mode .excalidraw .Stack,
-.text-select-mode .excalidraw .App-toolbar,
-.text-select-mode .excalidraw .App-toolbar-content,
-.text-select-mode .excalidraw .layer-ui__wrapper__footer,
-.text-select-mode .excalidraw .sidebar-trigger,
-.text-select-mode .excalidraw label,
-.text-select-mode .excalidraw button,
-.text-select-mode .excalidraw a,
-.text-select-mode .excalidraw input,
-.text-select-mode .excalidraw textarea,
-.text-select-mode .excalidraw select {
-  pointer-events: auto;
-}
