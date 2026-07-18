@@ -22,7 +22,7 @@
     "test": "bun test src",
     "test:watch": "bun test --watch src",
     "test:e2e": "electron-vite build && playwright test -c e2e/playwright.config.ts",
-    "test:all": "bun test && bun run test:e2e"
+    "test:all": "bun run test && bun run test:e2e"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.34",

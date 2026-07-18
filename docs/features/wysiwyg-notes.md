@@ -31,7 +31,7 @@ Out of scope (for now):
 | **Single click / drag** | Excalidraw selection and move on the placeholder. |
 | **Double-click** | Enter edit mode; caret near click; Plate gets focus (after Excalidraw pointerup). |
 | **Escape** | Leave edit mode; HUD returns to read-only. |
-| **Type / format** | Full `EditorKit` while editing; changes write `customData.plateValue` into the scene. |
+| **Type / format** | `NoteEditorKit` while editing (schema without AI/collab/toolbars); writes `customData.plateValue`. |
 
 Chrome: **Place note** chip next to **Select text** (bottom-right). Highlight chip **Add note** floats above the active highlight.
 
@@ -69,7 +69,7 @@ Identity helper: `isPdfNote(el)` → `customData.pdfNote === true`.
 |------|------|
 | `lib/pdf-canvas/pdfNoteModel.ts` | `isPdfNote`, `getNotePlateValue`, `queryVisibleNotes`, `findPdfNoteAt` |
 | `lib/pdf-canvas/pdfNotes.ts` | `createWysiwygNote`, `createNoteFromHighlight`, `ensureNoteFill`, `withNotePlateValue` |
-| `lib/pdf-canvas/pdfNotes.selfcheck.ts` | Minimal assert check |
+| `lib/pdf-canvas/pdfNotes.test.ts` | Unit tests for note create / fill / highlight→arrow invariants |
 | `organisms/pdf-canvas/NoteLayer.tsx` | Read/edit HUD + caret/focus on enter edit |
 | `organisms/pdf-canvas/PdfCanvasApp.tsx` | Place mode, double-click edit, sync, persistence |
 

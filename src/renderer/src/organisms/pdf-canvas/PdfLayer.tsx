@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
+import { visibilityBuffer } from '@renderer/lib/pdf-canvas/visibilityBuffer'
 import type { PagePool, PageSlot } from '@renderer/lib/pdf-canvas/PagePool'
 import type { TextLayerPool, TextLayerSlot } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState, PageRect } from '@renderer/lib/pdf-canvas/types'
@@ -148,9 +149,11 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 				camera.viewportWidth,
 				camera.viewportHeight,
 			);
-			const buffer =
-				Math.max(camera.viewportWidth, camera.viewportHeight) /
-				Math.max(camera.zoom, 0.01);
+			const buffer = visibilityBuffer(
+				camera.viewportWidth,
+				camera.viewportHeight,
+				camera.zoom
+			)
 			const next = currentLayout.queryVisible(aabb, buffer);
 
 			if (visibleEqual(visibleRef.current, next)) return;

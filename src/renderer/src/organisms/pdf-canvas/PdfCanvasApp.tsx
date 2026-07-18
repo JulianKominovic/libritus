@@ -29,6 +29,7 @@ import {
   type SessionSnapshot,
   writeSession
 } from '@renderer/lib/pdf-canvas/session'
+import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
@@ -304,21 +305,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     }
   }, [])
 
-  const roundCam = (n: number) => Math.round(n * 1000) / 1000
-
-  const persistSignature = useCallback(
-    (elements: readonly unknown[], camera: { scrollX: number; scrollY: number; zoom: number }) =>
-      JSON.stringify({
-        elements,
-        camera: {
-          scrollX: roundCam(camera.scrollX),
-          scrollY: roundCam(camera.scrollY),
-          zoom: roundCam(camera.zoom)
-        }
-      }),
-    []
-  )
-
   const currentPersistSignature = useCallback((): string | null => {
     const api = apiRef.current
     if (!api) return null
@@ -327,7 +313,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     ) as unknown[]
     const cam = cameraRef.current
     return persistSignature(elements, cam)
-  }, [persistSignature])
+  }, [])
 
   const buildSnapshot = useCallback((): SessionSnapshot | null => {
     const api = apiRef.current
@@ -373,27 +359,32 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       syncSaveChip('error')
       return false
     }
-  }, [buildSnapshot, categoryId, pdfId, persistSignature, syncSaveChip])
+  }, [buildSnapshot, categoryId, pdfId, syncSaveChip])
 
   const markUnsaved = useCallback(() => {
     if (!readyRef.current || restoringRef.current) return
     const sig = currentPersistSignature()
     if (sig == null) return
 
-    if (sig === lastSavedSigRef.current) {
-      if (dirtyRef.current) {
-        dirtyRef.current = false
-        pendingSigRef.current = ''
-        clearSaveTimer()
-        syncSaveChip('saved')
-      }
+    const gate = shouldMarkDirty({
+      sig,
+      lastSaved: lastSavedSigRef.current,
+      pending: pendingSigRef.current,
+      dirty: dirtyRef.current
+    })
+
+    if (gate.action === 'noop') return
+
+    if (gate.action === 'clear') {
+      dirtyRef.current = false
+      pendingSigRef.current = ''
+      clearSaveTimer()
+      syncSaveChip('saved')
       return
     }
 
-    if (dirtyRef.current && sig === pendingSigRef.current) return
-
     dirtyRef.current = true
-    pendingSigRef.current = sig
+    pendingSigRef.current = gate.pending
     syncSaveChip('unsaved')
     clearSaveTimer()
     saveTimerRef.current = setTimeout(() => {
@@ -567,7 +558,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     currentPersistSignature,
     destroyRuntimeSession,
     pdfId,
-    persistSignature,
     pushCamera,
     syncSaveChip,
     syncVisibleNotes

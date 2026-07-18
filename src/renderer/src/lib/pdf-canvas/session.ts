@@ -1,22 +1,13 @@
 import { readFile, writeFile } from '@renderer/integrations/fs'
+import {
+  parseSessionSnapshot,
+  type SaveStatus,
+  type SessionCamera,
+  type SessionSnapshot
+} from './sessionTypes'
 
-export type SessionCamera = {
-  scrollX: number
-  scrollY: number
-  zoom: number
-}
-
-export type SessionSnapshot = {
-  version: 1
-  docId: string
-  updatedAt: string
-  camera: SessionCamera
-  /** Excalidraw elements (no PDF pages / bitmaps). */
-  elements: unknown[]
-  appState?: Record<string, unknown>
-}
-
-export type SaveStatus = 'saved' | 'unsaved' | 'saving' | 'error'
+export type { SaveStatus, SessionCamera, SessionSnapshot }
+export { parseSessionSnapshot } from './sessionTypes'
 
 function sessionFilename(pdfId: string): string {
   return `${pdfId}.session.json`
@@ -27,11 +18,7 @@ export async function readSession(pdfId: string): Promise<SessionSnapshot | null
   if (!bytes) return null
   try {
     const text = new TextDecoder().decode(bytes)
-    const parsed = JSON.parse(text) as SessionSnapshot
-    if (parsed?.version !== 1 || !parsed.camera || !Array.isArray(parsed.elements)) {
-      return null
-    }
-    return parsed
+    return parseSessionSnapshot(JSON.parse(text) as unknown)
   } catch {
     return null
   }

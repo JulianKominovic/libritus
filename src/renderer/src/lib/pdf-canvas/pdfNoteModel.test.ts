@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import {
   emptyPlateValue,
+  findPdfNoteAt,
   getNotePlateValue,
   isPdfNote,
   plateValueFromQuote,
@@ -82,5 +83,16 @@ describe('pdfNoteModel', () => {
     })
     expect(visible.length).toBe(1)
     expect(visible[0]?.id).toBe('n1')
+  })
+
+  test('findPdfNoteAt: miss, hit, deleted skip, top-most wins', () => {
+    const a = fakeNote({ id: 'a', x: 0, y: 0, width: 100, height: 100 })
+    const b = fakeNote({ id: 'b', x: 20, y: 20, width: 100, height: 100 })
+    const deleted = fakeNote({ id: 'd', x: 0, y: 0, width: 200, height: 200, isDeleted: true })
+
+    expect(findPdfNoteAt([a], 500, 500)).toBeNull()
+    expect(findPdfNoteAt([a], 50, 50)?.id).toBe('a')
+    expect(findPdfNoteAt([deleted, a], 50, 50)?.id).toBe('a')
+    expect(findPdfNoteAt([a, b], 50, 50)?.id).toBe('b')
   })
 })

@@ -45,4 +45,24 @@ describe('PageLayout', () => {
     expect(jump).not.toBeNull()
     expect(typeof jump!.scrollY).toBe('number')
   })
+
+  test('pageIndexAtWorldPoint: on page, in gap, outside stack', () => {
+    const p0 = layout.pages[0]!
+    const p1 = layout.pages[1]!
+    expect(layout.pageIndexAtWorldPoint(0, p0.y + 10)).toBe(0)
+    // Gap between page 0 and 1
+    const gapY = p0.y + p0.height + 12
+    expect(layout.pageIndexAtWorldPoint(0, gapY)).toBe(0)
+    // Above stack → nearest page 0
+    expect(layout.pageIndexAtWorldPoint(0, -50)).toBe(0)
+    // Below last page → nearest last
+    const last = layout.pages[2]!
+    expect(layout.pageIndexAtWorldPoint(0, last.y + last.height + 100)).toBe(2)
+    expect(layout.pageIndexAtWorldPoint(0, p1.y + 5)).toBe(1)
+  })
+
+  test('empty layout returns null', () => {
+    const empty = new PageLayout([])
+    expect(empty.pageIndexAtWorldPoint(0, 0)).toBeNull()
+  })
 })

@@ -84,6 +84,26 @@ Se pidió editar con **doble click** (click simple = seleccionar/mover en Excali
 
 Al crear: solo `selectedElementIds` en Excalidraw. `setActiveNote` únicamente en doble click sobre la nota.
 
+### NoteStaticBody: `usePlateEditor` + `PlateStatic` → crash de hooks
+
+#### Descripción más detallada
+
+`usePlateEditor` inyecta siempre `NavigationFeedbackPlugin`, cuyo `inject.nodeProps.transformProps` llama `useNavigationHighlight` → `usePlateStore`. Eso requiere `<Plate>`. `EditorView` **y** `EditorStatic`/`PlateStatic` ejecutan ese inject; cambiar solo a `EditorStatic` no basta.
+
+#### Corrección
+
+Para HUD read-only: `createSlateEditor({ plugins: BaseEditorKit, value })` + `EditorStatic` (como export HTML). No usar `usePlateEditor` sin `<Plate>`.
+
+### Doble click nota + full `EditorKit` → Maximum update depth
+
+#### Descripción más detallada
+
+`NoteEditableBody` montaba el `EditorKit` completo (AI/Copilot). `aiChatPlugin.useHooks` → `useChat()` hace `setOption(AIChatPlugin, 'chat', { ...chat })` en un effect dependiente de `chat`. Cada `setOption` re-renderiza → nuevo objeto `chat` → otra vez `setOption` → loop infinito al entrar en edit.
+
+#### Corrección
+
+Usar `NoteEditorKit` (mismo schema base, sin AI / collab / toolbars fijas). No montar `AIKit` dentro del HUD del canvas.
+
 ### Placeholder `backgroundColor: transparent` → centro intargeteable
 
 #### Descripción más detallada

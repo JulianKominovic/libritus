@@ -1,9 +1,10 @@
 import { BaseEditorKit } from '@renderer/components/editor/editor-base-kit'
-import { EditorKit } from '@renderer/components/editor/editor-kit'
-import { Editor, EditorContainer, EditorView } from '@renderer/components/ui/editor'
-import type { Value } from 'platejs'
+import { NoteEditorKit } from '@renderer/components/editor/note-editor-kit'
+import { Editor, EditorContainer } from '@renderer/components/ui/editor'
+import { EditorStatic } from '@renderer/components/ui/editor-static'
+import { createSlateEditor, type Value } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 
 /** Identity + content only — geometry is applied imperatively (avoids Excalidraw onChange loops). */
 export type NoteHudItem = {
@@ -36,18 +37,11 @@ type NoteLayerProps = {
 }
 
 function NoteStaticBody({ value }: { value: Value }) {
-  const editor = usePlateEditor({
-    plugins: BaseEditorKit,
-    value,
-    readOnly: true
-  })
+  // usePlateEditor adds NavigationFeedbackPlugin (hooks in transformProps).
+  // PlateStatic has no Plate store → crash. createSlateEditor = static-only core.
+  const editor = useMemo(() => createSlateEditor({ plugins: BaseEditorKit, value }), [value])
   return (
-    <EditorView
-      editor={editor}
-      value={value}
-      variant="none"
-      className="h-full overflow-hidden p-2 text-sm"
-    />
+    <EditorStatic editor={editor} variant="none" className="h-full overflow-hidden p-2 text-sm" />
   )
 }
 
@@ -56,10 +50,7 @@ function domRangeAtPoint(clientX: number, clientY: number): Range | null {
     return document.caretRangeFromPoint(clientX, clientY)
   }
   const doc = document as Document & {
-    caretPositionFromPoint?: (
-      x: number,
-      y: number
-    ) => { offsetNode: Node; offset: number } | null
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null
   }
   const pos = doc.caretPositionFromPoint?.(clientX, clientY)
   if (!pos) return null
@@ -82,7 +73,7 @@ function NoteEditableBody({
 }) {
   const editor = usePlateEditor({
     id: noteId,
-    plugins: EditorKit,
+    plugins: NoteEditorKit,
     value: initialValue
   })
   const skipNextChangeRef = useRef(true)
@@ -184,7 +175,7 @@ function NoteCard({
   return (
     <div
       // Inactive: pass all hits to Excalidraw (incl. Plate kids — pointer-events is not inherited).
-      className={`absolute overflow-hidden rounded-sm border border-amber-400 bg-[#fff3bf] shadow-sm ${
+      className={`absolute overflow-hidden rounded-lg border border-neutral-200 bg-stone-100 shadow-lg ${
         active
           ? 'pointer-events-auto ring-2 ring-neutral-900'
           : 'pointer-events-none [&_*]:pointer-events-none'
