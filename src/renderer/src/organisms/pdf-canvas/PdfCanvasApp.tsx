@@ -7,14 +7,21 @@ import {
 import type { ExcalidrawImperativeAPI, NormalizedZoomValue } from '@excalidraw/excalidraw/types'
 import { readFile } from '@renderer/integrations/fs'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
-import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
+import { PageLayout, worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
 import {
   createNoteFromHighlight,
-  findPdfHighlightAt,
-  selectionToHighlightSkeletons
-} from '@renderer/lib/pdf-canvas/selectionToHighlights'
+  createWysiwygNote,
+  ensureNoteFill,
+  findPdfNoteAt,
+  getNotePlateValue,
+  NOTE_HEIGHT,
+  NOTE_WIDTH,
+  queryVisibleNotes,
+  withNotePlateValue
+} from '@renderer/lib/pdf-canvas/pdfNotes'
+import { findPdfHighlightAt, selectionToHighlightSkeletons } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
   readSession,
   type SaveStatus,
@@ -24,8 +31,10 @@ import {
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Value } from 'platejs'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
+import { NoteLayer, type NoteEditCaret, type NoteHudItem, type NoteLayerHandle } from './NoteLayer'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 
@@ -84,6 +93,7 @@ function syncReadingProgress(categoryId: string, pdfId: string, pages: number, t
  * - session: mount PdfLayer / navigator / enable tools
  * - textSelectMode: CSS pass-through + PdfLayer prop + listeners
  * - saveStatus: persistence chip
+ * - note overlays / place-note / active note edit
  *
  * Everything else (camera, page, highlight chip) is ref + DOM.
  */
@@ -97,6 +107,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const pageNavigatorRef = useRef<PageNavigatorHandle>(null)
   const highlightToolbarRef = useRef<HTMLDivElement>(null)
   const activeHighlightIdRef = useRef<string | null>(null)
+  const activeNoteIdRef = useRef<string | null>(null)
+  const placeNoteModeRef = useRef(false)
+  const lastNoteClickRef = useRef<{ id: string; t: number } | null>(null)
   const currentPageRef = useRef(1)
   const saveStatusRef = useRef<SaveStatus>('saved')
   const saveChipRef = useRef<HTMLSpanElement>(null)
@@ -108,8 +121,16 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const lastSavedSigRef = useRef('')
   const pendingSigRef = useRef('')
 
+  const noteLayerRef = useRef<NoteLayerHandle>(null)
+  const noteGeometryRef = useRef<
+    Array<{ id: string; left: number; top: number; width: number; height: number }>
+  >([])
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
+  const [placeNoteMode, setPlaceNoteMode] = useState(false)
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
+  const [editCaret, setEditCaret] = useState<NoteEditCaret | null>(null)
+  const [visibleNotes, setVisibleNotes] = useState<NoteHudItem[]>([])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -140,6 +161,81 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const toolbar = highlightToolbarRef.current
     if (toolbar) toolbar.style.display = 'none'
   }, [])
+
+  const syncVisibleNotes = useCallback(() => {
+    const api = apiRef.current
+    const container = containerRef.current
+    if (!api || !container) {
+      setVisibleNotes((prev) => (prev.length === 0 ? prev : []))
+      return
+    }
+
+    const appState = api.getAppState()
+    const cam = cameraRef.current
+    const aabb = worldAABBFromCamera(
+      cam.scrollX,
+      cam.scrollY,
+      cam.zoom,
+      cam.viewportWidth,
+      cam.viewportHeight
+    )
+    const padX = (cam.viewportWidth / (cam.zoom || 1)) * 0.25
+    const padY = (cam.viewportHeight / (cam.zoom || 1)) * 0.25
+    const notes = queryVisibleNotes(api.getSceneElements(), {
+      minX: aabb.left - padX,
+      minY: aabb.top - padY,
+      maxX: aabb.right + padX,
+      maxY: aabb.bottom + padY
+    })
+
+    const bounds = container.getBoundingClientRect()
+    const zoom = appState.zoom.value
+    const activeId = activeNoteIdRef.current
+
+    const geometry = notes.map((el) => {
+      const topLeft = sceneCoordsToViewportCoords({ sceneX: el.x, sceneY: el.y }, appState)
+      return {
+        id: el.id,
+        left: Math.round(topLeft.x - bounds.left),
+        top: Math.round(topLeft.y - bounds.top),
+        width: Math.round(el.width * zoom),
+        height: Math.round(el.height * zoom)
+      }
+    })
+
+    // Positions: DOM only — never setState on drag/pan (Excalidraw onChange loop).
+    noteGeometryRef.current = geometry
+    noteLayerRef.current?.applyGeometry(geometry)
+
+    const next: NoteHudItem[] = notes.map((el) => ({
+      id: el.id,
+      plateValue: getNotePlateValue(el)
+    }))
+
+    // React state only when note set / content changes (not geometry).
+    setVisibleNotes((prev) => {
+      const merged = next.map((b) => {
+        if (b.id === activeId) {
+          const old = prev.find((p) => p.id === b.id)
+          if (old) return { id: b.id, plateValue: old.plateValue }
+        }
+        return b
+      })
+      if (prev.length !== merged.length) return merged
+      for (let i = 0; i < prev.length; i++) {
+        const a = prev[i]!
+        const b = merged[i]!
+        if (a.id !== b.id || a.plateValue !== b.plateValue) return merged
+      }
+      return prev
+    })
+  }, [])
+
+  // After React mounts/removes note cards, re-apply last geometry (applyGeometry may
+  // have run before the new DOM nodes existed).
+  useLayoutEffect(() => {
+    noteLayerRef.current?.applyGeometry(noteGeometryRef.current)
+  }, [visibleNotes])
 
   const positionHighlightToolbar = useCallback(() => {
     const toolbar = highlightToolbarRef.current
@@ -195,8 +291,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (activeHighlightIdRef.current) {
         positionHighlightToolbar()
       }
+      syncVisibleNotes()
     },
-    [positionHighlightToolbar]
+    [positionHighlightToolbar, syncVisibleNotes]
   )
 
   const clearSaveTimer = useCallback(() => {
@@ -393,7 +490,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         const zoom = (cam?.zoom ?? INITIAL_CAMERA.zoom) as NormalizedZoomValue
         const elements =
           snapshot?.elements && Array.isArray(snapshot.elements)
-            ? (snapshot.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>)
+            ? (
+                snapshot.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
+              ).map(ensureNoteFill)
             : []
 
         restoringRef.current = true
@@ -447,6 +546,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         lastSavedSigRef.current =
           currentPersistSignature() ?? persistSignature(elements, { scrollX, scrollY, zoom })
         syncSaveChip('saved')
+        syncVisibleNotes()
       } catch (err) {
         console.error(err)
         setLoadError(err instanceof Error ? err.message : 'Failed to open PDF')
@@ -468,7 +568,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     pdfId,
     persistSignature,
     pushCamera,
-    syncSaveChip
+    syncSaveChip,
+    syncVisibleNotes
   ])
 
   // Flush + tear down when leaving the route (sidebar nav, etc.).
@@ -577,19 +678,90 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   const handleExcalidrawChange = useCallback(() => {
     markUnsaved()
-  }, [markUnsaved])
+    syncVisibleNotes()
+  }, [markUnsaved, syncVisibleNotes])
+
+  const setActiveNote = useCallback(
+    (noteId: string | null, caret: NoteEditCaret | null = null) => {
+      activeNoteIdRef.current = noteId
+      setActiveNoteId(noteId)
+      setEditCaret(noteId ? caret : null)
+      // Leaving edit: lift plateValue freeze and pull latest content from the scene.
+      if (noteId == null) {
+        syncVisibleNotes()
+      }
+    },
+    [syncVisibleNotes]
+  )
 
   const toggleTextSelectMode = useCallback(() => {
     setTextSelectMode((prev) => {
       const next = !prev
       if (next) {
         hideHighlightToolbar()
+        setPlaceNoteMode(false)
+        placeNoteModeRef.current = false
+        setActiveNote(null)
       } else {
         window.getSelection()?.removeAllRanges()
       }
       return next
     })
-  }, [hideHighlightToolbar])
+  }, [hideHighlightToolbar, setActiveNote])
+
+  const togglePlaceNoteMode = useCallback(() => {
+    setPlaceNoteMode((prev) => {
+      const next = !prev
+      placeNoteModeRef.current = next
+      if (next) {
+        setTextSelectMode(false)
+        hideHighlightToolbar()
+        setActiveNote(null)
+        apiRef.current?.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: true,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+      } else {
+        apiRef.current?.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: false,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+      }
+      return next
+    })
+  }, [hideHighlightToolbar, setActiveNote])
+
+  const updateNotePlateValue = useCallback(
+    (noteId: string, value: Value) => {
+      const api = apiRef.current
+      if (!api) return
+      const elements = api.getSceneElements()
+      const note = elements.find((el) => el.id === noteId)
+      if (!note) return
+      // Plate may fire onChange on mount with the same Value ref — skip to avoid
+      // updateScene → Excalidraw onChange → parent setState loops.
+      if (note.customData?.plateValue === value) return
+      const updated = withNotePlateValue(note, value)
+      api.updateScene({
+        elements: elements.map((el) => (el.id === noteId ? updated : el)),
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+      markUnsaved()
+    },
+    [markUnsaved]
+  )
 
   const pageCount = session?.doc.pageCount ?? 0
 
@@ -635,18 +807,69 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     (_activeTool: unknown, pointerDownState: { origin: { x: number; y: number } }) => {
       const api = apiRef.current
       if (!api) return
-      const hit = findPdfHighlightAt(
-        api.getSceneElements(),
-        pointerDownState.origin.x,
-        pointerDownState.origin.y
-      )
+      const { x: sceneX, y: sceneY } = pointerDownState.origin
+
+      if (placeNoteModeRef.current) {
+        const note = createWysiwygNote({
+          x: sceneX - NOTE_WIDTH / 2,
+          y: sceneY - NOTE_HEIGHT / 2
+        })
+        api.updateScene({
+          elements: [...api.getSceneElements(), note],
+          appState: {
+            selectedElementIds: { [note.id]: true }
+          },
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY
+        })
+        placeNoteModeRef.current = false
+        setPlaceNoteMode(false)
+        // Select only — edit requires double-click. Activating edit here puts the HUD
+        // on pointer-events-auto and blocks Excalidraw drag.
+        hideHighlightToolbar()
+        api.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: false,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+        markUnsaved()
+        syncVisibleNotes()
+        return
+      }
+
+      const noteHit = findPdfNoteAt(api.getSceneElements(), sceneX, sceneY)
+      if (noteHit) {
+        const now = Date.now()
+        const last = lastNoteClickRef.current
+        const isDouble =
+          last != null && last.id === noteHit.id && now - last.t < 400
+        lastNoteClickRef.current = { id: noteHit.id, t: now }
+        if (isDouble) {
+          const screen = sceneCoordsToViewportCoords(
+            { sceneX, sceneY },
+            api.getAppState()
+          )
+          setActiveNote(noteHit.id, { clientX: screen.x, clientY: screen.y })
+        }
+        hideHighlightToolbar()
+        return
+      }
+
+      lastNoteClickRef.current = null
+      setActiveNote(null)
+
+      const hit = findPdfHighlightAt(api.getSceneElements(), sceneX, sceneY)
       if (hit) {
         showHighlightToolbar(hit.id)
       } else {
         hideHighlightToolbar()
       }
     },
-    [hideHighlightToolbar, showHighlightToolbar]
+    [hideHighlightToolbar, markUnsaved, setActiveNote, showHighlightToolbar, syncVisibleNotes]
   )
 
   const addNoteToActiveHighlight = useCallback(() => {
@@ -669,9 +892,39 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       captureUpdate: CaptureUpdateAction.IMMEDIATELY
     })
 
+    // Select only — edit requires double-click (same as free place).
     hideHighlightToolbar()
     markUnsaved()
-  }, [hideHighlightToolbar, markUnsaved])
+    syncVisibleNotes()
+  }, [hideHighlightToolbar, markUnsaved, syncVisibleNotes])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (activeNoteId) {
+        setActiveNote(null)
+        event.preventDefault()
+        return
+      }
+      if (placeNoteModeRef.current) {
+        placeNoteModeRef.current = false
+        setPlaceNoteMode(false)
+        apiRef.current?.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: false,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+        event.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeNoteId, setActiveNote])
 
   useEffect(() => {
     if (!textSelectMode) return
@@ -800,6 +1053,17 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         />
       </div>
 
+      {/* Above Excalidraw: content visible over solid placeholder; pointer-events off until edit. */}
+      {session ? (
+        <NoteLayer
+          ref={noteLayerRef}
+          notes={visibleNotes}
+          activeNoteId={activeNoteId}
+          editCaret={editCaret}
+          onValueChange={updateNotePlateValue}
+        />
+      ) : null}
+
       <div
         ref={highlightToolbarRef}
         className="pointer-events-auto absolute z-[90] -translate-x-1/2 -translate-y-full"
@@ -842,19 +1106,34 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         </span>
       </div>
 
-      <button
-        type="button"
-        aria-pressed={textSelectMode}
-        disabled={!session}
-        className={`pointer-events-auto absolute bottom-16 right-4 z-[100] rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
-          textSelectMode
-            ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
-            : 'bg-neutral-900 text-white hover:bg-neutral-800'
-        }`}
-        onClick={toggleTextSelectMode}
-      >
-        Select text
-      </button>
+      <div className="pointer-events-auto absolute bottom-16 right-4 z-[100] flex flex-col items-end gap-2">
+        <button
+          type="button"
+          aria-pressed={placeNoteMode}
+          disabled={!session}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+            placeNoteMode
+              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
+              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+          }`}
+          onClick={togglePlaceNoteMode}
+        >
+          Place note
+        </button>
+        <button
+          type="button"
+          aria-pressed={textSelectMode}
+          disabled={!session}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+            textSelectMode
+              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
+              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+          }`}
+          onClick={toggleTextSelectMode}
+        >
+          Select text
+        </button>
+      </div>
 
       {loadError ? (
         <div className="pointer-events-none absolute inset-0 z-[110] flex items-center justify-center bg-neutral-200/80">

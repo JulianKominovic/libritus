@@ -6,7 +6,8 @@ import attachIPCListeners from './listeners'
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const APP_ID = IS_DEV ? 'dev.jkominovic.libritus-dev' : 'dev.jkominovic.libritus'
-export const APP_DATA_DIR = join(app.getPath('appData'), APP_ID)
+export const APP_DATA_DIR =
+  process.env.LIBRITUS_APP_DATA_DIR ?? join(app.getPath('appData'), APP_ID)
 
 let allowQuit = false
 let flushingForQuit = false

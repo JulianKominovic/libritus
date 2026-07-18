@@ -32,7 +32,8 @@ Guiding principle:
 | “Select text” mode (pointer-events + manual wheel) | `PdfCanvasApp`, CSS |
 | Selection → locked Excalidraw highlights | `selectionToHighlights` |
 | Same-line rect dedupe | `mergeSameLineRects` |
-| Click highlight → “Add note” chip + bound arrow | `PdfCanvasApp`, `selectionToHighlights` |
+| Click highlight → “Add note” chip + bound arrow | `PdfCanvasApp`, `pdfNotes` |
+| WYSIWYG notes (Plate HUD + `pdfNote` placeholder) | `NoteLayer`, `pdfNotes`, `pdfNoteModel` |
 | Freehand / shapes / undo | Excalidraw built-in |
 | Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |
 
@@ -79,7 +80,8 @@ src/main/                     # Electron main + IPC (read/write appData)
 src/renderer/src/
   pages/pdf.tsx               # Route: mounts PdfCanvasApp
   organisms/pdf-canvas/
-    PdfCanvasApp.tsx          # open, session, autosave, text-select, Excalidraw
+    PdfCanvasApp.tsx          # open, session, autosave, text-select, notes, Excalidraw
+    NoteLayer.tsx             # Plate HUD over pdfNote placeholders
     PdfLayer.tsx              # sync pools ↔ camera; CSS transform
     PageNavigator.tsx         # current / total, prev/next, jump
   lib/pdf-canvas/
@@ -88,12 +90,15 @@ src/renderer/src/
     PagePool.ts               # canvas slots, LRU, cancel
     TextLayerPool.ts          # text layer slots
     PdfRenderer.ts            # fixed-scale render
-    selectionToHighlights.ts  # DOM selection → Excalidraw elements
+    selectionToHighlights.ts  # DOM selection → Excalidraw highlights
+    pdfNotes.ts / pdfNoteModel.ts  # WYSIWYG notes (create, hit-test, plateValue)
     session.ts                # SessionSnapshot + read/write helpers
     types.ts
     textLayer.css
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
+
+Feature docs: [`docs/features/wysiwyg-notes.md`](docs/features/wysiwyg-notes.md), [`docs/features/pdf-navigation.md`](docs/features/pdf-navigation.md), [`docs/features/persistence-and-sessions.md`](docs/features/persistence-and-sessions.md).
 
 ### Flow
 
@@ -103,6 +108,7 @@ src/renderer/src/
 4. `PdfLayer`: world AABB → `layout.queryVisible` → `pool.syncVisible` / `textPool.syncVisible`.
 5. Zoom: same texture; only `translate * zoom` + `scale(zoom)`.
 6. Highlights: Excalidraw rects with `customData.pdfHighlight`, `locked: true` — **still scene space**.
+7. Notes: Excalidraw rects with `customData.pdfNote` + `plateValue` (solid fill); Plate HUD via `NoteLayer` (see wysiwyg-notes doc).
 
 ### Conscious gaps vs optimal
 
@@ -163,9 +169,10 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 6. **`pageIndex` 0-based** in app; pdf.js 1-based only inside `PdfDocument.getPage`.
 7. Pointer-events / text-select live in CSS — do not break pass-through.
 8. Highlights: identity = `customData.pdfHighlight === true`; keep `locked`.
-9. Code/comments in English; product docs may be Spanish.
-10. Minimal scope: no refactors or deps “because optimal asks for them” unless the task requires it.
-11. **Light mode only** — no `dark:` Tailwind prefixes.
+9. Notes: identity = `customData.pdfNote === true`; solid fill (never transparent); geometry via DOM/`applyGeometry`, not React state on `onChange`.
+10. Code/comments in English; product docs may be Spanish.
+11. Minimal scope: no refactors or deps “because optimal asks for them” unless the task requires it.
+12. **Light mode only** — no `dark:` Tailwind prefixes.
 
 ---
 
@@ -178,7 +185,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 1. Highlights are `locked: true`. Locked elements are not bindable for interactive rebind. If the arrow start is bound to the highlight, releasing a handle clears that binding.
 2. Straight arrows rebind *both* ends when dragging one. Free start near the note snaps to the same note → zero-length arrow.
 
-**Canonical fix** (in `createNoteFromHighlight` / `selectionToHighlights.ts`):
+**Canonical fix** (in `createNoteFromHighlight` / `pdfNotes.ts`):
 
 - Start **positioned** on highlight edge, **no** `startBinding`.
 - End bound to the note (`endBinding` + note `boundElements`).
@@ -186,10 +193,31 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 **Do not:** bind start to the locked highlight; or use a straight arrow with only end binding.
 
+### Note center not draggable (borders work)
+
+**Cause:** placeholder `backgroundColor: 'transparent'` — Excalidraw hit-tests stroke only.
+
+**Fix:** solid `NOTE_FILL` (`#fff3bf`); `ensureNoteFill` on session restore. See [`docs/features/wysiwyg-notes.md`](docs/features/wysiwyg-notes.md).
+
+### `Maximum update depth` when dragging a note
+
+**Cause:** `onChange` → `setState` with geometry (or any value that changes every frame).
+
+**Fix:** `NoteLayer.applyGeometry` for position; React state only for note ids / `plateValue`.
+
 ---
+
+## Testing
+
+- **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
+- **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
+- Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts
 
 - `bun run dev` — Electron + electron-vite
 - `bun run build` — typecheck + build
 - `bun run build:mac` — packaged mac build
+- `bun test` — unit tests
+- `bun run test:e2e` — Playwright Electron e2e (builds first)
+- `bun run test:all` — unit + e2e

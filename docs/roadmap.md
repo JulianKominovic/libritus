@@ -7,12 +7,15 @@ North star for migrating Libritus from the classic lector viewer to a scalable i
 ## v1 (current MVP)
 
 - Replace lector-based `/category/:categoryId/:pdfId` with Excalidraw + virtualized pdf.js layer.
-- Page pool, fixed-scale raster + CSS zoom, text select, locked highlights, notes + arrows.
+- Page pool, fixed-scale raster + CSS zoom, text select, locked highlights.
+- WYSIWYG notes (Plate HUD + `pdfNote` placeholders; place free or from highlight).
 - Page navigator.
 - Session autosave: `{pdfId}.session.json` (elements + camera).
 - Keep existing categories library / upload / Electron FS.
 
-**Explicitly deferred in v1:** legacy highlight margin UI, essays tab, outline/search chrome, Wikipedia selection menu, removing `@anaralabs/lector` from dependencies.
+**Explicitly deferred in v1:** legacy highlight margin UI, essays tab on the old sheet, outline/search chrome, Wikipedia selection menu, removing `@anaralabs/lector` from dependencies.
+
+Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 ---
 

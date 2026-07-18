@@ -64,6 +64,8 @@ type SessionSnapshot = {
 
 **What goes in `elements`:** whatever Excalidraw has in the scene (`getSceneElements()`), filtered to exclude `isDeleted` when practical. The PDF is the `PdfLayer` underneath — not an element.
 
+WYSIWYG notes store Plate `plateValue` in `customData` on the note rectangle (`pdfNote: true`). No separate notes file — see [`wysiwyg-notes.md`](wysiwyg-notes.md).
+
 **Camera:** persist `scrollX`, `scrollY`, `zoom` from the same channel that feeds `CameraState` (`onScrollChange`). On restore: `updateScene({ elements, appState: { scrollX, scrollY, zoom } })` + sync camera refs.
 
 ### Relation to `categories.json`

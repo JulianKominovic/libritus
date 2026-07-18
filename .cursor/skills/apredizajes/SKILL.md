@@ -54,3 +54,46 @@ Hook `useRouteTheme()` en `App.tsx` que llama `resetGlobalTheme()` cuando la rut
 #### Corrección
 
 Migrar a `morphing-*`, `text-muted-foreground`, `text-destructive` para warnings, y filas con `rounded-xl border border-morphing-300 bg-morphing-100 p-3`.
+
+### Excalidraw `onChange` → `setState` → loop infinito (repetido 2×)
+
+#### Descripción más detallada
+
+En el HUD de notas WYSIWYG (`NoteLayer` / `PdfCanvasApp`), sincronizar posición u overlays con `setState` desde `Excalidraw.onChange` (o desde algo que ese `onChange` dispara en cada drag/pan) produce:
+
+`onChange` → `setVisibleNotes` / re-render del padre → Excalidraw vuelve a emitir `onChange` → otra vez `setState` → `Maximum update depth exceeded`.
+
+Pasó **dos veces** en la misma feature: (1) al montar el sync de notas visibles con estado React en cada `onChange`; (2) al “arreglar” con equality check pero seguir metiendo geometría (`left`/`top`/`width`/`height`) en ese estado — al mover la nota cada frame cambiaba la geometría, el bailout no alcanzaba y el loop volvía.
+
+El patrón del canvas (`PdfCanvasApp`) ya era ref + DOM para cámara/toolbar; ignorarlo fue el error.
+
+#### Corrección
+
+- **No** poner geometría de overlays en React state ligada a `onChange` de Excalidraw.
+- Posición: DOM imperativo (`NoteLayer.applyGeometry` / mismo estilo que `highlightToolbarRef`).
+- React state solo para identidad/contenido de notas (ids + `plateValue`), y solo cuando eso realmente cambia.
+- Comparar antes de `setState` no basta si el valor comparado cambia en cada drag.
+
+### Auto-activar edición al crear nota → drag bloqueado
+
+#### Descripción más detallada
+
+Se pidió editar con **doble click** (click simple = seleccionar/mover en Excalidraw). Al crear nota (Place note / Add note) el agente igual llamaba `setActiveNote(id)`, lo que pone el HUD en `pointer-events-auto` encima del placeholder. Resultado: arrastrar la nota nueva no hace nada porque Plate se come los eventos.
+
+#### Corrección
+
+Al crear: solo `selectedElementIds` en Excalidraw. `setActiveNote` únicamente en doble click sobre la nota.
+
+### Placeholder `backgroundColor: transparent` → centro intargeteable
+
+#### Descripción más detallada
+
+Síntoma: arrastrar la nota por el **borde** funciona; por el **medio** no (como si el centro no existiera). Causa: Excalidraw, con fill transparente, solo hace hit-test del **stroke**, no del interior del rectángulo.
+
+El agente perdió tiempo con z-index / poner el HUD debajo de Excalidraw. Eso no era el bug: los bordes ya recibían eventos.
+
+#### Corrección
+
+- Placeholder con fill sólido (`#fff3bf` / `NOTE_FILL`), nunca `transparent`.
+- HUD encima con `pointer-events-none` (+ `[&_*]:pointer-events-none` en reposo; `pointer-events` no se hereda).
+- Parchear notas legacy al abrir sesión (`ensureNoteFill`).

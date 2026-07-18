@@ -41,6 +41,15 @@
   src: url('./assets/notoserif-italic.woff2') format('woff2');
 }
 
+/* ponytail: local Excalifont so canvas text works offline (CSP blocks Excalidraw CDN) */
+@font-face {
+  font-family: 'Excalifont';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/Excalifont-Regular.woff2') format('woff2');
+}
+
 @theme inline {
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Noto Serif', serif;
