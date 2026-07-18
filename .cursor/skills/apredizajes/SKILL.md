@@ -122,9 +122,20 @@ El agente perdió tiempo con z-index / poner el HUD debajo de Excalidraw. Eso no
 
 #### Descripción más detallada
 
-`NoteLayer` hace `stopPropagation` en `keydown` del HUD, así que `page.keyboard.press('Escape')` **no** llega al listener de `window` en `PdfCanvasApp`. Además, tras dblclick, el effect de caret de `NoteEditableBody` corre async y pisa el selection si se tipeá al toque → texto mangled (`beforlate-persist…`).
+`NoteLayer` hacía `stopPropagation` en `keydown` del HUD, así que `page.keyboard.press('Escape')` **no** llegaba al listener de `window` en `PdfCanvasApp`. Además, tras dblclick, el effect de caret de `NoteEditableBody` corría async y pisaba el selection si se tipeaba al toque → texto mangled (`beforlate-persist…`).
 
 #### Corrección
 
-- Escape en e2e: `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`.
+- Notas migraron a embeddable + `NoteEmbed`: Escape llama `onExitEdit` → `activeEmbeddable: null` (keyboard.press funciona).
 - Tras abrir edit: esperar ~400ms, luego `ControlOrMeta+A` + `pressSequentially`.
+- Activar embed: click en el **centro de la card** (`[data-pdf-note]`), no solo el bounding box del texto (Excalidraw exige el tercio central).
+
+### `convertToExcalidrawElements` + `type: 'embeddable'` incompleto
+
+#### Descripción más detallada
+
+En Excalidraw 0.18, `convertToExcalidrawElements` para `embeddable`/`iframe`/`freedraw` hace `s = skeleton` sin pasar por `newEmbeddableElement`. Un skeleton parcial entra a la escena sin campos requeridos → place/Add note no marca Unsaved / no renderiza.
+
+#### Corrección
+
+Crear nota como `rectangle` completo vía `convertToExcalidrawElements`, luego `normalizePdfNote` → `embeddable` + `libritus://pdf-note`.

@@ -152,7 +152,7 @@ export function seedNoteElement(opts?: {
   const text = opts?.text ?? 'seeded note'
   return {
     id,
-    type: 'rectangle',
+    type: 'embeddable',
     x: opts?.x ?? 120,
     y: opts?.y ?? 80,
     width: 280,
@@ -175,7 +175,7 @@ export function seedNoteElement(opts?: {
     isDeleted: false,
     boundElements: null,
     updated: 1,
-    link: null,
+    link: 'libritus://pdf-note',
     locked: false,
     customData: {
       pdfNote: true,

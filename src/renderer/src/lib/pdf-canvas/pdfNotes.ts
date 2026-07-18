@@ -26,12 +26,47 @@ export const NOTE_WIDTH = 280
 export const NOTE_HEIGHT = 200
 export const NOTE_FILL = '#fff3bf'
 export const NOTE_STROKE = '#fab005'
+/** Custom scheme so validateEmbeddable can whitelist our notes only. */
+export const NOTE_EMBED_LINK = 'libritus://pdf-note'
 const NOTE_GAP = 48
 
-/** Excalidraw skips interior hit-test when fill is transparent — only the stroke receives events. */
-export function ensureNoteFill(el: OrderedExcalidrawElement): OrderedExcalidrawElement {
-  if (!isPdfNote(el) || el.backgroundColor !== 'transparent') return el
-  return newElementWith(el, { backgroundColor: NOTE_FILL }) as OrderedExcalidrawElement
+/**
+ * Solid fill (interior hit-test) + migrate legacy rectangle notes → embeddable.
+ * Call on session restore.
+ */
+export function normalizePdfNote(el: OrderedExcalidrawElement): OrderedExcalidrawElement {
+  if (!isPdfNote(el)) return el
+
+  const fill =
+    el.backgroundColor === 'transparent' ? NOTE_FILL : el.backgroundColor
+
+  if (el.type === 'rectangle') {
+    return newElementWith(el, {
+      type: 'embeddable',
+      link: NOTE_EMBED_LINK,
+      backgroundColor: fill
+    } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
+  }
+
+  if (el.type === 'embeddable') {
+    const patch: Record<string, unknown> = {}
+    if (el.backgroundColor === 'transparent') patch.backgroundColor = NOTE_FILL
+    if (el.link !== NOTE_EMBED_LINK) patch.link = NOTE_EMBED_LINK
+    if (Object.keys(patch).length === 0) return el
+    return newElementWith(el, patch as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
+  }
+
+  return el
+}
+
+/**
+ * Clear `link` after Excalidraw has validated the embed once.
+ * Without link, Excalidraw skips the canvas link icon + open-in-new-tab hit-test.
+ * Persist via normalizePdfNote so the next open can validate again.
+ */
+export function clearPdfNoteLinkForUi(el: OrderedExcalidrawElement): OrderedExcalidrawElement {
+  if (!isPdfNote(el) || el.type !== 'embeddable' || !el.link) return el
+  return newElementWith(el, { link: null } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
 }
 
 export function createWysiwygNote(opts: {
@@ -43,7 +78,9 @@ export function createWysiwygNote(opts: {
   id?: string
 }): OrderedExcalidrawElement {
   const plateValue = opts.plateValue ?? emptyPlateValue()
-  const [note] = convertToExcalidrawElements([
+  // convertToExcalidrawElements leaves embeddable skeletons as-is (incomplete).
+  // Build a full rectangle then normalize → embeddable.
+  const [rect] = convertToExcalidrawElements([
     {
       type: 'rectangle',
       id: opts.id ?? 'pdf-note',
@@ -62,11 +99,11 @@ export function createWysiwygNote(opts: {
     }
   ])
 
-  if (!note || note.type !== 'rectangle') {
-    throw new Error('createWysiwygNote: failed to create rectangle')
+  if (!rect || rect.type !== 'rectangle') {
+    throw new Error('createWysiwygNote: failed to create note')
   }
 
-  return note as OrderedExcalidrawElement
+  return normalizePdfNote(rect as OrderedExcalidrawElement)
 }
 
 /**

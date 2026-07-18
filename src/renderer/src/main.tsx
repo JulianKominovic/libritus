@@ -1,13 +1,13 @@
 import { getBackendOptions, MultiBackend } from '@minoru/react-dnd-treeview'
+import { GlobalWorkerOptions } from '@renderer/lib/pdf-canvas/pdfjs'
+import 'pdfjs-dist/web/pdf_viewer.css'
 import { DndProvider } from 'react-dnd'
 import ReactDOM from 'react-dom/client'
 import { Router } from 'wouter'
 import { useBrowserLocation } from 'wouter/use-browser-location'
 import App from './App'
 import { LangProvider } from './i18n/lang-context'
-import { GlobalWorkerOptions } from '@renderer/lib/pdf-canvas/pdfjs'
-import 'pdfjs-dist/web/pdf_viewer.css'
-
+import('react-scan').then(({ scan }) => scan({ enabled: true }))
 GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
   import.meta.url

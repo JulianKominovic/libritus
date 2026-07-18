@@ -8,18 +8,19 @@ import type { ExcalidrawImperativeAPI, NormalizedZoomValue } from '@excalidraw/e
 import { readFile } from '@renderer/integrations/fs'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
-import { PageLayout, worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
+import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
 import {
+  clearPdfNoteLinkForUi,
   createNoteFromHighlight,
   createWysiwygNote,
-  ensureNoteFill,
-  findPdfNoteAt,
   getNotePlateValue,
+  isPdfNote,
+  NOTE_EMBED_LINK,
   NOTE_HEIGHT,
   NOTE_WIDTH,
-  queryVisibleNotes,
+  normalizePdfNote,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
 import { findPdfHighlightAt, selectionToHighlightSkeletons } from '@renderer/lib/pdf-canvas/selectionToHighlights'
@@ -35,9 +36,9 @@ import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
 import type { Value } from 'platejs'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
-import { NoteLayer, type NoteEditCaret, type NoteHudItem, type NoteLayerHandle } from './NoteLayer'
+import { NoteEmbed } from './NoteEmbed'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 
@@ -96,9 +97,10 @@ function syncReadingProgress(categoryId: string, pdfId: string, pages: number, t
  * - session: mount PdfLayer / navigator / enable tools
  * - textSelectMode: CSS pass-through + PdfLayer prop + listeners
  * - saveStatus: persistence chip
- * - note overlays / place-note / active note edit
+ * - place-note mode chip
  *
  * Everything else (camera, page, highlight chip) is ref + DOM.
+ * Notes: Excalidraw embeddable + renderEmbeddable (no parallel HUD).
  */
 export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [, setLocation] = useLocation()
@@ -110,9 +112,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const pageNavigatorRef = useRef<PageNavigatorHandle>(null)
   const highlightToolbarRef = useRef<HTMLDivElement>(null)
   const activeHighlightIdRef = useRef<string | null>(null)
-  const activeNoteIdRef = useRef<string | null>(null)
   const placeNoteModeRef = useRef(false)
-  const lastNoteClickRef = useRef<{ id: string; t: number } | null>(null)
   const currentPageRef = useRef(1)
   const saveStatusRef = useRef<SaveStatus>('saved')
   const saveChipRef = useRef<HTMLSpanElement>(null)
@@ -124,16 +124,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const lastSavedSigRef = useRef('')
   const pendingSigRef = useRef('')
 
-  const noteLayerRef = useRef<NoteLayerHandle>(null)
-  const noteGeometryRef = useRef<
-    Array<{ id: string; left: number; top: number; width: number; height: number }>
-  >([])
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
   const [placeNoteMode, setPlaceNoteMode] = useState(false)
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
-  const [editCaret, setEditCaret] = useState<NoteEditCaret | null>(null)
-  const [visibleNotes, setVisibleNotes] = useState<NoteHudItem[]>([])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -165,80 +158,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     if (toolbar) toolbar.style.display = 'none'
   }, [])
 
-  const syncVisibleNotes = useCallback(() => {
-    const api = apiRef.current
-    const container = containerRef.current
-    if (!api || !container) {
-      setVisibleNotes((prev) => (prev.length === 0 ? prev : []))
-      return
-    }
-
-    const appState = api.getAppState()
-    const cam = cameraRef.current
-    const aabb = worldAABBFromCamera(
-      cam.scrollX,
-      cam.scrollY,
-      cam.zoom,
-      cam.viewportWidth,
-      cam.viewportHeight
-    )
-    const padX = (cam.viewportWidth / (cam.zoom || 1)) * 0.25
-    const padY = (cam.viewportHeight / (cam.zoom || 1)) * 0.25
-    const notes = queryVisibleNotes(api.getSceneElements(), {
-      minX: aabb.left - padX,
-      minY: aabb.top - padY,
-      maxX: aabb.right + padX,
-      maxY: aabb.bottom + padY
-    })
-
-    const bounds = container.getBoundingClientRect()
-    const zoom = appState.zoom.value
-    const activeId = activeNoteIdRef.current
-
-    const geometry = notes.map((el) => {
-      const topLeft = sceneCoordsToViewportCoords({ sceneX: el.x, sceneY: el.y }, appState)
-      return {
-        id: el.id,
-        left: Math.round(topLeft.x - bounds.left),
-        top: Math.round(topLeft.y - bounds.top),
-        width: Math.round(el.width * zoom),
-        height: Math.round(el.height * zoom)
-      }
-    })
-
-    // Positions: DOM only — never setState on drag/pan (Excalidraw onChange loop).
-    noteGeometryRef.current = geometry
-    noteLayerRef.current?.applyGeometry(geometry)
-
-    const next: NoteHudItem[] = notes.map((el) => ({
-      id: el.id,
-      plateValue: getNotePlateValue(el)
-    }))
-
-    // React state only when note set / content changes (not geometry).
-    setVisibleNotes((prev) => {
-      const merged = next.map((b) => {
-        if (b.id === activeId) {
-          const old = prev.find((p) => p.id === b.id)
-          if (old) return { id: b.id, plateValue: old.plateValue }
-        }
-        return b
-      })
-      if (prev.length !== merged.length) return merged
-      for (let i = 0; i < prev.length; i++) {
-        const a = prev[i]!
-        const b = merged[i]!
-        if (a.id !== b.id || a.plateValue !== b.plateValue) return merged
-      }
-      return prev
+  const clearActiveEmbeddable = useCallback(() => {
+    apiRef.current?.updateScene({
+      appState: { activeEmbeddable: null }
     })
   }, [])
-
-  // After React mounts/removes note cards, re-apply last geometry (applyGeometry may
-  // have run before the new DOM nodes existed).
-  useLayoutEffect(() => {
-    noteLayerRef.current?.applyGeometry(noteGeometryRef.current)
-  }, [visibleNotes])
 
   const positionHighlightToolbar = useCallback(() => {
     const toolbar = highlightToolbarRef.current
@@ -294,9 +218,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (activeHighlightIdRef.current) {
         positionHighlightToolbar()
       }
-      syncVisibleNotes()
     },
-    [positionHighlightToolbar, syncVisibleNotes]
+    [positionHighlightToolbar]
   )
 
   const clearSaveTimer = useCallback(() => {
@@ -306,23 +229,58 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     }
   }, [])
 
-  const currentPersistSignature = useCallback((): string | null => {
+  /** Persist notes with link restored (UI may have stripped it after embed validate). */
+  const sceneElementsForPersist = useCallback(() => {
     const api = apiRef.current
     if (!api) return null
-    const elements = JSON.parse(
-      JSON.stringify(api.getSceneElements().filter((el) => !el.isDeleted))
-    ) as unknown[]
-    const cam = cameraRef.current
-    return persistSignature(elements, cam)
+    return api
+      .getSceneElements()
+      .filter((el) => !el.isDeleted)
+      .map(normalizePdfNote)
   }, [])
 
-  const buildSnapshot = useCallback((): SessionSnapshot | null => {
+  /**
+   * After Excalidraw validates embeddables (needs link once), clear note links so
+   * the canvas link icon / open-in-new-tab hit-test disappear. Capture NEVER —
+   * normalizePdfNote on persist restores the link for the next open.
+   */
+  const stripPdfNoteLinksAfterValidate = useCallback(() => {
     const api = apiRef.current
-    if (!api || !readyRef.current) return null
+    if (!api) return
+    const elements = api.getSceneElements()
+    let changed = false
+    const next = elements.map((el) => {
+      const cleared = clearPdfNoteLinkForUi(el)
+      if (cleared !== el) changed = true
+      return cleared
+    })
+    if (!changed) return
+    api.updateScene({
+      elements: next,
+      captureUpdate: CaptureUpdateAction.NEVER
+    })
+  }, [])
+
+  const queueStripPdfNoteLinks = useCallback(() => {
+    // Let Excalidraw run embed URL validation (requires link) before clearing.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        stripPdfNoteLinksAfterValidate()
+      })
+    })
+  }, [stripPdfNoteLinksAfterValidate])
+
+  const currentPersistSignature = useCallback((): string | null => {
+    const elements = sceneElementsForPersist()
+    if (!elements) return null
     const cam = cameraRef.current
-    const elements = JSON.parse(
-      JSON.stringify(api.getSceneElements().filter((el) => !el.isDeleted))
-    ) as unknown[]
+    return persistSignature(JSON.parse(JSON.stringify(elements)) as unknown[], cam)
+  }, [sceneElementsForPersist])
+
+  const buildSnapshot = useCallback((): SessionSnapshot | null => {
+    const elements = sceneElementsForPersist()
+    if (!elements || !readyRef.current) return null
+    const cam = cameraRef.current
     return {
       version: 1,
       docId: pdfId,
@@ -332,9 +290,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         scrollY: cam.scrollY,
         zoom: cam.zoom
       },
-      elements
+      elements: JSON.parse(JSON.stringify(elements)) as unknown[]
     }
-  }, [pdfId])
+  }, [pdfId, sceneElementsForPersist])
 
   const writeSnapshotNow = useCallback(async (): Promise<boolean> => {
     if (!readyRef.current || !dirtyRef.current) {
@@ -485,7 +443,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           snapshot?.elements && Array.isArray(snapshot.elements)
             ? (
                 snapshot.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
-              ).map(ensureNoteFill)
+              ).map(normalizePdfNote)
             : []
 
         restoringRef.current = true
@@ -532,6 +490,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         })
         if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
 
+        // Validate embeds (needs link) then clear so canvas link icon disappears.
+        stripPdfNoteLinksAfterValidate()
+
         restoringRef.current = false
         readyRef.current = true
         dirtyRef.current = false
@@ -539,7 +500,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         lastSavedSigRef.current =
           currentPersistSignature() ?? persistSignature(elements, { scrollX, scrollY, zoom })
         syncSaveChip('saved')
-        syncVisibleNotes()
       } catch (err) {
         console.error(err)
         setLoadError(err instanceof Error ? err.message : 'Failed to open PDF')
@@ -560,8 +520,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     destroyRuntimeSession,
     pdfId,
     pushCamera,
+    stripPdfNoteLinksAfterValidate,
     syncSaveChip,
-    syncVisibleNotes
+    pushCamera
   ])
 
   // Flush + tear down when leaving the route (sidebar nav, etc.).
@@ -572,7 +533,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         const api = apiRef.current
         const cam = cameraRef.current
         const elements = JSON.parse(
-          JSON.stringify(api.getSceneElements().filter((el) => !el.isDeleted))
+          JSON.stringify(
+            api
+              .getSceneElements()
+              .filter((el) => !el.isDeleted)
+              .map(normalizePdfNote)
+          )
         ) as unknown[]
         const snapshot: SessionSnapshot = {
           version: 1,
@@ -670,21 +636,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   const handleExcalidrawChange = useCallback(() => {
     markUnsaved()
-    syncVisibleNotes()
-  }, [markUnsaved, syncVisibleNotes])
-
-  const setActiveNote = useCallback(
-    (noteId: string | null, caret: NoteEditCaret | null = null) => {
-      activeNoteIdRef.current = noteId
-      setActiveNoteId(noteId)
-      setEditCaret(noteId ? caret : null)
-      // Leaving edit: lift plateValue freeze and pull latest content from the scene.
-      if (noteId == null) {
-        syncVisibleNotes()
-      }
-    },
-    [syncVisibleNotes]
-  )
+  }, [markUnsaved])
 
   const toggleTextSelectMode = useCallback(() => {
     setTextSelectMode((prev) => {
@@ -693,13 +645,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         hideHighlightToolbar()
         setPlaceNoteMode(false)
         placeNoteModeRef.current = false
-        setActiveNote(null)
+        clearActiveEmbeddable()
       } else {
         window.getSelection()?.removeAllRanges()
       }
       return next
     })
-  }, [hideHighlightToolbar, setActiveNote])
+  }, [clearActiveEmbeddable, hideHighlightToolbar])
 
   const togglePlaceNoteMode = useCallback(() => {
     setPlaceNoteMode((prev) => {
@@ -708,7 +660,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (next) {
         setTextSelectMode(false)
         hideHighlightToolbar()
-        setActiveNote(null)
+        clearActiveEmbeddable()
         apiRef.current?.updateScene({
           appState: {
             activeTool: {
@@ -733,7 +685,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       }
       return next
     })
-  }, [hideHighlightToolbar, setActiveNote])
+  }, [clearActiveEmbeddable, hideHighlightToolbar])
 
   const updateNotePlateValue = useCallback(
     (noteId: string, value: Value) => {
@@ -820,8 +772,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         })
         placeNoteModeRef.current = false
         setPlaceNoteMode(false)
-        // Select only — edit requires double-click. Activating edit here puts the HUD
-        // on pointer-events-auto and blocks Excalidraw drag.
+        // Select only — edit via Excalidraw embed activate (click center).
         hideHighlightToolbar()
         api.updateScene({
           appState: {
@@ -833,31 +784,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             }
           }
         })
+        queueStripPdfNoteLinks()
         markUnsaved()
-        syncVisibleNotes()
         return
       }
-
-      const noteHit = findPdfNoteAt(api.getSceneElements(), sceneX, sceneY)
-      if (noteHit) {
-        const now = Date.now()
-        const last = lastNoteClickRef.current
-        const isDouble =
-          last != null && last.id === noteHit.id && now - last.t < 400
-        lastNoteClickRef.current = { id: noteHit.id, t: now }
-        if (isDouble) {
-          const screen = sceneCoordsToViewportCoords(
-            { sceneX, sceneY },
-            api.getAppState()
-          )
-          setActiveNote(noteHit.id, { clientX: screen.x, clientY: screen.y })
-        }
-        hideHighlightToolbar()
-        return
-      }
-
-      lastNoteClickRef.current = null
-      setActiveNote(null)
 
       const hit = findPdfHighlightAt(api.getSceneElements(), sceneX, sceneY)
       if (hit) {
@@ -866,7 +796,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         hideHighlightToolbar()
       }
     },
-    [hideHighlightToolbar, markUnsaved, setActiveNote, showHighlightToolbar, syncVisibleNotes]
+    [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks, showHighlightToolbar]
   )
 
   const addNoteToActiveHighlight = useCallback(() => {
@@ -883,26 +813,21 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       elements: [...api.getSceneElements(), ...newElements],
       appState: {
         selectedElementIds: Object.fromEntries(
-          newElements.filter((el) => el.type === 'rectangle').map((el) => [el.id, true])
+          newElements.filter((el) => isPdfNote(el)).map((el) => [el.id, true])
         )
       },
       captureUpdate: CaptureUpdateAction.IMMEDIATELY
     })
 
-    // Select only — edit requires double-click (same as free place).
+    // Select only — edit via embed activate (same as free place).
     hideHighlightToolbar()
+    queueStripPdfNoteLinks()
     markUnsaved()
-    syncVisibleNotes()
-  }, [hideHighlightToolbar, markUnsaved, syncVisibleNotes])
+  }, [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (activeNoteId) {
-        setActiveNote(null)
-        event.preventDefault()
-        return
-      }
       if (placeNoteModeRef.current) {
         placeNoteModeRef.current = false
         setPlaceNoteMode(false)
@@ -921,7 +846,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeNoteId, setActiveNote])
+  }, [])
 
   useEffect(() => {
     if (!textSelectMode) return
@@ -1037,7 +962,28 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           onChange={handleExcalidrawChange}
           onScrollChange={handleScrollChange}
           onPointerDown={handlePointerDown}
+          onLinkOpen={(_element, event) => {
+            event.preventDefault()
+          }}
           theme="light"
+          validateEmbeddable={(link) =>
+            typeof link === 'string' && link.startsWith(NOTE_EMBED_LINK) ? true : false
+          }
+          renderEmbeddable={(element, appState) => {
+            if (!isPdfNote(element)) return null
+            const editing =
+              appState.activeEmbeddable?.element?.id === element.id &&
+              appState.activeEmbeddable?.state === 'active'
+            return (
+              <NoteEmbed
+                noteId={element.id}
+                plateValue={getNotePlateValue(element)}
+                editing={editing}
+                onValueChange={updateNotePlateValue}
+                onExitEdit={clearActiveEmbeddable}
+              />
+            )
+          }}
           UIOptions={{
             canvasActions: {
               loadScene: false,
@@ -1049,17 +995,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           }}
         />
       </div>
-
-      {/* Above Excalidraw: content visible over solid placeholder; pointer-events off until edit. */}
-      {session ? (
-        <NoteLayer
-          ref={noteLayerRef}
-          notes={visibleNotes}
-          activeNoteId={activeNoteId}
-          editCaret={editCaret}
-          onValueChange={updateNotePlateValue}
-        />
-      ) : null}
 
       <div
         ref={highlightToolbarRef}

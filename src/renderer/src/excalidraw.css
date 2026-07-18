@@ -64,3 +64,8 @@
 .excalidraw .layer-ui__wrapper__top-right .sidebar-trigger {
   display: none;
 }
+
+/* Embeddable hyperlink edit/open toolbar — notes use a private link scheme */
+.excalidraw-hyperlinkContainer {
+  display: none !important;
+}

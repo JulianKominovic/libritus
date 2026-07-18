@@ -33,7 +33,7 @@ mock.module('@excalidraw/excalidraw', () => ({
         isDeleted: false,
         boundElements: null,
         updated: 1,
-        link: null,
+        link: (skel.link as string | null | undefined) ?? null,
         locked: Boolean(skel.locked),
         customData: skel.customData ?? null,
         startBinding: null,
@@ -56,12 +56,14 @@ mock.module('@excalidraw/excalidraw', () => ({
 }))
 
 const {
+  NOTE_EMBED_LINK,
   NOTE_FILL,
   NOTE_HEIGHT,
   NOTE_WIDTH,
+  clearPdfNoteLinkForUi,
   createNoteFromHighlight,
   createWysiwygNote,
-  ensureNoteFill,
+  normalizePdfNote,
   withNotePlateValue
 } = await import('./pdfNotes')
 const { emptyPlateValue, isPdfNote, plateValueFromQuote } = await import('./pdfNoteModel')
@@ -102,23 +104,73 @@ function fakeHighlight(
   } as OrderedExcalidrawElement
 }
 
-describe('pdfNotes', () => {
-  test('ensureNoteFill patches transparent notes only', () => {
-    const transparent = createWysiwygNote({ x: 0, y: 0, id: 'n-transparent' })
-    const patched = ensureNoteFill({
-      ...transparent,
-      backgroundColor: 'transparent'
-    } as OrderedExcalidrawElement)
-    expect(patched.backgroundColor).toBe(NOTE_FILL)
+function legacyRectangleNote(
+  partial: Partial<OrderedExcalidrawElement> & { id: string }
+): OrderedExcalidrawElement {
+  return {
+    type: 'rectangle',
+    x: 0,
+    y: 0,
+    width: NOTE_WIDTH,
+    height: NOTE_HEIGHT,
+    angle: 0,
+    strokeColor: '#fab005',
+    backgroundColor: NOTE_FILL,
+    fillStyle: 'solid',
+    strokeWidth: 1,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: null,
+    index: null,
+    roundness: null,
+    seed: 1,
+    version: 1,
+    versionNonce: 1,
+    isDeleted: false,
+    boundElements: null,
+    updated: 1,
+    link: null,
+    locked: false,
+    customData: { pdfNote: true, plateValue: emptyPlateValue() },
+    ...partial
+  } as OrderedExcalidrawElement
+}
 
-    const solid = createWysiwygNote({ x: 0, y: 0, id: 'n-solid' })
-    expect(ensureNoteFill(solid)).toBe(solid)
+describe('pdfNotes', () => {
+  test('normalizePdfNote patches transparent fill and migrates rectangle → embeddable', () => {
+    const legacy = legacyRectangleNote({
+      id: 'n-legacy',
+      backgroundColor: 'transparent'
+    })
+    const migrated = normalizePdfNote(legacy)
+    expect(migrated.type).toBe('embeddable')
+    expect(migrated.link).toBe(NOTE_EMBED_LINK)
+    expect(migrated.backgroundColor).toBe(NOTE_FILL)
+    expect(migrated.id).toBe('n-legacy')
+
+    const solidEmbed = createWysiwygNote({ x: 0, y: 0, id: 'n-solid' })
+    expect(normalizePdfNote(solidEmbed)).toBe(solidEmbed)
 
     const highlight = fakeHighlight({ id: 'h1' })
-    expect(ensureNoteFill(highlight)).toBe(highlight)
+    expect(normalizePdfNote(highlight)).toBe(highlight)
   })
 
-  test('createWysiwygNote sets pdfNote identity and solid fill', () => {
+  test('clearPdfNoteLinkForUi strips link; normalizePdfNote restores it', () => {
+    const note = createWysiwygNote({ x: 0, y: 0, id: 'n-link' })
+    expect(note.link).toBe(NOTE_EMBED_LINK)
+
+    const cleared = clearPdfNoteLinkForUi(note)
+    expect(cleared.link).toBeNull()
+    expect(cleared.id).toBe(note.id)
+    expect(clearPdfNoteLinkForUi(cleared)).toBe(cleared)
+
+    const restored = normalizePdfNote(cleared)
+    expect(restored.link).toBe(NOTE_EMBED_LINK)
+  })
+
+  test('createWysiwygNote sets embeddable + pdfNote identity and solid fill', () => {
     const custom = plateValueFromQuote('hi')
     const note = createWysiwygNote({
       x: 5,
@@ -127,6 +179,8 @@ describe('pdfNotes', () => {
       plateValue: custom
     })
     expect(isPdfNote(note)).toBe(true)
+    expect(note.type).toBe('embeddable')
+    expect(note.link).toBe(NOTE_EMBED_LINK)
     expect(note.backgroundColor).toBe(NOTE_FILL)
     expect(note.width).toBe(NOTE_WIDTH)
     expect(note.height).toBe(NOTE_HEIGHT)
@@ -147,6 +201,7 @@ describe('pdfNotes', () => {
     const arrow = newElements.find((el) => el.type === 'arrow')!
     expect(note).toBeDefined()
     expect(arrow).toBeDefined()
+    expect(note.type).toBe('embeddable')
 
     expect(note.x).toBe(80 + NOTE_GAP)
     expect(note.y).toBe(10 - NOTE_HEIGHT / 2)

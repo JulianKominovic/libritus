@@ -33,7 +33,7 @@ Guiding principle:
 | Selection → locked Excalidraw highlights | `selectionToHighlights` |
 | Same-line rect dedupe | `mergeSameLineRects` |
 | Click highlight → “Add note” chip + bound arrow | `PdfCanvasApp`, `pdfNotes` |
-| WYSIWYG notes (Plate HUD + `pdfNote` placeholder) | `NoteLayer`, `pdfNotes`, `pdfNoteModel` |
+| WYSIWYG notes (Plate + `pdfNote` embeddable) | `NoteEmbed`, `pdfNotes`, `pdfNoteModel` |
 | Freehand / shapes / undo | Excalidraw built-in |
 | Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |
 
@@ -81,7 +81,7 @@ src/renderer/src/
   pages/pdf.tsx               # Route: mounts PdfCanvasApp
   organisms/pdf-canvas/
     PdfCanvasApp.tsx          # open, session, autosave, text-select, notes, Excalidraw
-    NoteLayer.tsx             # Plate HUD over pdfNote placeholders
+    NoteEmbed.tsx             # Plate inside Excalidraw renderEmbeddable
     PdfLayer.tsx              # sync pools ↔ camera; CSS transform
     PageNavigator.tsx         # current / total, prev/next, jump
   lib/pdf-canvas/
@@ -91,7 +91,7 @@ src/renderer/src/
     TextLayerPool.ts          # text layer slots
     PdfRenderer.ts            # fixed-scale render
     selectionToHighlights.ts  # DOM selection → Excalidraw highlights
-    pdfNotes.ts / pdfNoteModel.ts  # WYSIWYG notes (create, hit-test, plateValue)
+    pdfNotes.ts / pdfNoteModel.ts  # WYSIWYG notes (embeddable + plateValue)
     session.ts                # SessionSnapshot + read/write helpers
     types.ts
     textLayer.css
@@ -108,7 +108,7 @@ Feature docs: [`docs/features/wysiwyg-notes.md`](docs/features/wysiwyg-notes.md)
 4. `PdfLayer`: world AABB → `layout.queryVisible` → `pool.syncVisible` / `textPool.syncVisible`.
 5. Zoom: same texture; only `translate * zoom` + `scale(zoom)`.
 6. Highlights: Excalidraw rects with `customData.pdfHighlight`, `locked: true` — **still scene space**.
-7. Notes: Excalidraw rects with `customData.pdfNote` + `plateValue` (solid fill); Plate HUD via `NoteLayer` (see wysiwyg-notes doc).
+7. Notes: Excalidraw **embeddables** with `customData.pdfNote` + `plateValue` (solid fill); Plate via `renderEmbeddable` / `NoteEmbed` (see wysiwyg-notes doc).
 
 ### Conscious gaps vs optimal
 
@@ -195,15 +195,15 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 ### Note center not draggable (borders work)
 
-**Cause:** placeholder `backgroundColor: 'transparent'` — Excalidraw hit-tests stroke only.
+**Cause:** placeholder `backgroundColor: 'transparent'` — Excalidraw hit-tests stroke only. Also: embeddables activate on **center click** — drag from the **edge**.
 
-**Fix:** solid `NOTE_FILL` (`#fff3bf`); `ensureNoteFill` on session restore. See [`docs/features/wysiwyg-notes.md`](docs/features/wysiwyg-notes.md).
+**Fix:** solid `NOTE_FILL` (`#fff3bf`); `normalizePdfNote` on session restore. See [`docs/features/wysiwyg-notes.md`](docs/features/wysiwyg-notes.md).
 
 ### `Maximum update depth` when dragging a note
 
-**Cause:** `onChange` → `setState` with geometry (or any value that changes every frame).
+**Cause:** `onChange` → `setState` with geometry (or any value that changes every frame). Do not rebuild a parallel note HUD.
 
-**Fix:** `NoteLayer.applyGeometry` for position; React state only for note ids / `plateValue`.
+**Fix:** notes are embeddables — Excalidraw owns transform; React state only for note content writes via `withNotePlateValue`.
 
 ---
 

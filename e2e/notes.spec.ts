@@ -10,6 +10,21 @@ import {
   seedSession
 } from './helpers/seed'
 
+/** Activate Excalidraw embed: click the note card center (middle third), not just the text. */
+async function activateNoteEmbed(
+  page: import('@playwright/test').Page,
+  text: string
+): Promise<void> {
+  const note = page.locator('[data-pdf-note]').filter({ hasText: text }).first()
+  await expect(note).toBeVisible({ timeout: 30_000 })
+  const box = await note.boundingBox()
+  if (!box) throw new Error('note card not laid out')
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  await page.mouse.click(cx, cy)
+  await expect(page.locator('[contenteditable="true"]')).toHaveCount(1, { timeout: 5_000 })
+}
+
 test('place note selects without entering edit; Escape leaves edit', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-notes-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
@@ -36,22 +51,16 @@ test('place note selects without entering edit; Escape leaves edit', async () =>
     await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0)
 
-    // Double-click existing note → edit → Escape (dispatch on window: note stops keydown bubble)
-    const noteText = page.getByText('editable note').first()
-    const box = await noteText.boundingBox()
-    if (!box) throw new Error('note text not laid out')
-    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
-    await expect(page.locator('[contenteditable="true"]')).toHaveCount(1, { timeout: 5_000 })
-    await page.evaluate(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    })
+    // Click center → activate embed → Escape leaves edit
+    await activateNoteEmbed(page, 'editable note')
+    await page.keyboard.press('Escape')
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
   } finally {
     await close()
   }
 })
 
-test('drag note by center moves it (solid fill hit-test)', async () => {
+test('drag note by edge moves it (center click activates embed)', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-drag-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
   const noteX = 200
@@ -77,8 +86,8 @@ test('drag note by center moves it (solid fill hit-test)', async () => {
     const cbox = await canvas.boundingBox()
     if (!cbox) throw new Error('no canvas')
 
-    // Center of note in scene ≈ canvas origin + note center (scroll 0, zoom 1)
-    const startX = cbox.x + noteX + 140
+    // Near left edge — center would activate the embed instead of drag.
+    const startX = cbox.x + noteX + 8
     const startY = cbox.y + noteY + 100
     await page.mouse.move(startX, startY)
     await page.mouse.down()
@@ -153,8 +162,10 @@ test('Add note from highlight writes elbow arrow unbound at start', async () => 
         el &&
         typeof el === 'object' &&
         (el as { customData?: { pdfNote?: boolean } }).customData?.pdfNote === true
-    ) as { id: string }
+    ) as { id: string; type?: string; link?: string }
 
+    expect(note.type).toBe('embeddable')
+    expect(note.link).toBe('libritus://pdf-note')
     expect(arrow.elbowed).toBe(true)
     expect(arrow.startBinding).toBeFalsy()
     expect(arrow.endBinding?.elementId).toBe(note.id)
@@ -184,12 +195,8 @@ test('edit note persists plateValue in session after flush', async () => {
     await openPdf(page, categoryId, pdfId)
     await expect(page.getByText('before edit')).toBeVisible({ timeout: 30_000 })
 
-    const noteText = page.getByText('before edit').first()
-    const box = await noteText.boundingBox()
-    if (!box) throw new Error('note text not laid out')
-    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
-    await expect(page.locator('[contenteditable="true"]')).toHaveCount(1, { timeout: 5_000 })
-    // NoteLayer places caret asynchronously after mount — wait before typing
+    await activateNoteEmbed(page, 'before edit')
+    // Embed activate + Plate focus settle before typing
     await page.waitForTimeout(400)
 
     const editable = page.locator('[contenteditable="true"]').first()
@@ -198,10 +205,7 @@ test('edit note persists plateValue in session after flush', async () => {
     await editable.pressSequentially(unique, { delay: 20 })
     await expect(editable).toContainText(unique, { timeout: 5_000 })
 
-    // Exit edit via window Escape (note HUD stops keydown bubble from keyboard.press)
-    await page.evaluate(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    })
+    await page.keyboard.press('Escape')
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
     await expectUnsaved(page)
 
