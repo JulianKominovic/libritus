@@ -23,6 +23,7 @@ import {
 } from '@renderer/lib/pdf-canvas/session'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
+import { usePdfs } from '@renderer/stores/categories'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
@@ -57,7 +58,25 @@ type RuntimeSession = {
 }
 
 type PdfCanvasAppProps = {
+  categoryId: string
   pdfId: string
+}
+
+function syncReadingProgress(categoryId: string, pdfId: string, pages: number, totalPages: number) {
+  const percentage = totalPages > 0 ? (pages / totalPages) * 100 : 0
+  const store = usePdfs.getState()
+  const pdf = store.categories.find((c) => c.id === categoryId)?.pdfs.find((p) => p.id === pdfId)
+  if (
+    pdf &&
+    pdf.progress.pages === pages &&
+    pdf.progress.percentage === percentage &&
+    pdf.progress.offset === 0
+  ) {
+    return
+  }
+  void store.updatePdf(categoryId, pdfId, {
+    progress: { pages, percentage, offset: 0 }
+  })
 }
 
 /**
@@ -68,7 +87,7 @@ type PdfCanvasAppProps = {
  *
  * Everything else (camera, page, highlight chip) is ref + DOM.
  */
-export function PdfCanvasApp({ pdfId }: PdfCanvasAppProps) {
+export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [, setLocation] = useLocation()
   const containerRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<RuntimeSession | null>(null)
@@ -248,13 +267,15 @@ export function PdfCanvasApp({ pdfId }: PdfCanvasAppProps) {
       pendingSigRef.current = ''
       lastSavedSigRef.current = sig
       syncSaveChip('saved')
+      const totalPages = sessionRef.current?.doc.pageCount ?? 0
+      syncReadingProgress(categoryId, pdfId, currentPageRef.current, totalPages)
       return true
     } catch (err) {
       console.error(err)
       syncSaveChip('error')
       return false
     }
-  }, [buildSnapshot, pdfId, persistSignature, syncSaveChip])
+  }, [buildSnapshot, categoryId, pdfId, persistSignature, syncSaveChip])
 
   const markUnsaved = useCallback(() => {
     if (!readyRef.current || restoringRef.current) return
@@ -472,6 +493,8 @@ export function PdfCanvasApp({ pdfId }: PdfCanvasAppProps) {
           elements
         }
         void writeSession(pdfId, snapshot)
+        const totalPages = sessionRef.current?.doc.pageCount ?? 0
+        syncReadingProgress(categoryId, pdfId, currentPageRef.current, totalPages)
       }
       const current = sessionRef.current
       if (!current) return
@@ -480,7 +503,7 @@ export function PdfCanvasApp({ pdfId }: PdfCanvasAppProps) {
       void current.doc.destroy()
       sessionRef.current = null
     }
-  }, [clearSaveTimer, pdfId])
+  }, [categoryId, clearSaveTimer, pdfId])
 
   useEffect(() => {
     if (!session) return

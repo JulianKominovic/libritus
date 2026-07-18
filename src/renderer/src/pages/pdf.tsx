@@ -10,7 +10,7 @@ export default function PdfPage() {
 
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden">
-      <PdfCanvasApp pdfId={pdfId} />
+      <PdfCanvasApp categoryId={categoryId} pdfId={pdfId} />
     </div>
   )
 }
