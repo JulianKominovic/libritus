@@ -53,8 +53,31 @@ function HighlightCardsTemplate({
     setSelectedHighlight(highlight)
   }
 
+  if (!highlights || highlights.length === 0) {
+    return (
+      <div className="flex flex-col gap-2 justify-center items-center py-8 px-2">
+        <h3 className="text-xl font-medium font-serif mb-4">Highlight key passages</h3>
+        <DynamicIcon
+          name="highlighter"
+          className="size-40 text-morphing-300 opacity-60 mb-2"
+        />
+        <a
+          href="https://www.google.com/search?q=benefits+of+highlighting+while+reading"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-morphing-500 mb-4 underline hover:text-morphing-700 text-center"
+        >
+          Highlighting helps you remember what matters.
+        </a>
+        <p className="text-sm text-morphing-500 text-center">
+          Select text in the PDF to add your first highlight.
+        </p>
+      </div>
+    )
+  }
+
   return highlights
-    ?.sort((a, b) => compareHighlightsByPosition(a, b))
+    .sort((a, b) => compareHighlightsByPosition(a, b))
     .map((highlight) => {
       const isSelected = selectedHighlight?.id === highlight.id
       const { bg } = isSelected ? createColorPalette('#fff') : getHighlightColor(highlight.color)

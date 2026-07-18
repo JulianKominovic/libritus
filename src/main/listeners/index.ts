@@ -66,9 +66,14 @@ const attachIPCListeners = (): void => {
     await fs.writeFile(fullPath, data)
     return fullPath
   })
-  ipcMain.handle('read-file', (_, { filename }) => {
+  ipcMain.handle('read-file', async (_, { filename }) => {
     const fullPath = path.join(APP_DATA_DIR, filename)
-    return fs.readFile(fullPath)
+    try {
+      return await fs.readFile(fullPath)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
+      throw err
+    }
   })
   ipcMain.handle('exists-file', (_, { filename }) => {
     return fs

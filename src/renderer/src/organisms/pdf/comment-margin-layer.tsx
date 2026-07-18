@@ -58,7 +58,7 @@ function HighlightGutterSlot({
   return (
     <div
       ref={slotRef}
-      className="absolute left-0 pointer-events-auto right-2"
+      className="absolute left-2 pointer-events-auto right-0"
       style={{ top, zIndex: index + 1 }}
       data-gutter-highlight-id={highlight.id}
       data-gutter-anchor-top={anchorTop}
@@ -207,7 +207,7 @@ export default function CommentMarginLayer({
     <div
       className="absolute top-0 z-20 pointer-events-none"
       style={{
-        right: -COMMENT_GUTTER_WIDTH,
+        left: -COMMENT_GUTTER_WIDTH,
         width: COMMENT_GUTTER_WIDTH,
         height: '100%'
       }}

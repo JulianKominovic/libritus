@@ -9,12 +9,11 @@ import { LangProvider } from './i18n/lang-context'
 // import { scan } from "react-scan";
 // scan({ enabled: true });
 
-import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { GlobalWorkerOptions } from '@renderer/lib/pdf-canvas/pdfjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 
-// Set up the worker
 GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/legacy/build/pdf.worker.mjs',
+  'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
   import.meta.url
 ).toString()
 

@@ -13,60 +13,38 @@ Modern reading app designed to make reading simple, elegant, and enjoyable. Clea
 
 ![Screenshot 2025-09-16 at 8 42 44 PM](https://github.com/user-attachments/assets/f78e2349-2f89-4647-bba8-ec77fc49bb6e)
 
+## Infinite PDF canvas
+
+The PDF viewer is an **infinite canvas** (Excalidraw + native pdf.js): virtualized pages, free pan/zoom, and freeform annotations. Architecture, roadmap, and agent conventions:
+
+- [`AGENTS.md`](AGENTS.md) — operational ground truth for contributors and agents
+- [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md) — vision and optimal architecture
+- [`docs/roadmap.md`](docs/roadmap.md) — v1 → v2 path and legacy migration debt
+- [`docs/features/persistence-and-sessions.md`](docs/features/persistence-and-sessions.md)
+- [`docs/features/pdf-navigation.md`](docs/features/pdf-navigation.md)
+
+The previous lector-based vertical reader is deprecated as the main viewer (dependency may remain until leftover UI is cleaned up).
+
 ## Follow the journey!
 
-I will be uploading any progress in https://jkominovic.dev
+Progress notes: https://jkominovic.dev
 
 ## Development
-
-Install yalc and pnpm globally:
-
-```bash
-npm i yalc pnpm -g
-```
-
-Clone JulianKominovic/libritus and install dependencies:
 
 ```bash
 git clone git@github.com:JulianKominovic/libritus.git
 cd libritus
 bun install
-```
-
-Clone JulianKominovic/lector and build it:
-
-```bash
-git clone git@github.com:JulianKominovic/lector.git
-cd lector/packages/lector
-pnpm install
-pnpm build
-yalc publish
-cd ../../../
-yalc add @anaralabs/lector
-```
-
-Start the app (development):
-
-```bash
 bun run dev
 ```
 
-From here, if you want to make changes to the lector package and apply them to the app, you can run:
-
-```bash
-cd lector/packages/lector
-pnpm build
-yalc publish
-cd ../../../
-yalc update
-bun i
-```
-
-And the to build the app, you can run:
+Packaged mac build:
 
 ```bash
 bun run build:mac
 ```
+
+> **Note:** `@anaralabs/lector` may still appear in `package.json` for transitional code paths. The canvas viewer does not use it. Historical yalc/lector setup is no longer required to run the app for canvas work.
 
 ## Mascot
 

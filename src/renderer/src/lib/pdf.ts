@@ -1,5 +1,5 @@
 import chroma from 'chroma-js'
-import { getDocument } from 'pdfjs-dist'
+import { getDocument } from '@renderer/lib/pdf-canvas/pdfjs'
 import { getPaletteFromImageData } from './color-thief'
 
 /**
@@ -38,7 +38,7 @@ export async function getPdfMetadata(file: File): Promise<{
   hexColor: string
 }> {
   const pdfData = await file.arrayBuffer()
-  const pdfDoc = await getDocument(pdfData).promise
+  const pdfDoc = await getDocument({ data: pdfData }).promise
   const { info, metadata } = await pdfDoc.getMetadata()
   console.log(info, metadata)
   const title = (info as any).Title || file.name.replace(/\.[^/.]+$/, '')
@@ -55,11 +55,10 @@ export async function getPdfMetadata(file: File): Promise<{
   canvas.height = viewport.height
   canvas.width = viewport.width
   await firstPage.render({
-    canvasContext: canvasContext,
-    viewport: viewport,
+    canvasContext,
+    canvas,
+    viewport,
     transform: [1, 0, 0, 1, 0, 0],
-    // This prop exists in pdfjs-dist 5 not in 4.10.38
-    // canvas: canvas,
     background: '#fff'
   }).promise
   const thumbnail: Blob | null = await new Promise((resolve) => {
