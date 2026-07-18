@@ -1,6 +1,7 @@
-import type { SlateLeafProps, TCommentText } from 'platejs'
+import type { TCommentText } from 'platejs'
+import type { SlateLeafProps } from 'platejs/static'
 
-import { SlateLeaf } from 'platejs'
+import { SlateLeaf } from 'platejs/static'
 
 export function CommentLeafStatic(props: SlateLeafProps<TCommentText>) {
   return (

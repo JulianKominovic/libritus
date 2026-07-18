@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { createSlateEditor, serializeHtml } from 'platejs'
+import { createSlateEditor } from 'platejs'
+import { serializeHtml } from 'platejs/static'
 import { useEditorRef } from 'platejs/react'
 import * as React from 'react'
 

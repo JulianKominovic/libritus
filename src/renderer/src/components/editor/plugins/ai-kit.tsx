@@ -1,24 +1,32 @@
 'use client'
 
-import { streamInsertChunk, withAIBatch } from '@platejs/ai'
-import type { AIChatPluginConfig } from '@platejs/ai/react'
-import { AIChatPlugin, AIPlugin, useChatChunk } from '@platejs/ai/react'
-import type { UseChatOptions } from 'ai/react'
+import { withAIBatch } from '@platejs/ai'
+import { AIChatPlugin, AIPlugin, streamInsertChunk, useChatChunk } from '@platejs/ai/react'
 import { KEYS, PathApi, getPluginType } from 'platejs'
 import { usePluginOption } from 'platejs/react'
 
 import { AILoadingBar, AIMenu } from '@renderer/components/ui/ai-menu'
 import { AIAnchorElement, AILeaf } from '@renderer/components/ui/ai-node'
 
+import { useChat } from '@renderer/components/editor/use-chat'
+
 import { CursorOverlayKit } from './cursor-overlay-kit'
 import { MarkdownKit } from './markdown-kit'
+
+/** Custom options used by use-chat / settings (not in AIChatPlugin base types). */
+export type AiChatCustomOptions = {
+  chatOptions: {
+    api?: string
+    body?: Record<string, unknown>
+  }
+}
 
 export const aiChatPlugin = AIChatPlugin.extend({
   options: {
     chatOptions: {
       api: '/api/ai/command',
       body: {}
-    } as UseChatOptions,
+    },
     promptTemplate: ({ isBlockSelecting, isSelecting }) => {
       return isBlockSelecting
         ? PROMPT_TEMPLATES.userBlockSelecting
@@ -33,7 +41,7 @@ export const aiChatPlugin = AIChatPlugin.extend({
           ? PROMPT_TEMPLATES.systemSelecting
           : PROMPT_TEMPLATES.systemDefault
     }
-  },
+  } as never,
   render: {
     afterContainer: AILoadingBar,
     afterEditable: AIMenu,
@@ -41,7 +49,9 @@ export const aiChatPlugin = AIChatPlugin.extend({
   },
   shortcuts: { show: { keys: 'mod+j' } },
   useHooks: ({ editor, getOption }) => {
-    const mode = usePluginOption({ key: KEYS.aiChat } as AIChatPluginConfig, 'mode')
+    useChat()
+
+    const mode = usePluginOption(AIChatPlugin, 'mode')
 
     useChatChunk({
       onChunk: ({ chunk, isFirst, nodes }) => {

@@ -13,7 +13,7 @@ North star for migrating Libritus from the classic lector viewer to a scalable i
 - Session autosave: `{pdfId}.session.json` (elements + camera).
 - Keep existing categories library / upload / Electron FS.
 
-**Explicitly deferred in v1:** legacy highlight margin UI, essays tab on the old sheet, outline/search chrome, Wikipedia selection menu, removing `@anaralabs/lector` from dependencies.
+**Explicitly deferred in v1:** outline/search chrome; reintroducing essays as a canvas HUD (legacy essays UI removed with lector).
 
 Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
@@ -56,11 +56,9 @@ Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 ## Migration debt (from lector era)
 
-These still exist in the codebase / `categories.json` but are **not** wired into the canvas MVP:
+Legacy shapes may still appear in `categories.json` but are **not** written by the canvas MVP:
 
-- `Pdf.highlights` / comments / margin layout (`comment-margin-layer`, `custom-highlight-layer`)
-- Essays (Plate) on the PDF sheet
-- Lector `Root` / `Pages` / selection menu / floating zoom controls
+- `Pdf.highlights` / comments / essays (typed in the store for load/display/mentions; migration to session/canonical model is v1.1)
 - Progress as scroll `offset` (replaced by session camera for canvas)
 
 Plan: treat session JSON as the write path for new annotations; one-shot or lazy migrate legacy highlights when touching a document in v1.1.

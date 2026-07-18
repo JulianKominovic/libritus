@@ -1,7 +1,9 @@
-import type { SlateElementProps, TMentionElement } from 'platejs'
-import { KEYS, SlateElement } from 'platejs'
+import type { TMentionElement } from 'platejs'
+import type { SlateElementProps } from 'platejs/static'
+import { KEYS } from 'platejs'
+import { SlateElement } from 'platejs/static'
 
-import { usePdfJump } from '@anaralabs/lector'
+import { jumpToActivePdfPage } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { cn } from '@renderer/lib/utils'
 import { usePdfs } from '@renderer/stores/categories'
 import { useLocation } from 'wouter'
@@ -29,7 +31,6 @@ export function MentionElementStatic(
   const highlight = pdf?.highlights?.find((h) => h.id === parsedKey?.highlightId)
   const essay = pdf?.essays?.find((e) => e.id === parsedKey?.essayId)
   const [, navigate] = useLocation()
-  const { jumpToPage } = usePdfJump()
   return (
     <SlateElement
       {...props}
@@ -44,8 +45,12 @@ export function MentionElementStatic(
         'data-link': element.key,
         'data-slate-value': element.value,
         onClick: () => {
-          if (page && pdf && category) return jumpToPage(page)
-          if (pdf && category) return navigate(`/category/${category?.id}/${pdf.id}`)
+          if (page && pdf && category) {
+            navigate(`/category/${category.id}/${pdf.id}`)
+            jumpToActivePdfPage(page)
+            return
+          }
+          if (pdf && category) return navigate(`/category/${category.id}/${pdf.id}`)
           if (category) return navigate(`/category/${category.id}`)
         }
       }}

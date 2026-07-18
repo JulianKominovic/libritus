@@ -1,236 +1,118 @@
 'use client'
 
-import type { AutoformatRule } from '@platejs/autoformat'
-
 import {
-  AutoformatPlugin,
-  autoformatArrow,
-  autoformatLegal,
-  autoformatLegalHtml,
-  autoformatMath,
-  autoformatPunctuation,
-  autoformatSmartQuotes
-} from '@platejs/autoformat'
-import { insertEmptyCodeBlock } from '@platejs/code-block'
-import { toggleList } from '@platejs/list'
-import { KEYS } from 'platejs'
+  BlockquoteRules,
+  BoldRules,
+  CodeRules,
+  HeadingRules,
+  HighlightRules,
+  HorizontalRuleRules,
+  ItalicRules,
+  MarkComboRules,
+  StrikethroughRules,
+  SubscriptRules,
+  SuperscriptRules,
+  UnderlineRules
+} from '@platejs/basic-nodes'
+import {
+  BlockquotePlugin,
+  BoldPlugin,
+  CodePlugin,
+  H1Plugin,
+  H2Plugin,
+  H3Plugin,
+  H4Plugin,
+  H5Plugin,
+  H6Plugin,
+  HighlightPlugin,
+  HorizontalRulePlugin,
+  ItalicPlugin,
+  StrikethroughPlugin,
+  SubscriptPlugin,
+  SuperscriptPlugin,
+  UnderlinePlugin
+} from '@platejs/basic-nodes/react'
+import { CodeBlockRules } from '@platejs/code-block'
+import { CodeBlockPlugin } from '@platejs/code-block/react'
+import { BulletedListRules, OrderedListRules, TaskListRules } from '@platejs/list'
+import { ListPlugin } from '@platejs/list/react'
+import { createSlatePlugin, createTextSubstitutionInputRule, KEYS } from 'platejs'
 
-const autoformatMarks: AutoformatRule[] = [
-  {
-    match: '***',
-    mode: 'mark',
-    type: [KEYS.bold, KEYS.italic]
-  },
-  {
-    match: '__*',
-    mode: 'mark',
-    type: [KEYS.underline, KEYS.italic]
-  },
-  {
-    match: '__**',
-    mode: 'mark',
-    type: [KEYS.underline, KEYS.bold]
-  },
-  {
-    match: '___***',
-    mode: 'mark',
-    type: [KEYS.underline, KEYS.bold, KEYS.italic]
-  },
-  {
-    match: '**',
-    mode: 'mark',
-    type: KEYS.bold
-  },
-  {
-    match: '__',
-    mode: 'mark',
-    type: KEYS.underline
-  },
-  {
-    match: '*',
-    mode: 'mark',
-    type: KEYS.italic
-  },
-  {
-    match: '_',
-    mode: 'mark',
-    type: KEYS.italic
-  },
-  {
-    match: '~~',
-    mode: 'mark',
-    type: KEYS.strikethrough
-  },
-  {
-    match: '^',
-    mode: 'mark',
-    type: KEYS.sup
-  },
-  {
-    match: '~',
-    mode: 'mark',
-    type: KEYS.sub
-  },
-  {
-    match: '==',
-    mode: 'mark',
-    type: KEYS.highlight
-  },
-  {
-    match: '≡',
-    mode: 'mark',
-    type: KEYS.highlight
-  },
-  {
-    match: '`',
-    mode: 'mark',
-    type: KEYS.code
-  }
-]
+const notInCodeBlock = ({
+  editor
+}: {
+  editor: { api: { some: (o: object) => boolean }; getType: (k: string) => string }
+}) =>
+  !editor.api.some({
+    match: { type: editor.getType(KEYS.codeBlock) }
+  })
 
-const autoformatBlocks: AutoformatRule[] = [
-  {
-    match: '# ',
-    mode: 'block',
-    type: KEYS.h1
-  },
-  {
-    match: '## ',
-    mode: 'block',
-    type: KEYS.h2
-  },
-  {
-    match: '### ',
-    mode: 'block',
-    type: KEYS.h3
-  },
-  {
-    match: '#### ',
-    mode: 'block',
-    type: KEYS.h4
-  },
-  {
-    match: '##### ',
-    mode: 'block',
-    type: KEYS.h5
-  },
-  {
-    match: '###### ',
-    mode: 'block',
-    type: KEYS.h6
-  },
-  {
-    match: '> ',
-    mode: 'block',
-    type: KEYS.blockquote
-  },
-  {
-    match: '```',
-    mode: 'block',
-    type: KEYS.codeBlock,
-    format: (editor) => {
-      insertEmptyCodeBlock(editor, {
-        defaultType: KEYS.p,
-        insertNodesOptions: { select: true }
-      })
-    }
-  },
-  // {
-  //   match: '+ ',
-  //   mode: 'block',
-  //   preFormat: openNextToggles,
-  //   type: KEYS.toggle,
-  // },
-  {
-    match: ['---', '—-', '___ '],
-    mode: 'block',
-    type: KEYS.hr,
-    format: (editor) => {
-      editor.tf.setNodes({ type: KEYS.hr })
-      editor.tf.insertNodes({
-        children: [{ text: '' }],
-        type: KEYS.p
-      })
-    }
-  }
-]
-
-const autoformatLists: AutoformatRule[] = [
-  {
-    match: ['* ', '- '],
-    mode: 'block',
-    type: 'list',
-    format: (editor) => {
-      toggleList(editor, {
-        listStyleType: KEYS.ul
-      })
-    }
-  },
-  {
-    match: [String.raw`^\d+\.$ `, String.raw`^\d+\)$ `],
-    matchByRegex: true,
-    mode: 'block',
-    type: 'list',
-    format: (editor, { matchString }) => {
-      toggleList(editor, {
-        listRestartPolite: Number(matchString) || 1,
-        listStyleType: KEYS.ol
-      })
-    }
-  },
-  {
-    match: ['[] '],
-    mode: 'block',
-    type: 'list',
-    format: (editor) => {
-      toggleList(editor, {
-        listStyleType: KEYS.listTodo
-      })
-      editor.tf.setNodes({
-        checked: false,
-        listStyleType: KEYS.listTodo
-      })
-    }
-  },
-  {
-    match: ['[x] '],
-    mode: 'block',
-    type: 'list',
-    format: (editor) => {
-      toggleList(editor, {
-        listStyleType: KEYS.listTodo
-      })
-      editor.tf.setNodes({
-        checked: true,
-        listStyleType: KEYS.listTodo
-      })
-    }
-  }
-]
+// ponytail: text substitutions + markdown inputRules on feature plugins (Plate 53 AutoformatPlugin is inert)
+const TextSubstitutionPlugin = createSlatePlugin({
+  key: 'textSubstitution',
+  inputRules: [
+    createTextSubstitutionInputRule({
+      patterns: [
+        { match: '--', trigger: '-', format: '—' },
+        { match: '...', trigger: '.', format: '…' },
+        { match: '->', trigger: '>', format: '→' },
+        { match: '<-', trigger: '-', format: '←' },
+        { match: '!=', trigger: '=', format: '≠' },
+        { match: '<=', trigger: '=', format: '≤' },
+        { match: '>=', trigger: '=', format: '≥' }
+      ]
+    })
+  ]
+})
 
 export const AutoformatKit = [
-  AutoformatPlugin.configure({
-    options: {
-      enableUndoOnDelete: true,
-      rules: [
-        ...autoformatBlocks,
-        ...autoformatMarks,
-        ...autoformatSmartQuotes,
-        ...autoformatPunctuation,
-        ...autoformatLegal,
-        ...autoformatLegalHtml,
-        ...autoformatArrow,
-        ...autoformatMath,
-        ...autoformatLists
-      ].map(
-        (rule): AutoformatRule => ({
-          ...rule,
-          query: (editor) =>
-            !editor.api.some({
-              match: { type: editor.getType(KEYS.codeBlock) }
-            })
-        })
-      )
-    }
+  TextSubstitutionPlugin,
+  BoldPlugin.configure({
+    inputRules: [
+      BoldRules.markdown({ enabled: notInCodeBlock }),
+      MarkComboRules.markdown({ variant: 'boldItalic', enabled: notInCodeBlock }),
+      MarkComboRules.markdown({ variant: 'boldUnderline', enabled: notInCodeBlock }),
+      MarkComboRules.markdown({ variant: 'boldItalicUnderline', enabled: notInCodeBlock }),
+      MarkComboRules.markdown({ variant: 'italicUnderline', enabled: notInCodeBlock })
+    ]
+  }),
+  ItalicPlugin.configure({ inputRules: [ItalicRules.markdown({ enabled: notInCodeBlock })] }),
+  UnderlinePlugin.configure({
+    inputRules: [UnderlineRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  StrikethroughPlugin.configure({
+    inputRules: [StrikethroughRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  CodePlugin.configure({ inputRules: [CodeRules.markdown({ enabled: notInCodeBlock })] }),
+  HighlightPlugin.configure({
+    inputRules: [HighlightRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  SubscriptPlugin.configure({
+    inputRules: [SubscriptRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  SuperscriptPlugin.configure({
+    inputRules: [SuperscriptRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  H1Plugin.configure({ inputRules: [HeadingRules.markdown({ enabled: notInCodeBlock })] }),
+  H2Plugin.configure({ inputRules: [HeadingRules.markdown({ enabled: notInCodeBlock })] }),
+  H3Plugin.configure({ inputRules: [HeadingRules.markdown({ enabled: notInCodeBlock })] }),
+  H4Plugin.configure({ inputRules: [HeadingRules.markdown({ enabled: notInCodeBlock })] }),
+  H5Plugin.configure({ inputRules: [HeadingRules.markdown({ enabled: notInCodeBlock })] }),
+  H6Plugin.configure({ inputRules: [HeadingRules.markdown({ enabled: notInCodeBlock })] }),
+  BlockquotePlugin.configure({
+    inputRules: [BlockquoteRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  HorizontalRulePlugin.configure({
+    inputRules: [HorizontalRuleRules.markdown({ enabled: notInCodeBlock })]
+  }),
+  CodeBlockPlugin.configure({
+    inputRules: [CodeBlockRules.markdown({ on: 'match', enabled: notInCodeBlock })]
+  }),
+  ListPlugin.configure({
+    inputRules: [
+      BulletedListRules.markdown({ enabled: notInCodeBlock }),
+      OrderedListRules.markdown({ enabled: notInCodeBlock }),
+      TaskListRules.markdown({ enabled: notInCodeBlock })
+    ]
   })
 ]

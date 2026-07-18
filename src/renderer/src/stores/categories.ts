@@ -1,8 +1,17 @@
-import type { HighlightRect } from '@anaralabs/lector'
 import { readFile, writeFile } from '@renderer/integrations/fs'
 import { getPdfMetadata } from '@renderer/lib/pdf'
 import type { IconName } from 'lucide-react/dynamic'
 import { create } from 'zustand'
+
+/** Legacy highlight geometry from categories.json (lector-era). */
+export type HighlightRect = {
+  pageNumber: number
+  top: number
+  left: number
+  height: number
+  width: number
+  type?: 'pixels' | 'percent'
+}
 
 export enum HighlightColorEnum {
   Fuchsia = 0,
@@ -85,42 +94,6 @@ export type PdfsStore = {
   movePdf: (pdfId: string, destinationCategoryId: string) => Promise<void>
   updateCategory: (categoryId: string, category: Partial<Category>) => Promise<void>
   deleteCategory: (categoryId: string) => Promise<void>
-  addHighlightToPdf: (
-    categoryId: string,
-    pdfId: string,
-    highlight: NonNullable<Pdf['highlights']>[0]
-  ) => Promise<void>
-  removeHighlightFromPdf: (categoryId: string, pdfId: string, highlightId: string) => Promise<void>
-  updateHighlight: (
-    categoryId: string,
-    pdfId: string,
-    highlightId: string,
-    highlight: Partial<NonNullable<Pdf['highlights']>[0]>
-  ) => Promise<void>
-  addCommentToHighlight: (
-    categoryId: string,
-    pdfId: string,
-    highlightId: string,
-    comment: NonNullable<NonNullable<Pdf['highlights']>[0]['comments']>[0]
-  ) => Promise<void>
-  deleteCommentFromHighlight: (
-    categoryId: string,
-    pdfId: string,
-    highlightId: string,
-    commentId: string
-  ) => Promise<void>
-  createEssay: (
-    categoryId: string,
-    pdfId: string,
-    essay: NonNullable<Pdf['essays']>[0]
-  ) => Promise<void>
-  updateEssay: (
-    categoryId: string,
-    pdfId: string,
-    essayId: string,
-    essay: Partial<NonNullable<Pdf['essays']>[0]>
-  ) => Promise<void>
-  deleteEssay: (categoryId: string, pdfId: string, essayId: string) => Promise<void>
 }
 
 export const usePdfs = create<PdfsStore>((set, get) => ({
@@ -273,187 +246,6 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
   deleteCategory: async (categoryId: string) => {
     if (categoryId === 'default') return
     const categories = [...get().categories].filter((cat) => cat.id !== categoryId)
-    await get().setCategories(categories)
-  },
-  addHighlightToPdf: async (
-    categoryId: string,
-    pdfId: string,
-    highlight: NonNullable<Pdf['highlights']>[0]
-  ) => {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) => {
-            if (pdf.id === pdfId) {
-              return {
-                ...pdf,
-                highlights: [...(pdf.highlights || []), highlight]
-              }
-            }
-            return pdf
-          })
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  removeHighlightFromPdf: async (categoryId: string, pdfId: string, highlightId: string) => {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) => {
-            if (pdf.id === pdfId) {
-              return {
-                ...pdf,
-                highlights: pdf.highlights?.filter((h) => h.id !== highlightId)
-              }
-            }
-            return pdf
-          })
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  updateHighlight: async (
-    categoryId: string,
-    pdfId: string,
-    highlightId: string,
-    highlight: Partial<NonNullable<Pdf['highlights']>[0]>
-  ) => {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) => {
-            if (pdf.id === pdfId) {
-              return {
-                ...pdf,
-                highlights: (pdf.highlights || []).map((h) =>
-                  h.id === highlightId
-                    ? { ...h, ...highlight, updatedAt: new Date().toISOString() }
-                    : h
-                )
-              }
-            }
-            return pdf
-          })
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  addCommentToHighlight: async (
-    categoryId: string,
-    pdfId: string,
-    highlightId: string,
-    comment: NonNullable<NonNullable<Pdf['highlights']>[0]['comments']>[0]
-  ) => {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) => {
-            if (pdf.id === pdfId) {
-              return {
-                ...pdf,
-                highlights: pdf.highlights?.map((h) =>
-                  h.id === highlightId ? { ...h, comments: [...(h.comments || []), comment] } : h
-                )
-              }
-            }
-            return pdf
-          })
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  deleteCommentFromHighlight: async (
-    categoryId: string,
-    pdfId: string,
-    highlightId: string,
-    commentId: string
-  ) => {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) => {
-            if (pdf.id === pdfId) {
-              return {
-                ...pdf,
-                highlights: pdf.highlights?.map((h) =>
-                  h.id === highlightId
-                    ? {
-                        ...h,
-                        comments: h.comments?.filter((c) => c.id !== commentId)
-                      }
-                    : h
-                )
-              }
-            }
-            return pdf
-          })
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  async createEssay(categoryId, pdfId, essay) {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) =>
-            pdf.id === pdfId ? { ...pdf, essays: [essay, ...(pdf.essays || [])] } : pdf
-          )
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  async deleteEssay(categoryId, pdfId, essayId) {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) =>
-            pdf.id === pdfId ? { ...pdf, essays: pdf.essays?.filter((e) => e.id !== essayId) } : pdf
-          )
-        }
-      }
-      return cat
-    })
-    await get().setCategories(categories)
-  },
-  async updateEssay(categoryId, pdfId, essayId, essay) {
-    const categories = [...get().categories].map((cat) => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          pdfs: cat.pdfs.map((pdf) =>
-            pdf.id === pdfId
-              ? {
-                  ...pdf,
-                  essays: pdf.essays?.map((e) =>
-                    e.id === essayId ? { ...e, ...essay, updatedAt: new Date().toISOString() } : e
-                  )
-                }
-              : pdf
-          )
-        }
-      }
-      return cat
-    })
     await get().setCategories(categories)
   }
 }))

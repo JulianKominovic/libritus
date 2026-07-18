@@ -1,7 +1,7 @@
 import { DynamicIcon } from 'lucide-react/dynamic'
 
-import type { SlateElementProps } from 'platejs'
-import { SlateElement } from 'platejs'
+import type { SlateElementProps } from 'platejs/static'
+import { SlateElement } from 'platejs/static'
 
 export function ToggleElementStatic(props: SlateElementProps) {
   return (

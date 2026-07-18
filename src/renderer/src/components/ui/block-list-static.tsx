@@ -1,5 +1,6 @@
 import { isOrderedList } from '@platejs/list'
-import type { RenderStaticNodeWrapper, SlateRenderElementProps, TListElement } from 'platejs'
+import type { RenderStaticNodeWrapper, TListElement } from 'platejs'
+import type { SlateRenderElementProps } from 'platejs/static'
 import type * as React from 'react'
 
 import { cn } from '@renderer/lib/utils'

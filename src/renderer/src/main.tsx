@@ -5,10 +5,6 @@ import { Router } from 'wouter'
 import { useBrowserLocation } from 'wouter/use-browser-location'
 import App from './App'
 import { LangProvider } from './i18n/lang-context'
-
-// import { scan } from "react-scan";
-// scan({ enabled: true });
-
 import { GlobalWorkerOptions } from '@renderer/lib/pdf-canvas/pdfjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 

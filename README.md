@@ -23,7 +23,7 @@ The PDF viewer is an **infinite canvas** (Excalidraw + native pdf.js): virtualiz
 - [`docs/features/persistence-and-sessions.md`](docs/features/persistence-and-sessions.md)
 - [`docs/features/pdf-navigation.md`](docs/features/pdf-navigation.md)
 
-The previous lector-based vertical reader is deprecated as the main viewer (dependency may remain until leftover UI is cleaned up).
+The previous lector-based vertical reader has been removed; the canvas viewer is the only PDF path.
 
 ## Follow the journey!
 
@@ -43,8 +43,6 @@ Packaged mac build:
 ```bash
 bun run build:mac
 ```
-
-> **Note:** `@anaralabs/lector` may still appear in `package.json` for transitional code paths. The canvas viewer does not use it. Historical yalc/lector setup is no longer required to run the app for canvas work.
 
 ## Mascot
 

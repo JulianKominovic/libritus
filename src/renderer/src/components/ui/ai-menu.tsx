@@ -2,7 +2,6 @@
 
 import { AIChatPlugin, AIPlugin, useEditorChat, useLastAssistantMessage } from '@platejs/ai/react'
 import { BlockSelectionPlugin, useIsSelecting } from '@platejs/selection/react'
-import { useChat } from '@renderer/components/editor/use-chat'
 import { Button } from '@renderer/components/ui/button'
 import { Command, CommandGroup, CommandItem, CommandList } from '@renderer/components/ui/command'
 import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
@@ -30,13 +29,13 @@ export function AIMenu() {
   const isFocusedLast = useFocusedLast()
   const open = usePluginOption(AIChatPlugin, 'open') && isFocusedLast
   const [value, setValue] = React.useState('')
+  const [input, setInput] = React.useState('')
 
-  const chat = useChat()
-
-  const { input = '', messages, setInput = () => {}, status } = chat
+  const chat = usePluginOption(AIChatPlugin, 'chat')
+  const { messages, status } = chat
   const [anchorElement, setAnchorElement] = React.useState<HTMLElement | null>(null)
 
-  const content = useLastAssistantMessage()?.content
+  const content = useLastAssistantMessage()?.parts.find((part) => part.type === 'text')?.text
 
   React.useEffect(() => {
     if (streaming) {
@@ -91,7 +90,8 @@ export function AIMenu() {
     api.aiChat.stop()
 
     // remove when you implement the route /api/ai/command
-    chat._abortFakeStream()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(chat as any)._abortFakeStream?.()
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -144,7 +144,8 @@ export function AIMenu() {
                 }
                 if (isHotkey('enter')(e) && !e.shiftKey && !value) {
                   e.preventDefault()
-                  void api.aiChat.submit()
+                  void api.aiChat.submit(input)
+                  setInput('')
                 }
               }}
               onValueChange={setInput}
@@ -156,7 +157,7 @@ export function AIMenu() {
 
           {!isLoading && (
             <CommandList>
-              <AIMenuItems setValue={setValue} />
+              <AIMenuItems input={input} setInput={setInput} setValue={setValue} />
             </CommandList>
           )}
         </Command>
@@ -185,14 +186,14 @@ const aiChatItems = {
     icon: <DynamicIcon name="pen-line" />,
     label: 'Continue writing',
     value: 'continueWrite',
-    onSelect: ({ editor }) => {
+    onSelect: ({ editor, input }) => {
       const ancestorNode = editor.api.block({ highest: true })
 
       if (!ancestorNode) return
 
       const isEmpty = NodeApi.string(ancestorNode[0]).trim().length === 0
 
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
         prompt: isEmpty
           ? `<Document>
@@ -217,8 +218,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="smile" />,
     label: 'Emojify',
     value: 'emojify',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Emojify'
       })
     }
@@ -227,8 +228,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="badge-help" />,
     label: 'Explain',
     value: 'explain',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: {
           default: 'Explain {editor}',
           selecting: 'Explain'
@@ -240,8 +241,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="check" />,
     label: 'Fix spelling & grammar',
     value: 'fixSpelling',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Fix spelling and grammar'
       })
     }
@@ -250,8 +251,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="book-open-check" />,
     label: 'Generate Markdown sample',
     value: 'generateMarkdownSample',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Generate a markdown sample'
       })
     }
@@ -260,8 +261,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="book-open-check" />,
     label: 'Generate MDX sample',
     value: 'generateMdxSample',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Generate a mdx sample'
       })
     }
@@ -270,8 +271,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="wand" />,
     label: 'Improve writing',
     value: 'improveWriting',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Improve the writing'
       })
     }
@@ -289,8 +290,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="list-plus" />,
     label: 'Make longer',
     value: 'makeLonger',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Make longer'
       })
     }
@@ -299,8 +300,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="list-minus" />,
     label: 'Make shorter',
     value: 'makeShorter',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Make shorter'
       })
     }
@@ -317,8 +318,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="feather" />,
     label: 'Simplify language',
     value: 'simplifyLanguage',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Simplify the language'
       })
     }
@@ -327,8 +328,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <DynamicIcon name="album" />,
     label: 'Add a summary',
     value: 'summarize',
-    onSelect: ({ editor }) => {
-      void editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
         prompt: {
           default: 'Summarize {editor}',
@@ -355,7 +356,15 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     filterItems?: boolean
     items?: { label: string; value: string }[]
     shortcut?: string
-    onSelect?: ({ aiEditor, editor }: { aiEditor: SlateEditor; editor: PlateEditor }) => void
+    onSelect?: ({
+      aiEditor,
+      editor,
+      input
+    }: {
+      aiEditor: SlateEditor
+      editor: PlateEditor
+      input: string
+    }) => void
   }
 >
 
@@ -406,7 +415,15 @@ const menuStateItems: Record<
   ]
 }
 
-export const AIMenuItems = ({ setValue }: { setValue: (value: string) => void }) => {
+export const AIMenuItems = ({
+  input,
+  setInput,
+  setValue
+}: {
+  input: string
+  setInput: (value: string) => void
+  setValue: (value: string) => void
+}) => {
   const editor = useEditorRef()
   const { messages } = usePluginOption(AIChatPlugin, 'chat')
   const aiEditor = usePluginOption(AIChatPlugin, 'aiEditor')!
@@ -444,8 +461,10 @@ export const AIMenuItems = ({ setValue }: { setValue: (value: string) => void })
               onSelect={() => {
                 menuItem.onSelect?.({
                   aiEditor,
-                  editor: editor
+                  editor,
+                  input
                 })
+                setInput('')
               }}
             >
               {menuItem.icon}

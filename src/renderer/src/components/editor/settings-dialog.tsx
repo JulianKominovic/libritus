@@ -58,15 +58,16 @@ export function SettingsDialog() {
     e.preventDefault()
 
     // Update AI chat options
-    const chatOptions = editor.getOptions(aiChatPlugin).chatOptions ?? {}
-    editor.setOption(aiChatPlugin, 'chatOptions', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chatOptions = (editor.getOptions(aiChatPlugin) as any).chatOptions ?? {}
+    editor.setOption(aiChatPlugin, 'chatOptions' as never, {
       ...chatOptions,
       body: {
         ...chatOptions.body,
         apiKey: tempKeys.openai,
         model: tempModel.value
       }
-    })
+    } as never)
 
     setOpen(false)
 

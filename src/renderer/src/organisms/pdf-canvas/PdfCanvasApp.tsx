@@ -6,6 +6,7 @@ import {
 } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI, NormalizedZoomValue } from '@excalidraw/excalidraw/types'
 import { readFile } from '@renderer/integrations/fs'
+import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { PageLayout, worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
@@ -792,6 +793,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     },
     [goToPage]
   )
+
+  useEffect(() => {
+    setActivePageJump(goToPage1Based)
+    return () => setActivePageJump(null)
+  }, [goToPage1Based])
 
   const goPrevPage = useCallback(() => {
     const pageIndex0 = currentPageRef.current - 1
