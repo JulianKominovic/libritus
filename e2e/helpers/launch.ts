@@ -11,11 +11,16 @@ function electronExecutable(): string {
   return require('electron') as string
 }
 
+export type CloseOpts = {
+  /** Keep appDataDir on disk (for quit-flush reopen). Default deletes it. */
+  keepAppData?: boolean
+}
+
 export type LaunchedApp = {
   app: ElectronApplication
   page: Page
   appDataDir: string
-  close: () => Promise<void>
+  close: (opts?: CloseOpts) => Promise<void>
 }
 
 export async function launchApp(opts?: { appDataDir?: string }): Promise<LaunchedApp> {
@@ -40,9 +45,11 @@ export async function launchApp(opts?: { appDataDir?: string }): Promise<Launche
     app,
     page,
     appDataDir,
-    close: async () => {
+    close: async (closeOpts?: CloseOpts) => {
       await app.close().catch(() => undefined)
-      await rm(appDataDir, { recursive: true, force: true }).catch(() => undefined)
+      if (!closeOpts?.keepAppData) {
+        await rm(appDataDir, { recursive: true, force: true }).catch(() => undefined)
+      }
     }
   }
 }

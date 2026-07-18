@@ -14,6 +14,30 @@ export type SeedLibraryOpts = {
   pages?: number
 }
 
+function pdfEntry(
+  pdfId: string,
+  pages: number,
+  now: string,
+  name = 'Sample'
+): Record<string, unknown> {
+  return {
+    id: pdfId,
+    name,
+    filename: `${pdfId}.pdf`,
+    src: `${pdfId}.pdf`,
+    size: 869,
+    createdAt: now,
+    updatedAt: now,
+    pages,
+    thumbnail: '',
+    author: '',
+    hexColor: '#ffffff',
+    creationDate: null,
+    modificationDate: null,
+    progress: { percentage: 0, pages: 0, offset: 0 }
+  }
+}
+
 export async function seedLibrary(opts: SeedLibraryOpts): Promise<{
   categoryId: string
   pdfId: string
@@ -37,27 +61,36 @@ export async function seedLibrary(opts: SeedLibraryOpts): Promise<{
       updatedAt: now,
       icon: 'circle-dot',
       color: '#555',
-      pdfs: [
-        {
-          id: pdfId,
-          name: 'Sample',
-          filename: `${pdfId}.pdf`,
-          src: `${pdfId}.pdf`,
-          size: 869,
-          createdAt: now,
-          updatedAt: now,
-          pages,
-          thumbnail: '',
-          author: '',
-          hexColor: '#ffffff',
-          creationDate: null,
-          modificationDate: null,
-          progress: { percentage: 0, pages: 0, offset: 0 }
-        }
-      ]
+      pdfs: [pdfEntry(pdfId, pages, now)]
     }
   ]
   await writeFile(path.join(opts.appDataDir, 'categories.json'), JSON.stringify(categories))
+  return { categoryId, pdfId }
+}
+
+/** Append another PDF to an existing seeded category (does not overwrite catalog). */
+export async function seedExtraPdf(opts: SeedLibraryOpts & { categoryId: string }): Promise<{
+  categoryId: string
+  pdfId: string
+}> {
+  const categoryId = opts.categoryId
+  const pdfId = opts.pdfId ?? `e2e-pdf-${Date.now()}`
+  const pages = opts.pages ?? 1
+  const fixture =
+    opts.pdfFixture ?? path.join(process.cwd(), 'e2e/fixtures/sample.pdf')
+
+  await copyFile(fixture, path.join(opts.appDataDir, `${pdfId}.pdf`))
+
+  const catPath = path.join(opts.appDataDir, 'categories.json')
+  const categories = JSON.parse(await readFile(catPath, 'utf8')) as Array<{
+    id: string
+    pdfs: Record<string, unknown>[]
+  }>
+  const cat = categories.find((c) => c.id === categoryId)
+  if (!cat) throw new Error(`category ${categoryId} not found`)
+  const now = new Date().toISOString()
+  cat.pdfs.push(pdfEntry(pdfId, pages, now, opts.pdfId ?? 'Sample B'))
+  await writeFile(catPath, JSON.stringify(categories))
   return { categoryId, pdfId }
 }
 
@@ -84,7 +117,8 @@ export async function readSessionFile(
   }
 }
 
-export async function openPdf(
+/** Client-side navigate to PDF route (does not wait for canvas ready). */
+export async function navigatePdf(
   page: Page,
   categoryId: string,
   pdfId: string
@@ -96,6 +130,14 @@ export async function openPdf(
     },
     { categoryId, pdfId }
   )
+}
+
+export async function openPdf(
+  page: Page,
+  categoryId: string,
+  pdfId: string
+): Promise<void> {
+  await navigatePdf(page, categoryId, pdfId)
   await page.getByLabel('Current page').waitFor({ state: 'visible', timeout: 60_000 })
 }
 

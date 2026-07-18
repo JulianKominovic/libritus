@@ -4,6 +4,14 @@ import path from 'node:path'
 import type { Page } from 'playwright'
 import { expect } from '@playwright/test'
 
+export async function expectUnsaved(page: Page): Promise<void> {
+  await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
+}
+
+export async function expectSaved(page: Page): Promise<void> {
+  await expect(page.getByText('Saved')).toBeVisible({ timeout: 15_000 })
+}
+
 /** Click Home breadcrumb (triggers flushActiveSession before navigate). */
 export async function leaveToHome(page: Page): Promise<void> {
   const home = page.getByRole('link', { name: 'Home' }).first()

@@ -1,4 +1,3 @@
-import { viewportCoordsToSceneCoords } from '@excalidraw/excalidraw'
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
 import type { AppState } from '@excalidraw/excalidraw/types'
 import { mergeSameLineRects } from './mergeSameLineRects'
@@ -12,6 +11,18 @@ const HIGHLIGHT_FILL = '#FF00FF'
 const HIGHLIGHT_OPACITY = 20
 
 type SceneViewport = Pick<AppState, 'zoom' | 'offsetLeft' | 'offsetTop' | 'scrollX' | 'scrollY'>
+
+/** Same formula as Excalidraw `viewportCoordsToSceneCoords` (kept local for unit tests). */
+export function clientToSceneCoords(
+  clientX: number,
+  clientY: number,
+  appState: SceneViewport
+): { x: number; y: number } {
+  return {
+    x: (clientX - appState.offsetLeft) / appState.zoom.value - appState.scrollX,
+    y: (clientY - appState.offsetTop) / appState.zoom.value - appState.scrollY
+  }
+}
 
 /**
  * Convert the current browser text selection into Excalidraw rectangle
@@ -36,14 +47,8 @@ export function selectionToHighlightSkeletons(
   const skeletons: ExcalidrawElementSkeleton[] = []
 
   for (const box of lineBoxes) {
-    const topLeft = viewportCoordsToSceneCoords(
-      { clientX: box.left, clientY: box.top },
-      appState
-    )
-    const bottomRight = viewportCoordsToSceneCoords(
-      { clientX: box.right, clientY: box.bottom },
-      appState
-    )
+    const topLeft = clientToSceneCoords(box.left, box.top, appState)
+    const bottomRight = clientToSceneCoords(box.right, box.bottom, appState)
 
     const width = bottomRight.x - topLeft.x
     const height = bottomRight.y - topLeft.y

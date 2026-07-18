@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { clickScene, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas } from './helpers/canvas'
+import { clickScene, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas, expectUnsaved } from './helpers/canvas'
 import {
   openPdf,
   readSessionFile,
@@ -36,13 +36,15 @@ test('place note selects without entering edit; Escape leaves edit', async () =>
     await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0)
 
-    // Double-click existing note → edit → Escape
+    // Double-click existing note → edit → Escape (dispatch on window: note stops keydown bubble)
     const noteText = page.getByText('editable note').first()
     const box = await noteText.boundingBox()
     if (!box) throw new Error('note text not laid out')
     await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(1, { timeout: 5_000 })
-    await page.keyboard.press('Escape')
+    await page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
   } finally {
     await close()
@@ -156,6 +158,60 @@ test('Add note from highlight writes elbow arrow unbound at start', async () => 
     expect(arrow.elbowed).toBe(true)
     expect(arrow.startBinding).toBeFalsy()
     expect(arrow.endBinding?.elementId).toBe(note.id)
+  } finally {
+    await close()
+  }
+})
+
+test('edit note persists plateValue in session after flush', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-plate-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const unique = `plate-persist-${Date.now()}`
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [seedNoteElement({ id: 'edit-persist', x: 200, y: 150, text: 'before edit' })]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await expect(page.getByText('before edit')).toBeVisible({ timeout: 30_000 })
+
+    const noteText = page.getByText('before edit').first()
+    const box = await noteText.boundingBox()
+    if (!box) throw new Error('note text not laid out')
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(1, { timeout: 5_000 })
+    // NoteLayer places caret asynchronously after mount — wait before typing
+    await page.waitForTimeout(400)
+
+    const editable = page.locator('[contenteditable="true"]').first()
+    await editable.click()
+    await page.keyboard.press('ControlOrMeta+A')
+    await editable.pressSequentially(unique, { delay: 20 })
+    await expect(editable).toContainText(unique, { timeout: 5_000 })
+
+    // Exit edit via window Escape (note HUD stops keydown bubble from keyboard.press)
+    await page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => JSON.stringify(s.elements ?? []).includes(unique)
+    )
+    expect(JSON.stringify(snap.elements)).toContain(unique)
   } finally {
     await close()
   }

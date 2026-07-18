@@ -30,6 +30,7 @@ import {
   writeSession
 } from '@renderer/lib/pdf-canvas/session'
 import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
+import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
@@ -450,7 +451,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
       try {
         const [bytes, snapshot] = await Promise.all([readFile(`${pdfId}.pdf`), readSession(pdfId)])
-        if (cancelled || generation !== openGenerationRef.current) return
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
 
         if (!bytes) {
           setLoadError('PDF file not found')
@@ -464,7 +465,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         ) as ArrayBuffer
 
         const doc = await PdfDocument.open(ab)
-        if (cancelled || generation !== openGenerationRef.current) {
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
           await doc.destroy()
           return
         }
@@ -510,7 +511,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           await new Promise<void>((resolve) => {
             let tries = 0
             const tick = () => {
-              if (cancelled || generation !== openGenerationRef.current) {
+              if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
                 resolve()
                 return
               }
@@ -524,12 +525,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           })
         }
 
-        if (cancelled || generation !== openGenerationRef.current) return
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
 
         await new Promise<void>((resolve) => {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         })
-        if (cancelled || generation !== openGenerationRef.current) return
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
 
         restoringRef.current = false
         readyRef.current = true

@@ -61,6 +61,15 @@ describe('PageLayout', () => {
     expect(layout.pageIndexAtWorldPoint(0, p1.y + 5)).toBe(1)
   })
 
+  test('scrollForPageCenter returns null for out-of-range index', () => {
+    const camera = {
+      zoom: 1,
+      viewportHeight: 200
+    }
+    expect(layout.scrollForPageCenter(-1, camera)).toBeNull()
+    expect(layout.scrollForPageCenter(99, camera)).toBeNull()
+  })
+
   test('empty layout returns null', () => {
     const empty = new PageLayout([])
     expect(empty.pageIndexAtWorldPoint(0, 0)).toBeNull()

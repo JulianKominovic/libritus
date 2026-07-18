@@ -23,3 +23,35 @@ test('opens seeded PDF and shows page navigator', async () => {
     await close()
   }
 })
+
+test('prev / next / jump navigate multi-page PDF', async () => {
+  const appDataDir = await mkdtemp(path.join(tmpdir(), 'libritus-e2e-nav-'))
+  const { categoryId, pdfId } = await seedLibrary({
+    appDataDir,
+    pdfFixture: path.join(process.cwd(), 'e2e/fixtures/sample-2p.pdf'),
+    pages: 2
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+
+    const current = page.getByLabel('Current page')
+    await expect(current).toHaveValue('1')
+
+    await page.getByLabel('Next page').click()
+    await expect(current).toHaveValue('2', { timeout: 10_000 })
+
+    await page.getByLabel('Previous page').click()
+    await expect(current).toHaveValue('1', { timeout: 10_000 })
+
+    await current.fill('2')
+    await current.press('Enter')
+    await expect(current).toHaveValue('2', { timeout: 10_000 })
+  } finally {
+    await close()
+  }
+})

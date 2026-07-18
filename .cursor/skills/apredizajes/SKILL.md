@@ -117,3 +117,14 @@ El agente perdió tiempo con z-index / poner el HUD debajo de Excalidraw. Eso no
 - Placeholder con fill sólido (`#fff3bf` / `NOTE_FILL`), nunca `transparent`.
 - HUD encima con `pointer-events-none` (+ `[&_*]:pointer-events-none` en reposo; `pointer-events` no se hereda).
 - Parchear notas legacy al abrir sesión (`ensureNoteFill`).
+
+### E2E Plate note: Escape / type race
+
+#### Descripción más detallada
+
+`NoteLayer` hace `stopPropagation` en `keydown` del HUD, así que `page.keyboard.press('Escape')` **no** llega al listener de `window` en `PdfCanvasApp`. Además, tras dblclick, el effect de caret de `NoteEditableBody` corre async y pisa el selection si se tipeá al toque → texto mangled (`beforlate-persist…`).
+
+#### Corrección
+
+- Escape en e2e: `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`.
+- Tras abrir edit: esperar ~400ms, luego `ControlOrMeta+A` + `pressSequentially`.

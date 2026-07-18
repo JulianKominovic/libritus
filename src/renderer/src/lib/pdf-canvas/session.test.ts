@@ -34,4 +34,10 @@ describe('parseSessionSnapshot', () => {
     expect(parseSessionSnapshot(null)).toBeNull()
     expect(parseSessionSnapshot('oops')).toBeNull()
   })
+
+  test('rejects missing or non-string docId', () => {
+    const { docId: _, ...rest } = valid
+    expect(parseSessionSnapshot(rest)).toBeNull()
+    expect(parseSessionSnapshot({ ...valid, docId: 42 })).toBeNull()
+  })
 })
