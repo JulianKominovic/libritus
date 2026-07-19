@@ -70,6 +70,14 @@ describe('PageLayout', () => {
     expect(layout.scrollForPageCenter(99, camera)).toBeNull()
   })
 
+  test('scrollForWorldY centers world Y in viewport', () => {
+    const camera = { zoom: 1, viewportHeight: 200 }
+    const jump = layout.scrollForWorldY(150, camera)
+    expect(jump.scrollY).toBe(-150 + 100)
+    const zoomed = layout.scrollForWorldY(150, { zoom: 2, viewportHeight: 200 })
+    expect(zoomed.scrollY).toBe(-150 + 50)
+  })
+
   test('empty layout returns null', () => {
     const empty = new PageLayout([])
     expect(empty.pageIndexAtWorldPoint(0, 0)).toBeNull()

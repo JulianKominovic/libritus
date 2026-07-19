@@ -140,6 +140,20 @@ export class PageLayout {
 			scrollY: -pageCenterY + camera.viewportHeight / (2 * z),
 		};
 	}
+
+	/**
+	 * Target scrollY to vertically center an arbitrary world Y
+	 * (keeps caller responsible for scrollX / zoom).
+	 */
+	scrollForWorldY(
+		worldY: number,
+		camera: Pick<CameraState, "zoom" | "viewportHeight">,
+	): { scrollY: number } {
+		const z = camera.zoom || 1;
+		return {
+			scrollY: -worldY + camera.viewportHeight / (2 * z),
+		};
+	}
 }
 
 export function worldAABBFromCamera(

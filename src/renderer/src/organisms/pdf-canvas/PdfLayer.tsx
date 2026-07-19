@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
+import type { SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import { visibilityBuffer } from '@renderer/lib/pdf-canvas/visibilityBuffer'
 import type { PagePool, PageSlot } from '@renderer/lib/pdf-canvas/PagePool'
 import type { TextLayerPool, TextLayerSlot } from '@renderer/lib/pdf-canvas/TextLayerPool'
@@ -15,6 +16,8 @@ import type { CameraState, PageRect } from '@renderer/lib/pdf-canvas/types'
 
 export type PdfLayerHandle = {
 	applyCamera: (camera: CameraState) => void;
+	/** Ephemeral search hit in page space; painted under the world camera transform. */
+	setSearchHit: (hit: SearchMatch | null) => void;
 };
 
 type PdfLayerProps = {
@@ -118,6 +121,7 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 		const [, setTick] = useState(0);
 
 		const worldDivRef = useRef<HTMLDivElement>(null);
+		const hitHostRef = useRef<HTMLDivElement>(null);
 		const visibleRef = useRef<number[]>([]);
 		const syncGenRef = useRef(0);
 		const lastCameraRef = useRef<CameraState | null>(null);
@@ -171,7 +175,34 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 			})();
 		}, []);
 
-		useImperativeHandle(ref, () => ({ applyCamera }), [applyCamera]);
+		const setSearchHit = useCallback((hit: SearchMatch | null) => {
+			const host = hitHostRef.current;
+			if (!host) return;
+			host.replaceChildren();
+			if (!hit) return;
+
+			const page = layoutRef.current.pages[hit.pageIndex];
+			if (!page) return;
+
+			for (const rect of hit.rects) {
+				const el = document.createElement("div");
+				el.dataset.testid = "pdf-search-hit";
+				el.style.position = "absolute";
+				el.style.left = `${page.x + rect.x}px`;
+				el.style.top = `${page.y + rect.y}px`;
+				el.style.width = `${rect.width}px`;
+				el.style.height = `${rect.height}px`;
+				el.style.backgroundColor = "rgba(255, 200, 0, 0.45)";
+				el.style.pointerEvents = "none";
+				host.appendChild(el);
+			}
+		}, []);
+
+		useImperativeHandle(
+			ref,
+			() => ({ applyCamera, setSearchHit }),
+			[applyCamera, setSearchHit],
+		);
 
 		useEffect(() => {
 			const unsubPool = pool.subscribe(() => setTick((t) => t + 1));
@@ -217,6 +248,10 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 							/>
 						);
 					})}
+					<div
+						ref={hitHostRef}
+						className="pointer-events-none absolute left-0 top-0 h-0 w-0 overflow-visible"
+					/>
 				</div>
 			</div>
 		);

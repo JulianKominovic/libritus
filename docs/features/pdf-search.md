@@ -2,7 +2,7 @@
 
 Find text inside the open PDF and jump the camera to matches.
 
-**Status:** planned.
+**Status:** implemented (`PdfFindBar` + `pdfSearch` + `PdfLayer.setSearchHit`, wired in `PdfCanvasApp`).
 
 ---
 
@@ -19,6 +19,7 @@ Out of scope (for now):
 - Regex / fuzzy search.
 - Searching note `plateValue` or freehand (see [`annotation-panel.md`](annotation-panel.md)).
 - Replacing text in the PDF.
+- Keyboard shortcut to open find (chrome **Search** toggle only for now).
 
 ---
 
@@ -26,24 +27,24 @@ Out of scope (for now):
 
 | Control | Behavior |
 |---------|----------|
-| **Search field** | Open via chrome (and later shortcut). Debounced query. |
+| **Search field** | Open via chrome **Search** button. Debounced query (~250ms). |
 | **Enter / ↓** | Next match. |
 | **⇧Enter / ↑** | Previous match. |
-| **Escape** | Clear active hit chrome; keep query or close panel (pick one in impl). |
-| **Empty / no hits** | Clear match chrome; show empty state, not an error. |
+| **Escape** | Close find bar and clear active hit. |
+| **Empty / no hits** | Clear match chrome; show `0/0`, not an error. |
 
-Position: overlay near existing nav (top) or a compact find bar — do not bury in Excalidraw’s menu.
+Position: compact find bar beside the bottom page navigator. Do not bury in Excalidraw’s menu.
 
-In `text-select-mode`, search chrome must keep `pointer-events-auto` like [`pdf-navigation.md`](pdf-navigation.md).
+In `text-select-mode`, search chrome keeps `pointer-events-auto` like [`pdf-navigation.md`](pdf-navigation.md).
 
 ---
 
 ## Model / approach
 
-- Source of truth for glyphs: pdf.js text content (`getTextContent` / existing text-layer path).
-- Prefer **lazy / incremental** index: search visible + nearby pages first, or build a page→string map on demand with a hard concurrency limit.
-- Match = `{ pageIndex, rects[] }` in **page space** when possible (aligns with [`page-space-annotations.md`](page-space-annotations.md)); paint overlay in scene/screen via the same camera transform as `PdfLayer`.
-- Jump: reuse `PageLayout` camera helpers (`scrollForPageCenter` / rect-aware scroll). Do not invent a second navigator.
+- Source of truth for glyphs: pdf.js text content (`getTextContent`).
+- **Lazy / incremental** index: `PdfTextSearch` caches page→extracted text on demand with concurrency 2; results stay in refs, not React state.
+- Match = `{ pageIndex, rects[] }` in **page space**; painted via `PdfLayer.setSearchHit` under the same camera transform as pages.
+- Jump: `PageLayout.scrollForWorldY` + Excalidraw `scrollY` only (stable X / zoom).
 
 ---
 
@@ -58,8 +59,9 @@ In `text-select-mode`, search chrome must keep `pointer-events-auto` like [`pdf-
 
 ---
 
-## Closed decisions (draft)
+## Closed decisions
 
 1. Per-open-PDF only.
 2. Camera jump + ephemeral hit overlay; do not create Excalidraw elements for matches.
 3. UI match count is 1-based; `pageIndex` stays 0-based internally.
+4. Escape closes the find bar (does not keep a closed panel with lingering query chrome).

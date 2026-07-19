@@ -36,6 +36,7 @@ Guiding principle:
 | WYSIWYG notes (Plate + `pdfNote` embeddable) | `NoteEmbed`, `pdfNotes`, `pdfNoteModel` |
 | Freehand / shapes / undo | Excalidraw built-in |
 | Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |
+| PDF text search (find bar + jump + hit overlay) | `PdfFindBar`, `pdfSearch`, `PdfLayer.setSearchHit`, `PdfCanvasApp` |
 
 ### Pending / roadmap
 
@@ -98,9 +99,9 @@ src/renderer/src/
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md).
 
-Feature docs (planned): [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`annotation-polish`](docs/features/annotation-polish.md), [`page-space-annotations`](docs/features/page-space-annotations.md), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md).
+Feature docs (planned): [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`annotation-polish`](docs/features/annotation-polish.md), [`page-space-annotations`](docs/features/page-space-annotations.md), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md).
 
 ### Flow
 
@@ -213,7 +214,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `visibilityBuffer`. E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `highlights.spec` (text-select + zoom≠1 + Remove + leave flush), `autosave.spec` (debounce 5s), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`.
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `visibilityBuffer`, `pdfSearch`. E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `highlights.spec` (text-select + zoom≠1 + Remove + leave flush), `autosave.spec` (debounce 5s), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`.
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

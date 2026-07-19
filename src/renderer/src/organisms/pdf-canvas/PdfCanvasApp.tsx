@@ -48,6 +48,7 @@ import {
 import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
 import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
+import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
 import type { Value } from 'platejs'
@@ -55,6 +56,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import { NoteEmbed } from './NoteEmbed'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
+import { PdfFindBar, type PdfFindBarHandle } from './PdfFindBar'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 
 import '@excalidraw/excalidraw/index.css'
@@ -113,6 +115,7 @@ function syncReadingProgress(categoryId: string, pdfId: string, pages: number, t
  * - textSelectMode: CSS pass-through + PdfLayer prop + listeners
  * - saveStatus: persistence chip
  * - place-note mode chip
+ * - find bar open
  *
  * Everything else (camera, page, highlight chip) is ref + DOM.
  * Notes: Excalidraw embeddable + renderEmbeddable (no parallel HUD).
@@ -125,6 +128,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const cameraRef = useRef<CameraState>(INITIAL_CAMERA)
   const pdfLayerRef = useRef<PdfLayerHandle>(null)
   const pageNavigatorRef = useRef<PageNavigatorHandle>(null)
+  const findBarRef = useRef<PdfFindBarHandle>(null)
+  const searcherRef = useRef<PdfTextSearch | null>(null)
+  const matchesRef = useRef<SearchMatch[]>([])
+  const matchIndexRef = useRef(-1)
+  const searchAbortRef = useRef<AbortController | null>(null)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const highlightToolbarRef = useRef<HTMLDivElement>(null)
   const activeHighlightIdRef = useRef<string | null>(null)
   const placeNoteModeRef = useRef(false)
@@ -145,6 +154,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
   const [placeNoteMode, setPlaceNoteMode] = useState(false)
+  const [findOpen, setFindOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -604,6 +614,30 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [categoryId, clearSaveTimer, pdfId])
 
   useEffect(() => {
+    if (!session) {
+      searchAbortRef.current?.abort()
+      searchAbortRef.current = null
+      searcherRef.current = null
+      matchesRef.current = []
+      matchIndexRef.current = -1
+      pdfLayerRef.current?.setSearchHit(null)
+      setFindOpen(false)
+      return
+    }
+    searcherRef.current = new PdfTextSearch(session.doc)
+    return () => {
+      searchAbortRef.current?.abort()
+      searchAbortRef.current = null
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+      searcherRef.current?.clear()
+      searcherRef.current = null
+      matchesRef.current = []
+      matchIndexRef.current = -1
+      pdfLayerRef.current?.setSearchHit(null)
+    }
+  }, [session])
+
+  useEffect(() => {
     if (!session) return
     pdfLayerRef.current?.applyCamera(cameraRef.current)
     const index = session.layout.pageIndexForCamera(cameraRef.current)
@@ -820,6 +854,112 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const pageIndex0 = currentPageRef.current - 1
     goToPage(pageIndex0 + 1)
   }, [goToPage])
+
+  const goToMatch = useCallback(
+    (index: number) => {
+      const matches = matchesRef.current
+      if (matches.length === 0) return
+
+      const i = ((index % matches.length) + matches.length) % matches.length
+      matchIndexRef.current = i
+      const hit = matches[i]!
+      findBarRef.current?.setMatchInfo(i + 1, matches.length)
+      pdfLayerRef.current?.setSearchHit(hit)
+
+      const layout = sessionRef.current?.layout
+      const api = apiRef.current
+      if (!layout || !api) return
+
+      const page = layout.pages[hit.pageIndex]
+      if (!page) return
+      const rect = hit.rects[0]
+      const worldY = rect
+        ? page.y + rect.y + rect.height / 2
+        : page.y + page.height / 2
+      const target = layout.scrollForWorldY(worldY, cameraRef.current)
+      pushCamera({ scrollY: target.scrollY })
+      api.updateScene({
+        appState: {
+          scrollY: target.scrollY
+        }
+      })
+      markUnsaved()
+    },
+    [markUnsaved, pushCamera]
+  )
+
+  const runSearch = useCallback(
+    (query: string) => {
+      searchAbortRef.current?.abort()
+      matchesRef.current = []
+      matchIndexRef.current = -1
+      pdfLayerRef.current?.setSearchHit(null)
+      findBarRef.current?.setMatchInfo(0, 0)
+
+      const searcher = searcherRef.current
+      if (!searcher || !query.trim()) return
+
+      const ac = new AbortController()
+      searchAbortRef.current = ac
+      let jumped = false
+
+      void searcher
+        .search(query, {
+          signal: ac.signal,
+          onProgress: ({ matches }) => {
+            matchesRef.current = matches
+            if (matches.length === 0) {
+              findBarRef.current?.setMatchInfo(0, 0)
+              return
+            }
+            if (!jumped) {
+              jumped = true
+              goToMatch(0)
+            } else {
+              findBarRef.current?.setMatchInfo(matchIndexRef.current + 1, matches.length)
+            }
+          }
+        })
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          console.error(err)
+        })
+    },
+    [goToMatch]
+  )
+
+  const handleFindQueryChange = useCallback(
+    (query: string) => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+      searchDebounceRef.current = setTimeout(() => runSearch(query), 250)
+    },
+    [runSearch]
+  )
+
+  const closeFind = useCallback(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchAbortRef.current?.abort()
+    searchAbortRef.current = null
+    matchesRef.current = []
+    matchIndexRef.current = -1
+    pdfLayerRef.current?.setSearchHit(null)
+    setFindOpen(false)
+  }, [])
+
+  const toggleFind = useCallback(() => {
+    setFindOpen((prev) => {
+      if (prev) {
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+        searchAbortRef.current?.abort()
+        searchAbortRef.current = null
+        matchesRef.current = []
+        matchIndexRef.current = -1
+        pdfLayerRef.current?.setSearchHit(null)
+        return false
+      }
+      return true
+    })
+  }, [])
 
   const handlePointerDown = useCallback(
     (_activeTool: unknown, pointerDownState: { origin: { x: number; y: number } }) => {
@@ -1108,7 +1248,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       </div>
 
       {session && pageCount > 0 ? (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 z-100 -translate-x-1/2">
+        <div className="pointer-events-none absolute bottom-3 left-1/2 z-100 flex -translate-x-1/2 items-center gap-2">
           <PageNavigator
             ref={pageNavigatorRef}
             pageCount={pageCount}
@@ -1117,6 +1257,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             onPrev={goPrevPage}
             onNext={goNextPage}
           />
+          {findOpen ? (
+            <PdfFindBar
+              ref={findBarRef}
+              onQueryChange={handleFindQueryChange}
+              onNext={() => goToMatch(matchIndexRef.current + 1)}
+              onPrev={() => goToMatch(matchIndexRef.current - 1)}
+              onClose={closeFind}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -1136,6 +1285,19 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       </div>
 
       <div className="pointer-events-auto absolute bottom-16 right-4 z-100 flex flex-col items-end gap-2">
+        <button
+          type="button"
+          aria-pressed={findOpen}
+          disabled={!session}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+            findOpen
+              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
+              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+          }`}
+          onClick={toggleFind}
+        >
+          Search
+        </button>
         <button
           type="button"
           aria-pressed={placeNoteMode}
