@@ -98,7 +98,9 @@ src/renderer/src/
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs: [`docs/features/wysiwyg-notes.md`](docs/features/wysiwyg-notes.md), [`docs/features/pdf-navigation.md`](docs/features/pdf-navigation.md), [`docs/features/persistence-and-sessions.md`](docs/features/persistence-and-sessions.md).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md).
+
+Feature docs (planned): [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`annotation-polish`](docs/features/annotation-polish.md), [`page-space-annotations`](docs/features/page-space-annotations.md), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md).
 
 ### Flow
 

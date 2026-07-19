@@ -21,12 +21,14 @@ Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 ## v1.1
 
+Feature specs (planned): [`pdf-search`](features/pdf-search.md) · [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md) · [`annotation-panel`](features/annotation-panel.md) · [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`annotation-polish`](features/annotation-polish.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
+
 | Item | Notes |
 |------|--------|
-| Canonical annotation model | `pageIndex` + page-space geometry; Excalidraw remains paint layer |
+| Canonical annotation model | `pageIndex` + page-space geometry; Excalidraw remains paint layer — [`page-space-annotations.md`](features/page-space-annotations.md) |
 | Stable page-anchored highlights | Bridge toward non-Excalidraw renderer |
-| Migrate legacy data | Map old `categories.json` highlights/comments into canvas session or canonical store |
-| Essays / outline | Reintroduce as canvas HUD or side panels without lector |
+| Migrate legacy data | Map old `categories.json` highlights/comments into canvas session or canonical store — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md) |
+| Essays / outline | Reintroduce as canvas HUD or side panels without lector — [`essays-hud.md`](features/essays-hud.md), [`pdf-outline-and-thumbnails.md`](features/pdf-outline-and-thumbnails.md) |
 | Library polish | Optional `contentHash`, rename, reveal in Finder |
 
 ---
