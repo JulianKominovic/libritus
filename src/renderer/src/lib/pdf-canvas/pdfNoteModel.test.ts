@@ -5,6 +5,7 @@ import {
   findPdfNoteAt,
   getNotePlateValue,
   isPdfNote,
+  isPdfNoteCenterHit,
   plateValueFromQuote,
   queryVisibleNotes
 } from './pdfNoteModel'
@@ -94,5 +95,14 @@ describe('pdfNoteModel', () => {
     expect(findPdfNoteAt([a], 50, 50)?.id).toBe('a')
     expect(findPdfNoteAt([deleted, a], 50, 50)?.id).toBe('a')
     expect(findPdfNoteAt([a, b], 50, 50)?.id).toBe('b')
+  })
+
+  test('isPdfNoteCenterHit matches Excalidraw middle third', () => {
+    const note = fakeNote({ id: 'n', x: 0, y: 0, width: 300, height: 300 })
+    expect(isPdfNoteCenterHit(note, 150, 150)).toBe(true)
+    expect(isPdfNoteCenterHit(note, 50, 150)).toBe(false)
+    expect(isPdfNoteCenterHit(note, 150, 50)).toBe(false)
+    expect(isPdfNoteCenterHit(note, 100, 100)).toBe(true)
+    expect(isPdfNoteCenterHit(note, 99, 100)).toBe(false)
   })
 })

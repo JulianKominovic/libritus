@@ -4,7 +4,7 @@ import { Editor, EditorContainer } from '@renderer/components/ui/editor'
 import { EditorStatic } from '@renderer/components/ui/editor-static'
 import { createSlateEditor, type Value } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 
 type NoteEmbedProps = {
   noteId: string
@@ -105,8 +105,9 @@ function NoteEditableBody({
 /**
  * Plate content inside Excalidraw's embeddable container (scene-sized + CSS scale(zoom)).
  * Editing follows Excalidraw activeEmbeddable (click center to interact).
+ * memo: Excalidraw re-renders on every embed "hover" pointermove; skip Plate static.
  */
-export function NoteEmbed({
+export const NoteEmbed = memo(function NoteEmbed({
   noteId,
   plateValue,
   editing,
@@ -137,4 +138,4 @@ export function NoteEmbed({
       )}
     </div>
   )
-}
+})

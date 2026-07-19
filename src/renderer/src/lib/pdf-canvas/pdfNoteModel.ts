@@ -54,6 +54,23 @@ export function findPdfNoteAt(
   return hit
 }
 
+/**
+ * Excalidraw's embed "Click to interact" zone (middle third).
+ * Used to suppress hover setState spam without patching Excalidraw.
+ */
+export function isPdfNoteCenterHit(
+  el: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
+  sceneX: number,
+  sceneY: number
+): boolean {
+  return (
+    sceneX >= el.x + el.width / 3 &&
+    sceneX <= el.x + (2 * el.width) / 3 &&
+    sceneY >= el.y + el.height / 3 &&
+    sceneY <= el.y + (2 * el.height) / 3
+  )
+}
+
 /** Notes whose AABB intersects the viewport AABB (scene space). */
 export function queryVisibleNotes(
   elements: readonly OrderedExcalidrawElement[],

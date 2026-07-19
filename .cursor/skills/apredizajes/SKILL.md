@@ -235,3 +235,17 @@ Al arrastrar un PDF de la lista de categoría sobre otra categoría en la sideba
 #### Corrección
 
 Usar `classes.dropTarget` del Tree (la lib lo aplica solo con `isOver` live). No estilar con `isDropTarget`. E2E: hover → leave → up limpia `.sidebar-drop-target`; drop completo mueve el PDF.
+
+### Note hover: nunca patchear Excalidraw
+
+#### Descripción más detallada
+
+Hover sobre el tercio central de una nota (hint "Click to interact") dispara `setState(activeEmbeddable: hover)` en **cada** pointermove (Excalidraw 0.18.1, sin guard) → re-render completo + `onChange`.
+
+Early-return en `handleExcalidrawChange` + `React.memo(NoteEmbed)` cortan el amplificador de Libritus pero no el `setState` interno.
+
+**Regla dura:** nunca patchear Excalidraw. Ni `node_modules`, ni `patch-package` / postinstall, ni forks locales “solo este bug”, ni editar el bundle. Si el bug está adentro, se mitiga en el host (eventos, wrappers, props públicas) o se vive con él / se reporta upstream.
+
+#### Corrección
+
+En el host: capture `pointermove` sobre el wrapper de Excalidraw y `stopPropagation` cuando el cursor está en el tercio central de una pdf-note (misma geometría que Excalidraw), sin botones pulsados. Así el canvas no recibe esos moves → no hay hover setState. `pointerdown`/`up` siguen llegando (click-to-edit). Bordes siguen draggable.

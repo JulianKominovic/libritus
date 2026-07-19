@@ -18,3 +18,9 @@ Do not add dark: prefixes to any tailwind classes.
 # Always write code in english.
 
 Always write code in english no matter what language the user is using.
+
+# Never patch Excalidraw.
+
+- Do not edit `node_modules/@excalidraw/*`.
+- Do not use `patch-package`, postinstall patches, or local forks to “fix” Excalidraw bugs.
+- Mitigate in the host (event capture, wrappers, public API/props) or live with the limitation / report upstream.

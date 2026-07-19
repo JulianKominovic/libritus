@@ -183,6 +183,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 10. Code/comments in English; product docs may be Spanish.
 11. Minimal scope: no refactors or deps “because optimal asks for them” unless the task requires it.
 12. **Light mode only** — no `dark:` Tailwind prefixes.
+13. **Never patch Excalidraw** — no `node_modules` edits, `patch-package`, postinstall hacks, or local forks for bugs. Mitigate in the host (events, wrappers, public props) or live with it / upstream.
 
 ---
 

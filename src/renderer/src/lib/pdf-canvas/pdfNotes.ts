@@ -18,6 +18,7 @@ export {
   findPdfNoteAt,
   getNotePlateValue,
   isPdfNote,
+  isPdfNoteCenterHit,
   plateValueFromQuote,
   queryVisibleNotes,
   type PdfNoteData

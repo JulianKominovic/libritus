@@ -32,9 +32,11 @@ import {
   clearPdfNoteLinkForUi,
   createNoteFromHighlight,
   createWysiwygNote,
+  findPdfNoteAt,
   fixDuplicatedPdfNotes,
   getNotePlateValue,
   isPdfNote,
+  isPdfNoteCenterHit,
   normalizePdfNote,
   NOTE_EMBED_LINK,
   NOTE_HEIGHT,
@@ -45,6 +47,7 @@ import {
 import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import {
+  clientToSceneCoords,
   findPdfHighlightAt,
   selectionToHighlightSkeletons
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
@@ -148,6 +151,7 @@ function syncCanvasStats(
 export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [, setLocation] = useLocation()
   const containerRef = useRef<HTMLDivElement>(null)
+  const excalidrawHostRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<RuntimeSession | null>(null)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const cameraRef = useRef<CameraState>(INITIAL_CAMERA)
@@ -783,10 +787,20 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   )
 
   const handleExcalidrawChange = useCallback(
-    (_elements: unknown, _appState: unknown, files: BinaryFiles) => {
+    (
+      _elements: unknown,
+      appState: {
+        activeEmbeddable?: { element?: { id: string } | null; state: string } | null
+      },
+      files: BinaryFiles
+    ) => {
       if (files && Object.keys(files).length > 0) {
         void persistNewBinaryFiles(files, persistedAttachmentIdsRef.current)
       }
+      // Excalidraw setStates activeEmbeddable "hover" on every pointermove over the
+      // note center third (no equality guard) → onChange spam. Skip host work.
+      if (appState.activeEmbeddable?.state === 'hover') return
+
       if (!restoringRef.current) {
         const api = apiRef.current
         if (api) {
@@ -1305,6 +1319,33 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     return () => el.removeEventListener('wheel', onWheel)
   }, [textSelectMode])
 
+  // Excalidraw setStates activeEmbeddable "hover" on every pointermove over an
+  // embed center (no equality guard) → full App re-render. Stop those moves
+  // from reaching the canvas; pointerdown/up still activate click-to-edit.
+  // Skip while buttons down so edge-drag across the center keeps working.
+  useEffect(() => {
+    const host = excalidrawHostRef.current
+    if (!host) return
+
+    const onPointerMoveCapture = (event: PointerEvent) => {
+      if (event.buttons !== 0) return
+      if (event.altKey || event.shiftKey || event.metaKey || event.ctrlKey) return
+      const api = apiRef.current
+      if (!api) return
+      const appState = api.getAppState()
+      if (appState.activeEmbeddable?.state === 'active') return
+      const { x, y } = clientToSceneCoords(event.clientX, event.clientY, appState)
+      const note = findPdfNoteAt(api.getSceneElements(), x, y)
+      if (!note || note.locked) return
+      if (isPdfNoteCenterHit(note, x, y)) {
+        event.stopPropagation()
+      }
+    }
+
+    host.addEventListener('pointermove', onPointerMoveCapture, true)
+    return () => host.removeEventListener('pointermove', onPointerMoveCapture, true)
+  }, [])
+
   return (
     <div
       ref={containerRef}
@@ -1323,7 +1364,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         />
       ) : null}
 
-      <div className={`absolute inset-0 z-10${textSelectMode ? ' pointer-events-none' : ''}`}>
+      <div
+        ref={excalidrawHostRef}
+        className={`absolute inset-0 z-10${textSelectMode ? ' pointer-events-none' : ''}`}
+      >
         <Excalidraw
           excalidrawAPI={(api) => {
             apiRef.current = api
