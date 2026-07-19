@@ -5,3 +5,4 @@ out
 .eslintcache
 *.log*
 test-results
+src/renderer/public/fonts

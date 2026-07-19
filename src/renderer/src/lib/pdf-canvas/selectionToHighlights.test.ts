@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
+import type { NormalizedZoomValue } from '@excalidraw/excalidraw/types'
 import { clientToSceneCoords, selectionToHighlightSkeletons } from './selectionToHighlights'
+
+const zoom = (value: number): { value: NormalizedZoomValue } => ({
+  value: value as NormalizedZoomValue
+})
 
 function mockSelection(clientRect: {
   left: number
@@ -37,7 +42,7 @@ const baseAppState = {
 describe('clientToSceneCoords', () => {
   test('divides by zoom and subtracts scroll', () => {
     expect(
-      clientToSceneCoords(100, 50, { ...baseAppState, zoom: { value: 2 }, scrollX: 10, scrollY: 5 })
+      clientToSceneCoords(100, 50, { ...baseAppState, zoom: zoom(2), scrollX: 10, scrollY: 5 })
     ).toEqual({ x: 40, y: 20 })
   })
 })
@@ -55,11 +60,11 @@ describe('selectionToHighlightSkeletons', () => {
 
     const at1 = selectionToHighlightSkeletons({
       ...baseAppState,
-      zoom: { value: 1 }
+      zoom: zoom(1)
     })
     const at2 = selectionToHighlightSkeletons({
       ...baseAppState,
-      zoom: { value: 2 }
+      zoom: zoom(2)
     })
 
     expect(at1).not.toBeNull()
@@ -100,7 +105,7 @@ describe('selectionToHighlightSkeletons', () => {
     expect(
       selectionToHighlightSkeletons({
         ...baseAppState,
-        zoom: { value: 1 }
+        zoom: zoom(1)
       })
     ).toBeNull()
   })

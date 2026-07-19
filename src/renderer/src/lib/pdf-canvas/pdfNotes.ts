@@ -94,6 +94,95 @@ export function clearPdfNoteLinkForUi(el: OrderedExcalidrawElement): OrderedExca
   >[1]) as OrderedExcalidrawElement
 }
 
+type ElementBinding = {
+  elementId: string
+  focus: number
+  gap: number
+  fixedPoint?: [number, number] | null
+}
+
+function remapBinding(
+  binding: ElementBinding | null | undefined,
+  idMap: Map<string, string>
+): ElementBinding | null | undefined {
+  if (!binding || !idMap.has(binding.elementId)) return binding
+  return { ...binding, elementId: idMap.get(binding.elementId)! }
+}
+
+function remapElementIds(
+  el: OrderedExcalidrawElement,
+  idMap: Map<string, string>
+): OrderedExcalidrawElement {
+  let next = el
+  if (el.boundElements?.length) {
+    const boundElements = el.boundElements.map((b) =>
+      idMap.has(b.id) ? { ...b, id: idMap.get(b.id)! } : b
+    )
+    if (boundElements.some((b, i) => b.id !== el.boundElements![i]!.id)) {
+      next = { ...next, boundElements }
+    }
+  }
+  if (el.type === 'arrow' || el.type === 'line') {
+    const startBinding = remapBinding(
+      (el as { startBinding?: ElementBinding | null }).startBinding,
+      idMap
+    )
+    const endBinding = remapBinding(
+      (el as { endBinding?: ElementBinding | null }).endBinding,
+      idMap
+    )
+    if (
+      startBinding !== (el as { startBinding?: ElementBinding | null }).startBinding ||
+      endBinding !== (el as { endBinding?: ElementBinding | null }).endBinding
+    ) {
+      next = { ...next, startBinding, endBinding } as OrderedExcalidrawElement
+    }
+  }
+  return next
+}
+
+/**
+ * Paste/Cmd+D of a stripped note keeps link:null. Excalidraw validates embeds once
+ * per id and short-circuits on falsy URL → permanent "Empty Web-Embed". Rematerialize
+ * unknown notes without NOTE_EMBED_LINK under a fresh id so validation can succeed.
+ */
+export function repairUnvalidatedPdfNotes(
+  elements: readonly OrderedExcalidrawElement[],
+  knownIds: ReadonlySet<string>
+): {
+  elements: OrderedExcalidrawElement[]
+  knownIds: Set<string>
+  changed: boolean
+} {
+  const nextKnown = new Set(knownIds)
+  const idMap = new Map<string, string>()
+
+  const withNotes = elements.map((el) => {
+    if (!isPdfNote(el) || el.isDeleted) return el
+    if (nextKnown.has(el.id)) return el
+
+    if (el.type === 'embeddable' && el.link === NOTE_EMBED_LINK) {
+      nextKnown.add(el.id)
+      return el
+    }
+
+    const freshId = crypto.randomUUID()
+    idMap.set(el.id, freshId)
+    nextKnown.add(freshId)
+    return normalizePdfNote({ ...el, id: freshId })
+  })
+
+  if (idMap.size === 0) {
+    return { elements: [...elements], knownIds: nextKnown, changed: false }
+  }
+
+  return {
+    elements: withNotes.map((el) => remapElementIds(el, idMap)),
+    knownIds: nextKnown,
+    changed: true
+  }
+}
+
 export function createWysiwygNote(opts: {
   x: number
   y: number

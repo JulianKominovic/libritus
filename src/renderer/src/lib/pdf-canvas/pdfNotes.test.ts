@@ -64,6 +64,7 @@ const {
   createNoteFromHighlight,
   createWysiwygNote,
   normalizePdfNote,
+  repairUnvalidatedPdfNotes,
   resolveNoteFill,
   withNotePlateValue
 } = await import('./pdfNotes')
@@ -273,5 +274,66 @@ describe('pdfNotes', () => {
     const next = withNotePlateValue(note, plateValueFromQuote('updated'))
     expect(isPdfNote(next)).toBe(true)
     expect(JSON.stringify(next.customData?.plateValue)).toContain('updated')
+  })
+
+  test('repairUnvalidatedPdfNotes rematerializes stripped-like unknown notes', () => {
+    const note = clearPdfNoteLinkForUi(createWysiwygNote({ x: 1, y: 2, id: 'pasted' }))
+    expect(note.link).toBeNull()
+
+    const { elements, knownIds, changed } = repairUnvalidatedPdfNotes([note], new Set())
+    expect(changed).toBe(true)
+    expect(elements).toHaveLength(1)
+    const fixed = elements[0]!
+    expect(fixed.id).not.toBe('pasted')
+    expect(fixed.link).toBe(NOTE_EMBED_LINK)
+    expect(fixed.x).toBe(1)
+    expect(fixed.y).toBe(2)
+    expect(knownIds.has(fixed.id)).toBe(true)
+    expect(knownIds.has('pasted')).toBe(false)
+  })
+
+  test('repairUnvalidatedPdfNotes leaves known stripped notes unchanged', () => {
+    const note = clearPdfNoteLinkForUi(createWysiwygNote({ x: 0, y: 0, id: 'known' }))
+    const known = new Set(['known'])
+    const { elements, knownIds, changed } = repairUnvalidatedPdfNotes([note], known)
+    expect(changed).toBe(false)
+    expect(elements[0]).toBe(note)
+    expect(elements[0]!.link).toBeNull()
+    expect(knownIds.has('known')).toBe(true)
+  })
+
+  test('repairUnvalidatedPdfNotes registers new notes that already have link', () => {
+    const note = createWysiwygNote({ x: 0, y: 0, id: 'fresh' })
+    const { elements, knownIds, changed } = repairUnvalidatedPdfNotes([note], new Set())
+    expect(changed).toBe(false)
+    expect(elements[0]).toBe(note)
+    expect(knownIds.has('fresh')).toBe(true)
+  })
+
+  test('repairUnvalidatedPdfNotes remaps arrow bindings to new note id', () => {
+    const note = clearPdfNoteLinkForUi(createWysiwygNote({ x: 0, y: 0, id: 'old-note' }))
+    const arrow = {
+      ...fakeHighlight({ id: 'arr-1' }),
+      type: 'arrow' as const,
+      locked: false,
+      customData: undefined,
+      startBinding: null,
+      endBinding: {
+        elementId: 'old-note',
+        focus: 0,
+        gap: 0,
+        fixedPoint: [0, 0.5] as [number, number]
+      },
+      boundElements: null
+    } as unknown as OrderedExcalidrawElement
+
+    const { elements, changed } = repairUnvalidatedPdfNotes([note, arrow], new Set())
+    expect(changed).toBe(true)
+    const fixedNote = elements.find((el) => isPdfNote(el))!
+    const fixedArrow = elements.find((el) => el.id === 'arr-1') as {
+      endBinding?: { elementId: string } | null
+    }
+    expect(fixedNote.id).not.toBe('old-note')
+    expect(fixedArrow.endBinding?.elementId).toBe(fixedNote.id)
   })
 })

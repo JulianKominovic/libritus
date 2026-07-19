@@ -30,6 +30,7 @@ import {
   NOTE_EMBED_LINK,
   NOTE_HEIGHT,
   NOTE_WIDTH,
+  repairUnvalidatedPdfNotes,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
 import {
@@ -136,6 +137,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const lastSavedSigRef = useRef('')
   const pendingSigRef = useRef('')
   const persistedAttachmentIdsRef = useRef(new Set<string>())
+  /** Note ids Excalidraw has already validated (may have link stripped for UI). */
+  const noteIdsRef = useRef(new Set<string>())
 
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
@@ -422,6 +425,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     lastSavedSigRef.current = ''
     pendingSigRef.current = ''
     persistedAttachmentIdsRef.current = new Set()
+    noteIdsRef.current = new Set()
     clearSaveTimer()
     syncSaveChip('saved')
     setLoadError(null)
@@ -518,6 +522,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         })
         if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
+
+        // Seed before strip so paste-repair won't rematerialize restored notes.
+        noteIdsRef.current = new Set(
+          elements.filter((el) => isPdfNote(el) && !el.isDeleted).map((el) => el.id)
+        )
 
         // Validate embeds (needs link) then clear so canvas link icon disappears.
         stripPdfNoteLinksAfterValidate()
@@ -667,9 +676,23 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (files && Object.keys(files).length > 0) {
         void persistNewBinaryFiles(files, persistedAttachmentIdsRef.current)
       }
+      if (!restoringRef.current) {
+        const api = apiRef.current
+        if (api) {
+          const repaired = repairUnvalidatedPdfNotes(api.getSceneElements(), noteIdsRef.current)
+          noteIdsRef.current = repaired.knownIds
+          if (repaired.changed) {
+            api.updateScene({
+              elements: repaired.elements,
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
+            queueStripPdfNoteLinks()
+          }
+        }
+      }
       markUnsaved()
     },
-    [markUnsaved]
+    [markUnsaved, queueStripPdfNoteLinks]
   )
 
   const toggleTextSelectMode = useCallback(() => {

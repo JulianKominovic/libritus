@@ -19,7 +19,10 @@ if (typeof globalThis.document === 'undefined') {
       append?: () => void
     }
     if (!el.style?.setProperty) {
-      el.style = { setProperty: () => undefined } as unknown as CSSStyleDeclaration
+      Object.defineProperty(el, 'style', {
+        value: { setProperty: () => undefined },
+        configurable: true
+      })
     }
     if (!el.replaceChildren) el.replaceChildren = () => undefined
     if (!el.append) el.append = () => undefined
