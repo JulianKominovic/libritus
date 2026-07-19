@@ -224,16 +224,38 @@ describe('pdfNotes', () => {
     expect(note.y).toBe(10 - NOTE_HEIGHT / 2)
     expect(note.backgroundColor).toBe(resolveNoteFill())
     expect(JSON.stringify(note.customData?.plateValue)).toContain('quoted text')
+    expect(note.customData?.sourceHighlightId).toBe('hl-1')
 
     const arrowBindings = arrow as {
       elbowed?: boolean
       startBinding?: { elementId: string } | null
-      endBinding?: { elementId: string } | null
+      endBinding?: { elementId: string; fixedPoint?: [number, number] } | null
     }
     expect(arrowBindings.elbowed).toBe(true)
     expect(arrowBindings.startBinding).toBeNull()
     expect(arrowBindings.endBinding?.elementId).toBe(note.id)
+    expect(arrowBindings.endBinding?.fixedPoint).toEqual([0, 0.5])
     expect(note.boundElements?.some((b) => b.id === arrow.id && b.type === 'arrow')).toBe(true)
+  })
+
+  test('createNoteFromHighlight: second note goes left', () => {
+    const highlight = fakeHighlight({ id: 'hl-2', x: 100, y: 0, width: 80, height: 20 })
+    const { newElements: first } = createNoteFromHighlight(highlight)
+    const { newElements: second } = createNoteFromHighlight(highlight, first)
+
+    const note = second.find((el) => isPdfNote(el))!
+    const arrow = second.find((el) => el.type === 'arrow')!
+    expect(note.x).toBe(100 - NOTE_GAP - NOTE_WIDTH)
+    expect(note.y).toBe(10 - NOTE_HEIGHT / 2)
+    expect(note.customData?.sourceHighlightId).toBe('hl-2')
+
+    const arrowBindings = arrow as {
+      x: number
+      endBinding?: { elementId: string; fixedPoint?: [number, number] } | null
+    }
+    expect(arrowBindings.x).toBe(100)
+    expect(arrowBindings.endBinding?.elementId).toBe(note.id)
+    expect(arrowBindings.endBinding?.fixedPoint).toEqual([1, 0.5])
   })
 
   test('createNoteFromHighlight empty quote uses empty plate', () => {

@@ -7,6 +7,8 @@ import type { Value } from 'platejs'
 export type PdfNoteData = {
   pdfNote: true
   plateValue: Value
+  /** Set when created via Add note from a highlight (for side alternation). */
+  sourceHighlightId?: string
 }
 
 export function emptyPlateValue(): Value {

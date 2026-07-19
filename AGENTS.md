@@ -32,7 +32,7 @@ Guiding principle:
 | “Select text” mode (pointer-events + manual wheel) | `PdfCanvasApp`, CSS |
 | Selection → locked Excalidraw highlights | `selectionToHighlights` |
 | Same-line rect dedupe | `mergeSameLineRects` |
-| Click highlight → “Add note” chip + bound arrow | `PdfCanvasApp`, `pdfNotes` |
+| Click highlight → “Add note” chip + bound arrow (alternates right/left) | `PdfCanvasApp`, `pdfNotes` |
 | WYSIWYG notes (Plate + `pdfNote` embeddable) | `NoteEmbed`, `pdfNotes`, `pdfNoteModel` |
 | Freehand / shapes / undo | Excalidraw built-in |
 | Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |

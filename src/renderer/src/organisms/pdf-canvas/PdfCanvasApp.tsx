@@ -17,21 +17,24 @@ import {
   createWysiwygNote,
   getNotePlateValue,
   isPdfNote,
+  normalizePdfNote,
   NOTE_EMBED_LINK,
   NOTE_HEIGHT,
   NOTE_WIDTH,
-  normalizePdfNote,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
-import { findPdfHighlightAt, selectionToHighlightSkeletons } from '@renderer/lib/pdf-canvas/selectionToHighlights'
+import {
+  findPdfHighlightAt,
+  selectionToHighlightSkeletons
+} from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
   readSession,
   type SaveStatus,
   type SessionSnapshot,
   writeSession
 } from '@renderer/lib/pdf-canvas/session'
-import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
 import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
+import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
@@ -49,7 +52,7 @@ import '@renderer/lib/pdf-canvas/textLayer.css'
 const INITIAL_CAMERA: CameraState = {
   scrollX: 100,
   scrollY: 60,
-  zoom: 1,
+  zoom: 2,
   viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1280,
   viewportHeight: typeof window !== 'undefined' ? window.innerHeight : 800
 }
@@ -259,8 +262,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     // (reference). Replacing elements must refresh that ref or toolbar clicks
     // fall through to the canvas and exit edit.
     const active = api.getAppState().activeEmbeddable
-    const activeId =
-      active?.state === 'active' ? active.element?.id ?? null : null
+    const activeId = active?.state === 'active' ? (active.element?.id ?? null) : null
     const activeEl = activeId ? next.find((el) => el.id === activeId) : null
     api.updateScene({
       elements: next,
@@ -451,9 +453,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         const zoom = (cam?.zoom ?? INITIAL_CAMERA.zoom) as NormalizedZoomValue
         const elements =
           snapshot?.elements && Array.isArray(snapshot.elements)
-            ? (
-                snapshot.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
-              ).map(normalizePdfNote)
+            ? (snapshot.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
+                normalizePdfNote
+              )
             : []
 
         restoringRef.current = true
@@ -531,8 +533,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     pdfId,
     pushCamera,
     stripPdfNoteLinksAfterValidate,
-    syncSaveChip,
-    pushCamera
+    syncSaveChip
   ])
 
   // Flush + tear down when leaving the route (sidebar nav, etc.).
@@ -709,8 +710,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (note.customData?.plateValue === value) return
       const updated = withNotePlateValue(note, value)
       const active = api.getAppState().activeEmbeddable
-      const keepEditing =
-        active?.state === 'active' && active.element?.id === noteId
+      const keepEditing = active?.state === 'active' && active.element?.id === noteId
       api.updateScene({
         elements: elements.map((el) => (el.id === noteId ? updated : el)),
         ...(keepEditing
@@ -823,10 +823,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const highlight = api.getSceneElements().find((el) => el.id === highlightId)
     if (!highlight) return
 
-    const { newElements } = createNoteFromHighlight(highlight)
+    const scene = api.getSceneElements()
+    const { newElements } = createNoteFromHighlight(highlight, scene)
 
     api.updateScene({
-      elements: [...api.getSceneElements(), ...newElements],
+      elements: [...scene, ...newElements],
       appState: {
         selectedElementIds: Object.fromEntries(
           newElements.filter((el) => isPdfNote(el)).map((el) => [el.id, true])
@@ -1014,7 +1015,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
       <div
         ref={highlightToolbarRef}
-        className="pointer-events-auto absolute z-[90] -translate-x-1/2 -translate-y-full"
+        className="pointer-events-auto absolute z-90 -translate-x-1/2 -translate-y-full"
         style={{ display: 'none' }}
       >
         <button
@@ -1027,7 +1028,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       </div>
 
       {session && pageCount > 0 ? (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 z-[100] -translate-x-1/2">
+        <div className="pointer-events-none absolute bottom-3 left-1/2 z-100 -translate-x-1/2">
           <PageNavigator
             ref={pageNavigatorRef}
             pageCount={pageCount}
@@ -1039,7 +1040,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         </div>
       ) : null}
 
-      <div className="pointer-events-none absolute right-3 top-3 z-[100]">
+      <div className="pointer-events-none absolute right-3 top-3 z-100">
         <span
           ref={saveChipRef}
           className={`rounded-md px-2 py-1 text-xs shadow ${
@@ -1054,7 +1055,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         </span>
       </div>
 
-      <div className="pointer-events-auto absolute bottom-16 right-4 z-[100] flex flex-col items-end gap-2">
+      <div className="pointer-events-auto absolute bottom-16 right-4 z-100 flex flex-col items-end gap-2">
         <button
           type="button"
           aria-pressed={placeNoteMode}
@@ -1084,13 +1085,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       </div>
 
       {loadError ? (
-        <div className="pointer-events-none absolute inset-0 z-[110] flex items-center justify-center bg-neutral-200/80">
+        <div className="pointer-events-none absolute inset-0 z-110 flex items-center justify-center bg-neutral-200/80">
           <p className="rounded-md bg-white px-4 py-2 text-sm text-red-700 shadow">{loadError}</p>
         </div>
       ) : null}
 
       {!session && !loadError ? (
-        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 z-5 flex items-center justify-center">
           <p className="text-sm text-neutral-500">Loading PDF…</p>
         </div>
       ) : null}

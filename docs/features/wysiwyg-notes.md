@@ -27,7 +27,7 @@ Out of scope (for now):
 | Action                     | Behavior                                                                                             |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | **Place note**             | Click canvas → create note centered on click; selected, not editing.                                 |
-| **Add note** (highlight)   | Creates note to the right + elbow arrow (start unbound, end bound to note).                          |
+| **Add note** (highlight)   | Creates note + elbow arrow (start unbound, end bound to note). 1st/3rd/… right of highlight; 2nd/4th/… left. |
 | **Edge / border drag**     | Excalidraw selection and move on the embeddable.                                                     |
 | **Click center**           | Activate embed → Plate editable (`activeEmbeddable`).                                                |
 | **Escape / click outside** | Leave edit mode (`activeEmbeddable` cleared). Toolbar clicks must **not** exit edit.                 |
@@ -50,6 +50,7 @@ Default note size: **320×240** (`NOTE_WIDTH` / `NOTE_HEIGHT`).
 | `link`                  | `libritus://pdf-note` (whitelist via `validateEmbeddable`; required once so Excalidraw accepts the embed)                                                                                                                                                                      |
 | `customData.pdfNote`    | `true`                                                                                                                                                                                                                                                                         |
 | `customData.plateValue` | Plate `Value` (JSON)                                                                                                                                                                                                                                                           |
+| `customData.sourceHighlightId` | Optional. Set by **Add note** to the highlight’s id; used to alternate placement side (odd → right, even → left).                                                                                                                          |
 | `backgroundColor`       | resolved `--color-morphing-50` via `resolveNoteFill()` (**solid** — required for hit-test; matches NoteEmbed `bg-morphing-50`; painted on Excalidraw canvas, not in the DOM). `NOTE_FILL` is the CSS token `var(--color-morphing-50, #ebebeb)` — do not pass it to Excalidraw. |
 | `strokeColor`           | `transparent` (`strokeWidth: 0` — visible chrome is `NoteEmbed`, not Excalidraw)                                                                                                                                                                                               |
 
@@ -106,6 +107,7 @@ Escape / click outside
 - Highlight stays `locked`.
 - Arrow: **no** `startBinding`; `endBinding` on note; `elbowed: true`.
 - Do not bind the start to the locked highlight.
+- Per highlight, notes alternate sides via `sourceHighlightId` count: 1st/3rd/… right (`fixedPoint [0, 0.5]`), 2nd/4th/… left (`fixedPoint [1, 0.5]`).
 
 ---
 

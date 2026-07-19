@@ -2,7 +2,13 @@ import { convertToExcalidrawElements, newElementWith } from '@excalidraw/excalid
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
-import { emptyPlateValue, isPdfNote, type PdfNoteData, plateValueFromQuote } from './pdfNoteModel'
+import {
+  emptyPlateValue,
+  getNotePlateValue,
+  isPdfNote,
+  type PdfNoteData,
+  plateValueFromQuote
+} from './pdfNoteModel'
 
 export {
   emptyPlateValue,
@@ -129,26 +135,42 @@ export function createWysiwygNote(opts: {
 /**
  * Sticky note + elbow arrow from highlight edge.
  * Start unbound (highlights are locked); end bound to the note.
+ * Odd notes (1st, 3rd…) go right; even (2nd, 4th…) go left.
  */
-export function createNoteFromHighlight(highlight: OrderedExcalidrawElement): {
+export function createNoteFromHighlight(
+  highlight: OrderedExcalidrawElement,
+  existingElements: readonly OrderedExcalidrawElement[] = []
+): {
   newElements: OrderedExcalidrawElement[]
 } {
   const quoted =
     typeof highlight.customData?.text === 'string' ? highlight.customData.text.trim() : ''
 
-  const startX = highlight.x + highlight.width
+  const prior = existingElements.filter(
+    (el) => isPdfNote(el) && el.customData?.sourceHighlightId === highlight.id
+  ).length
+  const side = prior % 2 === 0 ? 'right' : 'left'
+
   const startY = highlight.y + highlight.height / 2
-  const noteX = startX + NOTE_GAP
+  const startX = side === 'right' ? highlight.x + highlight.width : highlight.x
+  const noteX = side === 'right' ? startX + NOTE_GAP : startX - NOTE_GAP - NOTE_WIDTH
   const noteY = startY - NOTE_HEIGHT / 2
 
-  const note = createWysiwygNote({
+  const noteBase = createWysiwygNote({
     x: noteX,
     y: noteY,
     plateValue: plateValueFromQuote(quoted)
   })
 
-  const endX = note.x
-  const endY = note.y + note.height / 2
+  const noteData = {
+    pdfNote: true as const,
+    plateValue: getNotePlateValue(noteBase),
+    sourceHighlightId: highlight.id
+  } satisfies PdfNoteData
+
+  const endX = side === 'right' ? noteBase.x : noteBase.x + noteBase.width
+  const endY = noteBase.y + noteBase.height / 2
+  const fixedPoint: [number, number] = side === 'right' ? [0, 0.5] : [1, 0.5]
 
   const [arrow] = convertToExcalidrawElements([
     {
@@ -164,21 +186,27 @@ export function createNoteFromHighlight(highlight: OrderedExcalidrawElement): {
   ])
 
   if (!arrow || arrow.type !== 'arrow') {
-    return { newElements: [note] }
+    return {
+      newElements: [newElementWith(noteBase, { customData: noteData }) as OrderedExcalidrawElement]
+    }
   }
 
   const boundArrow = newElementWith(arrow, {
     startBinding: null,
     endBinding: {
-      elementId: note.id,
+      elementId: noteBase.id,
       focus: 0,
       gap: 0,
-      fixedPoint: [0, 0.5]
+      fixedPoint
     }
   } as Parameters<typeof newElementWith>[1])
 
-  const updatedNote = newElementWith(note, {
-    boundElements: [...(note.boundElements ?? []), { id: boundArrow.id, type: 'arrow' as const }]
+  const updatedNote = newElementWith(noteBase, {
+    boundElements: [
+      ...(noteBase.boundElements ?? []),
+      { id: boundArrow.id, type: 'arrow' as const }
+    ],
+    customData: noteData
   })
 
   return {
