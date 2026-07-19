@@ -220,3 +220,52 @@ test('edit note persists plateValue in session after flush', async () => {
     await close()
   }
 })
+
+test('note toolbar click keeps edit mode', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-toolbar-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const unique = `fmt-toolbar-${Date.now()}`
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [seedNoteElement({ id: 'toolbar-note', x: 200, y: 150, text: 'toolbar seed' })]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await expect(page.getByText('toolbar seed')).toBeVisible({ timeout: 30_000 })
+
+    await activateNoteEmbed(page, 'toolbar seed')
+    await page.waitForTimeout(400)
+
+    const boldBtn = page.getByTestId('note-toolbar-bold')
+    await expect(boldBtn).toBeVisible({ timeout: 5_000 })
+
+    const editable = page.locator('[contenteditable="true"]').first()
+    await editable.click()
+    await page.keyboard.press('ControlOrMeta+A')
+    // Typing triggers updateScene (new note object). Regression: that used to
+    // drop embed pointer-events so the next toolbar click exited edit.
+    await editable.pressSequentially(unique, { delay: 20 })
+    await expect(editable).toContainText(unique, { timeout: 5_000 })
+    await page.keyboard.press('ControlOrMeta+A')
+    await boldBtn.click()
+
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(1, { timeout: 2_000 })
+    await expect(page.locator('[data-pdf-note][data-editing]')).toHaveCount(1)
+    await expect(boldBtn).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
+    await expect(page.getByTestId('note-toolbar-bold')).toHaveCount(0)
+  } finally {
+    await close()
+  }
+})

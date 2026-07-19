@@ -1,59 +1,76 @@
-import {
-  convertToExcalidrawElements,
-  newElementWith
-} from '@excalidraw/excalidraw'
+import { convertToExcalidrawElements, newElementWith } from '@excalidraw/excalidraw'
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
-import {
-  emptyPlateValue,
-  isPdfNote,
-  type PdfNoteData,
-  plateValueFromQuote
-} from './pdfNoteModel'
+import { emptyPlateValue, isPdfNote, type PdfNoteData, plateValueFromQuote } from './pdfNoteModel'
 
 export {
   emptyPlateValue,
   findPdfNoteAt,
   getNotePlateValue,
   isPdfNote,
-  type PdfNoteData,
   plateValueFromQuote,
-  queryVisibleNotes
+  queryVisibleNotes,
+  type PdfNoteData
 } from './pdfNoteModel'
 
-export const NOTE_WIDTH = 280
-export const NOTE_HEIGHT = 200
-export const NOTE_FILL = '#fff3bf'
-export const NOTE_STROKE = '#fab005'
+export const NOTE_WIDTH = 320
+export const NOTE_HEIGHT = 240
+/** CSS token; Excalidraw canvas can't parse var() — use resolveNoteFill(). */
+export const NOTE_FILL = 'var(--color-morphing-50, #ebebeb)'
+const NOTE_FILL_FALLBACK = '#ebebeb'
+/** Transparent — NoteEmbed owns the visible card chrome; Excalidraw stroke was a yellow double-border. */
+export const NOTE_STROKE = 'transparent'
 /** Custom scheme so validateEmbeddable can whitelist our notes only. */
 export const NOTE_EMBED_LINK = 'libritus://pdf-note'
 const NOTE_GAP = 48
 
+/** Resolved morphing-50 for canvas fill (hit-test). */
+export function resolveNoteFill(): string {
+  if (typeof document === 'undefined') return NOTE_FILL_FALLBACK
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue('--color-morphing-50').trim() ||
+    NOTE_FILL_FALLBACK
+  )
+}
+
 /**
  * Solid fill (interior hit-test) + migrate legacy rectangle notes → embeddable.
- * Call on session restore.
+ * Call on session restore / persist.
+ *
+ * Prefer plain object patches over newElementWith when possible: newElementWith
+ * bumps versionNonce/updated, and mapping that on every dirty-signature read
+ * makes autosave debounce never settle.
  */
 export function normalizePdfNote(el: OrderedExcalidrawElement): OrderedExcalidrawElement {
   if (!isPdfNote(el)) return el
 
-  const fill =
-    el.backgroundColor === 'transparent' ? NOTE_FILL : el.backgroundColor
+  const fill = resolveNoteFill()
+  const fillOk = el.backgroundColor === fill
+  const strokeOk = el.strokeColor === NOTE_STROKE && el.strokeWidth === 0
 
   if (el.type === 'rectangle') {
+    // Type change must go through newElementWith for Excalidraw's element shape.
     return newElementWith(el, {
       type: 'embeddable',
       link: NOTE_EMBED_LINK,
-      backgroundColor: fill
+      backgroundColor: fill,
+      strokeColor: NOTE_STROKE,
+      strokeWidth: 0
     } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
   }
 
   if (el.type === 'embeddable') {
-    const patch: Record<string, unknown> = {}
-    if (el.backgroundColor === 'transparent') patch.backgroundColor = NOTE_FILL
-    if (el.link !== NOTE_EMBED_LINK) patch.link = NOTE_EMBED_LINK
-    if (Object.keys(patch).length === 0) return el
-    return newElementWith(el, patch as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
+    const link = el.link === NOTE_EMBED_LINK ? el.link : NOTE_EMBED_LINK
+    if (link === el.link && fillOk && strokeOk) return el
+    // ponytail: spread avoids versionNonce churn on the hot persist/signature path
+    return {
+      ...el,
+      link,
+      backgroundColor: fill,
+      strokeColor: NOTE_STROKE,
+      strokeWidth: 0
+    }
   }
 
   return el
@@ -66,7 +83,9 @@ export function normalizePdfNote(el: OrderedExcalidrawElement): OrderedExcalidra
  */
 export function clearPdfNoteLinkForUi(el: OrderedExcalidrawElement): OrderedExcalidrawElement {
   if (!isPdfNote(el) || el.type !== 'embeddable' || !el.link) return el
-  return newElementWith(el, { link: null } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
+  return newElementWith(el, { link: null } as Parameters<
+    typeof newElementWith
+  >[1]) as OrderedExcalidrawElement
 }
 
 export function createWysiwygNote(opts: {
@@ -88,8 +107,9 @@ export function createWysiwygNote(opts: {
       y: opts.y,
       width: opts.width ?? NOTE_WIDTH,
       height: opts.height ?? NOTE_HEIGHT,
-      backgroundColor: NOTE_FILL,
+      backgroundColor: resolveNoteFill(),
       strokeColor: NOTE_STROKE,
+      strokeWidth: 0,
       fillStyle: 'solid',
       roughness: 0,
       customData: {

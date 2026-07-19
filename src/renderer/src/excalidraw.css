@@ -69,3 +69,33 @@
 .excalidraw-hyperlinkContainer {
   display: none !important;
 }
+
+/* Match NoteEmbed rounded-xl (app --radius-xl) on Excalidraw's clip path */
+.excalidraw .excalidraw__embeddable-container {
+  --embeddable-radius: var(--radius-2xl) !important;
+}
+.excalidraw__embeddable-container .excalidraw__embeddable-container__inner {
+  box-shadow:
+    color-mix(in srgb, var(--color-morphing-900) 15%, transparent) 0px 1.1px 1.5px,
+    color-mix(in srgb, var(--color-morphing-900) 10%, transparent) 0px 2.8px 3.9px,
+    color-mix(in srgb, var(--color-morphing-900) 8%, transparent) 0px 5.8px 7.9px,
+    color-mix(in srgb, var(--color-morphing-900) 6%, transparent) 0px 12.0455px 16.4px,
+    color-mix(in srgb, var(--color-morphing-900) 4%, transparent) 0px 33px 45px;
+}
+
+/*
+ * Keep an editing note above the interactive canvas (z-index 2) and force
+ * pointer-events. Excalidraw enables embed hits only when
+ * activeEmbeddable.element === sceneEl (reference). Any updateScene that
+ * replaces the note object flips that to false; toolbar clicks then hit the
+ * canvas and clear activeEmbeddable (read-only). Escape / click outside still
+ * clear activeEmbeddable and unmount contenteditable, so this stops applying.
+ */
+.excalidraw__embeddable-container:has([data-pdf-note][data-editing]) {
+  z-index: 3;
+}
+
+.excalidraw__embeddable-container:has([data-pdf-note][data-editing])
+  .excalidraw__embeddable-container__inner {
+  pointer-events: all !important;
+}

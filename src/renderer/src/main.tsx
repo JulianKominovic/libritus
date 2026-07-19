@@ -7,7 +7,6 @@ import { Router } from 'wouter'
 import { useBrowserLocation } from 'wouter/use-browser-location'
 import App from './App'
 import { LangProvider } from './i18n/lang-context'
-import('react-scan').then(({ scan }) => scan({ enabled: true }))
 GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
   import.meta.url
@@ -22,3 +21,4 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     </LangProvider>
   </DndProvider>
 )
+// await import('react-scan').then(({ start }) => start())

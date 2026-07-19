@@ -255,8 +255,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       return cleared
     })
     if (!changed) return
+    // Excalidraw gates embed pointer-events on activeEmbeddable.element === el
+    // (reference). Replacing elements must refresh that ref or toolbar clicks
+    // fall through to the canvas and exit edit.
+    const active = api.getAppState().activeEmbeddable
+    const activeId =
+      active?.state === 'active' ? active.element?.id ?? null : null
+    const activeEl = activeId ? next.find((el) => el.id === activeId) : null
     api.updateScene({
       elements: next,
+      ...(activeEl
+        ? { appState: { activeEmbeddable: { element: activeEl, state: 'active' } } }
+        : {}),
       captureUpdate: CaptureUpdateAction.NEVER
     })
   }, [])
@@ -698,8 +708,14 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       // updateScene → Excalidraw onChange → parent setState loops.
       if (note.customData?.plateValue === value) return
       const updated = withNotePlateValue(note, value)
+      const active = api.getAppState().activeEmbeddable
+      const keepEditing =
+        active?.state === 'active' && active.element?.id === noteId
       api.updateScene({
         elements: elements.map((el) => (el.id === noteId ? updated : el)),
+        ...(keepEditing
+          ? { appState: { activeEmbeddable: { element: updated, state: 'active' } } }
+          : {}),
         captureUpdate: CaptureUpdateAction.NEVER
       })
       markUnsaved()

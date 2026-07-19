@@ -41,6 +41,16 @@ export async function launchApp(opts?: { appDataDir?: string }): Promise<Launche
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
 
+  // Electron/Excalidraw can flash a JS dialog on Escape/close; Playwright's
+  // default handler then races with "No dialog is showing".
+  page.on('dialog', async (dialog) => {
+    try {
+      await dialog.dismiss()
+    } catch {
+      // already closed
+    }
+  })
+
   return {
     app,
     page,

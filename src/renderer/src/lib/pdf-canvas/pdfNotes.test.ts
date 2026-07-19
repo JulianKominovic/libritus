@@ -57,13 +57,14 @@ mock.module('@excalidraw/excalidraw', () => ({
 
 const {
   NOTE_EMBED_LINK,
-  NOTE_FILL,
   NOTE_HEIGHT,
+  NOTE_STROKE,
   NOTE_WIDTH,
   clearPdfNoteLinkForUi,
   createNoteFromHighlight,
   createWysiwygNote,
   normalizePdfNote,
+  resolveNoteFill,
   withNotePlateValue
 } = await import('./pdfNotes')
 const { emptyPlateValue, isPdfNote, plateValueFromQuote } = await import('./pdfNoteModel')
@@ -115,7 +116,7 @@ function legacyRectangleNote(
     height: NOTE_HEIGHT,
     angle: 0,
     strokeColor: '#fab005',
-    backgroundColor: NOTE_FILL,
+    backgroundColor: resolveNoteFill(),
     fillStyle: 'solid',
     strokeWidth: 1,
     strokeStyle: 'solid',
@@ -147,11 +148,25 @@ describe('pdfNotes', () => {
     const migrated = normalizePdfNote(legacy)
     expect(migrated.type).toBe('embeddable')
     expect(migrated.link).toBe(NOTE_EMBED_LINK)
-    expect(migrated.backgroundColor).toBe(NOTE_FILL)
+    expect(migrated.backgroundColor).toBe(resolveNoteFill())
+    expect(migrated.strokeColor).toBe(NOTE_STROKE)
+    expect(migrated.strokeWidth).toBe(0)
     expect(migrated.id).toBe('n-legacy')
 
     const solidEmbed = createWysiwygNote({ x: 0, y: 0, id: 'n-solid' })
     expect(normalizePdfNote(solidEmbed)).toBe(solidEmbed)
+
+    const yellowStroke = createWysiwygNote({ x: 0, y: 0, id: 'n-yellow' })
+    const withYellow = {
+      ...yellowStroke,
+      strokeColor: '#fab005',
+      strokeWidth: 1,
+      backgroundColor: '#fff3bf'
+    } as typeof yellowStroke
+    const cleared = normalizePdfNote(withYellow)
+    expect(cleared.strokeColor).toBe(NOTE_STROKE)
+    expect(cleared.strokeWidth).toBe(0)
+    expect(cleared.backgroundColor).toBe(resolveNoteFill())
 
     const highlight = fakeHighlight({ id: 'h1' })
     expect(normalizePdfNote(highlight)).toBe(highlight)
@@ -181,7 +196,9 @@ describe('pdfNotes', () => {
     expect(isPdfNote(note)).toBe(true)
     expect(note.type).toBe('embeddable')
     expect(note.link).toBe(NOTE_EMBED_LINK)
-    expect(note.backgroundColor).toBe(NOTE_FILL)
+    expect(note.backgroundColor).toBe(resolveNoteFill())
+    expect(note.strokeColor).toBe(NOTE_STROKE)
+    expect(note.strokeWidth).toBe(0)
     expect(note.width).toBe(NOTE_WIDTH)
     expect(note.height).toBe(NOTE_HEIGHT)
     expect(note.x).toBe(5)
@@ -205,7 +222,7 @@ describe('pdfNotes', () => {
 
     expect(note.x).toBe(80 + NOTE_GAP)
     expect(note.y).toBe(10 - NOTE_HEIGHT / 2)
-    expect(note.backgroundColor).toBe(NOTE_FILL)
+    expect(note.backgroundColor).toBe(resolveNoteFill())
     expect(JSON.stringify(note.customData?.plateValue)).toContain('quoted text')
 
     const arrowBindings = arrow as {

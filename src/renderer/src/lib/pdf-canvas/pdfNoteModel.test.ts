@@ -18,7 +18,7 @@ function fakeNote(
     height: 200,
     angle: 0,
     strokeColor: '#fab005',
-    backgroundColor: '#fff3bf',
+    backgroundColor: '#ebebeb',
     fillStyle: 'solid',
     strokeWidth: 1,
     strokeStyle: 'solid',

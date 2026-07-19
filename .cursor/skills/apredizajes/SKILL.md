@@ -130,6 +130,18 @@ El agente perdió tiempo con z-index / poner el HUD debajo de Excalidraw. Eso no
 - Tras abrir edit: esperar ~400ms, luego `ControlOrMeta+A` + `pressSequentially`.
 - Activar embed: click en el **centro de la card** (`[data-pdf-note]`), no solo el bounding box del texto (Excalidraw exige el tercio central).
 
+### Toolbar click → note exits edit (read-only)
+
+#### Descripción más detallada
+
+Al editar una nota (embed activo) y tocar Bold/Italic en la toolbar, la nota pasaba a modo lectura. Causa: Excalidraw habilita `pointer-events` del embed solo si `activeEmbeddable.element === sceneEl` (**igualdad por referencia**). `updateNotePlateValue` / `stripPdfNoteLinks` hacen `updateScene` con un objeto nota nuevo → `isActive` queda false → clicks de la toolbar caen en el canvas interactivo → Excalidraw limpia `activeEmbeddable`.
+
+#### Corrección
+
+- Tras reemplazar la nota en `updateScene`, reasignar `activeEmbeddable: { element: updated, state: 'active' }`.
+- CSS: embed con `[data-pdf-note][data-editing]` a `z-index: 3` y `pointer-events: all !important` en el inner (por encima del canvas z-index 2).
+- Salida de edit solo Escape / click fuera (comportamiento nativo al limpiar `activeEmbeddable`).
+
 ### `convertToExcalidrawElements` + `type: 'embeddable'` incompleto
 
 #### Descripción más detallada
@@ -139,3 +151,26 @@ En Excalidraw 0.18, `convertToExcalidrawElements` para `embeddable`/`iframe`/`fr
 #### Corrección
 
 Crear nota como `rectangle` completo vía `convertToExcalidrawElements`, luego `normalizePdfNote` → `embeddable` + `libritus://pdf-note`.
+
+### ToolbarSplitButton → `<button>` anidado (validateDOMNesting)
+
+#### Descripción más detallada
+
+`ToolbarSplitButton` era un wrapper de `ToolbarButton`. Con `pressed={boolean}` ese path renderiza `ToolbarToggleItem` (`<button>`). Dentro, `DropdownMenuTrigger` + `ToolbarSplitButtonSecondary` es otro `<button>` → React: `<button> cannot be a descendant of <button>` (hydration warning en la toolbar de notas / listas).
+
+#### Corrección
+
+`ToolbarSplitButton` es un `<div role="group">` con `data-pressed` / estilos de pressed. Primary (span) + Secondary (button) quedan hermanos, no anidados.
+
+### Autosave 5s nunca dispara (firma con `versionNonce`)
+
+#### Descripción más detallada
+
+`markUnsaved` usa `persistSignature` sobre `sceneElementsForPersist` → `normalizePdfNote`. Ese path llamaba `newElementWith` para restaurar el `link` de la nota, y Excalidraw regenera `versionNonce`/`updated`/`version` en **cada** llamada. Cada `onChange` (aunque la escena no cambie) veía una firma distinta → `shouldMarkDirty` → dirty → reinicio del timer de 5s. El chip quedaba en Unsaved hasta timeout del e2e.
+
+El agente descartó el fallo del e2e (`expectSaved` timeout) porque una corrida aislada pasó (flake: a veces Excalidraw deja de emitir `onChange` el tiempo suficiente).
+
+#### Corrección
+
+- `persistSignature` ignora `version` / `versionNonce` / `updated`.
+- `normalizePdfNote` en embeddables restaura `link`/fill con spread, no `newElementWith` (solo el migrate rectangle→embeddable sigue con `newElementWith`).

@@ -60,7 +60,7 @@ function NoteEditableBody({
 
   return (
     <div
-      className="h-full overflow-auto"
+      className="flex h-full flex-col overflow-hidden"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.preventDefault()
@@ -69,7 +69,19 @@ function NoteEditableBody({
         }
         event.stopPropagation()
       }}
-      onPointerDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => {
+        event.stopPropagation()
+        // Preserve Slate selection when pressing toolbar controls (Plate uses
+        // mousedown preventDefault; pointerdown focus can still collapse it).
+        const target = event.target
+        if (
+          target instanceof Element &&
+          target.closest('button, [role="radio"], [role="button"], [data-radix-collection-item]')
+        ) {
+          event.preventDefault()
+        }
+      }}
+      onMouseDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
     >
       <Plate
@@ -82,7 +94,7 @@ function NoteEditableBody({
           onValueChange(noteId, value)
         }}
       >
-        <EditorContainer>
+        <EditorContainer className="h-full min-h-0 overflow-auto">
           <Editor autoFocus variant="none" className="min-h-full p-2 text-sm" />
         </EditorContainer>
       </Plate>
@@ -108,9 +120,10 @@ export function NoteEmbed({
 
   return (
     <div
-      className="box-border h-full w-full overflow-hidden rounded-lg border border-neutral-200 bg-stone-100"
+      className="box-border h-full w-full overflow-hidden bg-neutral-50"
       data-pdf-note-id={noteId}
       data-pdf-note
+      data-editing={editing ? '' : undefined}
     >
       {editing ? (
         <NoteEditableBody

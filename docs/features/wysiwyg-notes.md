@@ -24,16 +24,19 @@ Out of scope (for now):
 
 ## UX
 
-| Action | Behavior |
-|--------|----------|
-| **Place note** | Click canvas → create note centered on click; selected, not editing. |
-| **Add note** (highlight) | Creates note to the right + elbow arrow (start unbound, end bound to note). |
-| **Edge / border drag** | Excalidraw selection and move on the embeddable. |
-| **Click center** | Activate embed → Plate editable (`activeEmbeddable`). |
-| **Escape** | Leave edit mode (`activeEmbeddable` cleared). |
-| **Type / format** | `NoteEditorKit` while editing; writes `customData.plateValue`. |
+| Action                     | Behavior                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Place note**             | Click canvas → create note centered on click; selected, not editing.                                 |
+| **Add note** (highlight)   | Creates note to the right + elbow arrow (start unbound, end bound to note).                          |
+| **Edge / border drag**     | Excalidraw selection and move on the embeddable.                                                     |
+| **Click center**           | Activate embed → Plate editable (`activeEmbeddable`).                                                |
+| **Escape / click outside** | Leave edit mode (`activeEmbeddable` cleared). Toolbar clicks must **not** exit edit.                 |
+| **Type / format**          | `NoteEditorKit` while editing; writes `customData.plateValue`.                                       |
+| **Toolbar**                | Fixed sticky bar inside the note + floating bar on selection (no AI). Slash `/` and emoji supported. |
 
 Chrome: **Place note** chip next to **Select text** (bottom-right). Highlight chip **Add note** floats above the active highlight.
+
+Default note size: **320×240** (`NOTE_WIDTH` / `NOTE_HEIGHT`).
 
 ---
 
@@ -41,16 +44,16 @@ Chrome: **Place note** chip next to **Select text** (bottom-right). Highlight ch
 
 ### Excalidraw embeddable
 
-| Field | Value |
-|-------|--------|
-| `type` | `embeddable` |
-| `link` | `libritus://pdf-note` (whitelist via `validateEmbeddable`; required once so Excalidraw accepts the embed) |
-| `customData.pdfNote` | `true` |
-| `customData.plateValue` | Plate `Value` (JSON) |
-| `backgroundColor` | `#fff3bf` (**solid** — required for hit-test) |
-| `strokeColor` | `#fab005` |
+| Field                   | Value                                                                                                                                                                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `type`                  | `embeddable`                                                                                                                                                                                                                                                                   |
+| `link`                  | `libritus://pdf-note` (whitelist via `validateEmbeddable`; required once so Excalidraw accepts the embed)                                                                                                                                                                      |
+| `customData.pdfNote`    | `true`                                                                                                                                                                                                                                                                         |
+| `customData.plateValue` | Plate `Value` (JSON)                                                                                                                                                                                                                                                           |
+| `backgroundColor`       | resolved `--color-morphing-50` via `resolveNoteFill()` (**solid** — required for hit-test; matches NoteEmbed `bg-morphing-50`; painted on Excalidraw canvas, not in the DOM). `NOTE_FILL` is the CSS token `var(--color-morphing-50, #ebebeb)` — do not pass it to Excalidraw. |
+| `strokeColor`           | `transparent` (`strokeWidth: 0` — visible chrome is `NoteEmbed`, not Excalidraw)                                                                                                                                                                                               |
 
-**Critical:** `backgroundColor: 'transparent'` makes Excalidraw hit-test **only the stroke**. Always use a solid fill (`NOTE_FILL`). On session open, `normalizePdfNote` patches transparent fill and migrates legacy `rectangle` notes → `embeddable`.
+**Critical:** `backgroundColor: 'transparent'` makes Excalidraw hit-test **only the stroke**. Always use a solid fill (`NOTE_FILL`). On session open, `normalizePdfNote` forces `NOTE_FILL` / transparent stroke and migrates legacy `rectangle` notes → `embeddable`.
 
 **Link chrome:** Excalidraw draws a canvas link icon and shows `.excalidraw-hyperlinkContainer` when `link` is set. After the embed validates once, `clearPdfNoteLinkForUi` strips `link` in memory (no icon / no open-in-new-tab). Persist / dirty signature always run through `normalizePdfNote` so the session file keeps `libritus://pdf-note`. CSS hides the hyperlink toolbar; `onLinkOpen` always `preventDefault`.
 
@@ -59,21 +62,23 @@ Identity helper: `isPdfNote(el)` → `customData.pdfNote === true`.
 ### Plate (`NoteEmbed` via `renderEmbeddable`)
 
 - Rendered inside Excalidraw’s embeddable container: scene-sized + CSS `scale(zoom)` — text scales with zoom.
-- **Inactive:** static Plate (`NoteEditorKit` / `BaseEditorKit` static).
-- **Active:** editable Plate when `appState.activeEmbeddable` matches the note.
+- **Inactive:** static Plate (`BaseEditorKit` static).
+- **Active:** editable Plate (`NoteEditorKit`) when `appState.activeEmbeddable` matches the note — fixed + floating toolbars, slash/emoji; **no** AI/Copilot.
 - No parallel absolute HUD / `applyGeometry` / React geometry state.
 
 ---
 
 ## Files
 
-| Path | Role |
-|------|------|
-| `lib/pdf-canvas/pdfNoteModel.ts` | `isPdfNote`, `getNotePlateValue`, `queryVisibleNotes`, `findPdfNoteAt` |
-| `lib/pdf-canvas/pdfNotes.ts` | `createWysiwygNote`, `createNoteFromHighlight`, `normalizePdfNote`, `withNotePlateValue` |
-| `lib/pdf-canvas/pdfNotes.test.ts` | Unit tests for note create / normalize / highlight→arrow invariants |
-| `organisms/pdf-canvas/NoteEmbed.tsx` | Plate static/edit inside embeddable |
-| `organisms/pdf-canvas/PdfCanvasApp.tsx` | Place mode, `renderEmbeddable`, persistence |
+| Path                                               | Role                                                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `lib/pdf-canvas/pdfNoteModel.ts`                   | `isPdfNote`, `getNotePlateValue`, `queryVisibleNotes`, `findPdfNoteAt`                   |
+| `lib/pdf-canvas/pdfNotes.ts`                       | `createWysiwygNote`, `createNoteFromHighlight`, `normalizePdfNote`, `withNotePlateValue` |
+| `lib/pdf-canvas/pdfNotes.test.ts`                  | Unit tests for note create / normalize / highlight→arrow invariants                      |
+| `organisms/pdf-canvas/NoteEmbed.tsx`               | Plate static/edit inside embeddable                                                      |
+| `organisms/pdf-canvas/PdfCanvasApp.tsx`            | Place mode, `renderEmbeddable`, persistence                                              |
+| `components/editor/note-editor-kit.tsx`            | Editable kit: schema + note toolbars/slash/emoji (no AI)                                 |
+| `components/editor/plugins/note-*-toolbar-kit.tsx` | Fixed / floating toolbar plugins for notes                                               |
 
 ---
 
@@ -117,4 +122,5 @@ Escape / click outside
 3. **Solid fill** on the embeddable → interior hit-test / edge drag.
 4. **`validateEmbeddable`** must allow `libritus://pdf-note` or the embed never mounts.
 5. **Center click = edit**; drag from the **edge** (Excalidraw embed UX).
-6. Do not mount full `EditorKit` / AI inside the embed (use `NoteEditorKit`).
+6. Do not mount full `EditorKit` / AI inside the embed (use `NoteEditorKit` with note toolbars — no AI).
+7. **`activeEmbeddable.element` is reference-equal** in Excalidraw. After any `updateScene` that replaces the note, re-set `activeEmbeddable` to the new element (and/or CSS `:has([data-editing])` pointer-events). Otherwise toolbar clicks hit the canvas and exit edit.

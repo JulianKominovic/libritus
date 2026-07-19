@@ -183,14 +183,24 @@ ToolbarButtonComponent.displayName = 'ToolbarButton'
 
 export const ToolbarButton = withTooltip(ToolbarButtonComponent)
 
+// Split buttons own a real <button> (Secondary / dropdown). Do not wrap them in
+// ToolbarButton — when `pressed` is set that renders ToolbarToggleItem (<button>),
+// which nests buttons and trips React's validateDOMNesting.
 export const ToolbarSplitButton = React.forwardRef<
-  React.ElementRef<typeof ToolbarButton>,
-  React.ComponentPropsWithoutRef<typeof ToolbarButton>
->(({ className, ...props }, ref) => {
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<'div'> & { pressed?: boolean }
+>(({ className, pressed, ...props }, ref) => {
   return (
-    <ToolbarButton
+    <div
       ref={ref}
-      className={cn('group flex-shrink-0 flex gap-0 px-0 hover:bg-transparent', className)}
+      role="group"
+      data-pressed={pressed || undefined}
+      className={cn(
+        toolbarButtonVariants({ size: 'sm' }),
+        'group flex shrink-0 gap-0 px-0 hover:bg-transparent',
+        pressed && 'bg-morphing-100 text-morphing-900',
+        className
+      )}
       {...props}
     />
   )
