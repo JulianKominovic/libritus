@@ -95,18 +95,19 @@ test('text select at zoom ≠ 1 creates locked highlight near text', async () =>
     const box = await span.boundingBox()
     if (!box) throw new Error('text span has no box')
 
-    // Playwright mouse-drag does not create a native Selection under CSS scale();
-    // real input does. Seed the range, then mouseup to fire the highlight handler.
+    // Playwright mouse-drag does not create a native Selection under CSS scale().
+    // Seed the range and dispatch mouseup on the canvas root — do not mouse.down
+    // first (that collapses the selection before the highlight handler runs).
     await span.evaluate((el) => {
       const range = document.createRange()
       range.selectNodeContents(el)
       const sel = window.getSelection()
       sel?.removeAllRanges()
       sel?.addRange(range)
+      document
+        .querySelector('[data-pdf-canvas-root]')
+        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
     })
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-    await page.mouse.down()
-    await page.mouse.up()
 
     // Zoom alone marks Unsaved — mode exit proves a highlight was actually added.
     await expect(selectBtn).toHaveAttribute('aria-pressed', 'false')

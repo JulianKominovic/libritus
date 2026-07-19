@@ -19,8 +19,8 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
   const debouncedUpdatePdf = useDebounceCallback((categoryId, pdfId, name) => {
     updatePdf(categoryId, pdfId, { name })
   }, 300)
-  const highlightsNumber = pdf.highlights?.length
-  const commentsNumber = pdf.highlights?.flatMap((h) => h.comments)?.length
+  const highlightsNumber = pdf.canvasStats?.highlights
+  const notesNumber = pdf.canvasStats?.notes
   return (
     <ContextMenuContent className="w-3xs">
       <Input
@@ -31,7 +31,7 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
         }}
       />
 
-      {Boolean(highlightsNumber || commentsNumber) && (
+      {Boolean(highlightsNumber || notesNumber) && (
         <div className="flex items-center gap-2 px-2 mb-2">
           {Boolean(highlightsNumber && highlightsNumber > 0) && (
             <>
@@ -39,10 +39,10 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
               <span className="text-sm text-morphing-700">{highlightsNumber}</span>
             </>
           )}
-          {Boolean(commentsNumber && commentsNumber > 0) && (
+          {Boolean(notesNumber && notesNumber > 0) && (
             <>
               <DynamicIcon name="message-circle" className="size-4" />
-              <span className="text-sm text-morphing-700">{commentsNumber}</span>
+              <span className="text-sm text-morphing-700">{notesNumber}</span>
             </>
           )}
         </div>

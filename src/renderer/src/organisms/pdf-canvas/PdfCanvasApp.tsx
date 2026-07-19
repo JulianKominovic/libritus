@@ -15,6 +15,8 @@ import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import {
   annotationsSignature,
+  canvasStatsNeedWriteback,
+  countCanvasStats,
   listAnnotations,
   type AnnotationListItem
 } from '@renderer/lib/pdf-canvas/annotationList'
@@ -26,8 +28,6 @@ import {
 import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
-import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
-import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import {
   clearPdfNoteLinkForUi,
   createNoteFromHighlight,
@@ -42,20 +42,22 @@ import {
   repairUnvalidatedPdfNotes,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
+import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
+import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import {
   findPdfHighlightAt,
   selectionToHighlightSkeletons
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
   readSession,
+  writeSession,
   type SaveStatus,
-  type SessionSnapshot,
-  writeSession
+  type SessionSnapshot
 } from '@renderer/lib/pdf-canvas/session'
 import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
 import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
-import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
+import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
@@ -119,6 +121,18 @@ function syncReadingProgress(categoryId: string, pdfId: string, pages: number, t
   })
 }
 
+function syncCanvasStats(
+  categoryId: string,
+  pdfId: string,
+  elements: Parameters<typeof countCanvasStats>[0]
+) {
+  const stats = countCanvasStats(elements)
+  const store = usePdfs.getState()
+  const pdf = store.categories.find((c) => c.id === categoryId)?.pdfs.find((p) => p.id === pdfId)
+  if (!canvasStatsNeedWriteback(pdf?.canvasStats, stats)) return
+  void store.updatePdf(categoryId, pdfId, { canvasStats: stats })
+}
+
 /**
  * React state kept only when a re-render is required:
  * - session: mount PdfLayer / navigator / enable tools
@@ -162,6 +176,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const persistedAttachmentIdsRef = useRef(new Set<string>())
   /** Note ids Excalidraw has already validated (may have link stripped for UI). */
   const noteIdsRef = useRef(new Set<string>())
+  /** Live Plate edits not yet written to the Excalidraw scene (avoid updateScene per keystroke). */
+  const pendingPlateByNoteIdRef = useRef(new Map<string, Value>())
 
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
 
@@ -190,6 +206,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   )
 
   const syncSaveChip = useCallback((next: SaveStatus) => {
+    if (saveStatusRef.current === next) return
     saveStatusRef.current = next
     setSaveStatus(next)
     const chip = saveChipRef.current
@@ -288,10 +305,16 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const sceneElementsForPersist = useCallback(() => {
     const api = apiRef.current
     if (!api) return null
+    const pending = pendingPlateByNoteIdRef.current
     return api
       .getSceneElements()
       .filter((el) => !el.isDeleted)
-      .map(normalizePdfNote)
+      .map((el) => {
+        const normalized = normalizePdfNote(el)
+        const plate = pending.get(el.id)
+        // ponytail: merge unsynced Plate edits so autosave/flush see live text
+        return plate !== undefined ? withNotePlateValue(normalized, plate) : normalized
+      })
   }, [])
 
   /**
@@ -376,6 +399,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       syncSaveChip('saved')
       const totalPages = sessionRef.current?.doc.pageCount ?? 0
       syncReadingProgress(categoryId, pdfId, currentPageRef.current, totalPages)
+      syncCanvasStats(
+        categoryId,
+        pdfId,
+        snapshot.elements as Parameters<typeof countCanvasStats>[0]
+      )
       return true
     } catch (err) {
       console.error(err)
@@ -467,6 +495,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     pendingSigRef.current = ''
     persistedAttachmentIdsRef.current = new Set()
     noteIdsRef.current = new Set()
+    pendingPlateByNoteIdRef.current = new Map()
     annotationsSigRef.current = ''
     setAnnotations([])
     clearSaveTimer()
@@ -581,6 +610,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         stripPdfNoteLinksAfterValidate()
 
         syncAnnotations(elements)
+        syncCanvasStats(categoryId, pdfId, elements)
 
         restoringRef.current = false
         readyRef.current = true
@@ -603,6 +633,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       clearSaveTimer()
     }
   }, [
+    categoryId,
     clearSaveTimer,
     clearScene,
     currentPersistSignature,
@@ -643,6 +674,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         void writeSession(pdfId, snapshot)
         const totalPages = sessionRef.current?.doc.pageCount ?? 0
         syncReadingProgress(categoryId, pdfId, currentPageRef.current, totalPages)
+        syncCanvasStats(categoryId, pdfId, elements as Parameters<typeof countCanvasStats>[0])
       }
       const current = sessionRef.current
       if (!current) return
@@ -770,7 +802,28 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           if (scene.some((el) => isPdfNote(el) && !el.isDeleted && el.link)) {
             queueStripPdfNoteLinks()
           }
-          syncAnnotations(scene)
+          // Skip list sync while typing — pending plate lives in a ref, not the scene.
+          // On exit edit, flush pending → scene then sync the sidebar.
+          const active = api.getAppState().activeEmbeddable
+          const editingNote =
+            active?.state === 'active' && active.element != null && isPdfNote(active.element)
+          if (!editingNote) {
+            const pending = pendingPlateByNoteIdRef.current
+            if (pending.size > 0) {
+              const merged = scene.map((el) => {
+                const v = pending.get(el.id)
+                return v !== undefined ? withNotePlateValue(el, v) : el
+              })
+              pending.clear()
+              api.updateScene({
+                elements: merged,
+                captureUpdate: CaptureUpdateAction.NEVER
+              })
+              syncAnnotations(merged)
+            } else {
+              syncAnnotations(scene)
+            }
+          }
         }
       }
       markUnsaved()
@@ -829,27 +882,42 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   const updateNotePlateValue = useCallback(
     (noteId: string, value: Value) => {
-      const api = apiRef.current
-      if (!api) return
-      const elements = api.getSceneElements()
-      const note = elements.find((el) => el.id === noteId)
-      if (!note) return
-      // Plate may fire onChange on mount with the same Value ref — skip to avoid
-      // updateScene → Excalidraw onChange → parent setState loops.
-      if (note.customData?.plateValue === value) return
-      const updated = withNotePlateValue(note, value)
-      const active = api.getAppState().activeEmbeddable
-      const keepEditing = active?.state === 'active' && active.element?.id === noteId
-      api.updateScene({
-        elements: elements.map((el) => (el.id === noteId ? updated : el)),
-        ...(keepEditing
-          ? { appState: { activeEmbeddable: { element: updated, state: 'active' } } }
-          : {}),
-        captureUpdate: CaptureUpdateAction.NEVER
-      })
+      const pending = pendingPlateByNoteIdRef.current
+      if (pending.get(noteId) === value) return
+      // Plate may fire onChange on mount with the same Value — skip.
+      if (pending.get(noteId) === undefined) {
+        const note = apiRef.current?.getSceneElements().find((el) => el.id === noteId)
+        if (!note) return
+        if (note.customData?.plateValue === value) return
+      }
+      // Keep edits in a ref — updateScene per keystroke re-renders Excalidraw + parent.
+      pending.set(noteId, value)
       markUnsaved()
     },
     [markUnsaved]
+  )
+
+  // Stable prop — avoid new function identity on every PdfCanvasApp render.
+  const renderEmbeddable = useCallback(
+    (
+      element: Parameters<typeof getNotePlateValue>[0],
+      appState: { activeEmbeddable?: { element?: { id: string } | null; state: string } | null }
+    ) => {
+      if (!isPdfNote(element)) return null
+      const editing =
+        appState.activeEmbeddable?.element?.id === element.id &&
+        appState.activeEmbeddable?.state === 'active'
+      return (
+        <NoteEmbed
+          noteId={element.id}
+          plateValue={getNotePlateValue(element)}
+          editing={editing}
+          onValueChange={updateNotePlateValue}
+          onExitEdit={clearActiveEmbeddable}
+        />
+      )
+    },
+    [clearActiveEmbeddable, updateNotePlateValue]
   )
 
   const pageCount = session?.doc.pageCount ?? 0
@@ -944,9 +1012,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       const page = layout.pages[hit.pageIndex]
       if (!page) return
       const rect = hit.rects[0]
-      const worldY = rect
-        ? page.y + rect.y + rect.height / 2
-        : page.y + page.height / 2
+      const worldY = rect ? page.y + rect.y + rect.height / 2 : page.y + page.height / 2
       const target = layout.scrollForWorldY(worldY, cameraRef.current)
       pushCamera({ scrollY: target.scrollY })
       api.updateScene({
@@ -1272,21 +1338,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           validateEmbeddable={(link) =>
             typeof link === 'string' && link.startsWith(NOTE_EMBED_LINK) ? true : false
           }
-          renderEmbeddable={(element, appState) => {
-            if (!isPdfNote(element)) return null
-            const editing =
-              appState.activeEmbeddable?.element?.id === element.id &&
-              appState.activeEmbeddable?.state === 'active'
-            return (
-              <NoteEmbed
-                noteId={element.id}
-                plateValue={getNotePlateValue(element)}
-                editing={editing}
-                onValueChange={updateNotePlateValue}
-                onExitEdit={clearActiveEmbeddable}
-              />
-            )
-          }}
+          renderEmbeddable={renderEmbeddable}
           UIOptions={{
             canvasActions: {
               loadScene: false,

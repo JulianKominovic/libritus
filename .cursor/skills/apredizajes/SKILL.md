@@ -25,7 +25,7 @@ Causa: con el PDF layer en `transform: scale(z)`, el drag sintético de Playwrig
 
 #### Corrección
 
-En e2e a zoom ≠ 1: `selectNodeContents` + mouseup (no drag). Afirmar `aria-pressed=false` en Select text (salida de modo = highlight creado), no solo Unsaved.
+En e2e a zoom ≠ 1: `selectNodeContents` + `mouseup` sintético en `[data-pdf-canvas-root]` (no `mouse.down` — colapsa la selección). Afirmar `aria-pressed=false` en Select text (salida de modo = highlight creado), no solo Unsaved.
 
 ### `resolveNoteFill`: `document` sin `getComputedStyle` en bun:test
 

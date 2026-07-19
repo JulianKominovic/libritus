@@ -68,3 +68,25 @@ export function listAnnotations(
 export function annotationsSignature(items: readonly AnnotationListItem[]): string {
   return items.map((i) => `${i.id}|${i.kind}|${i.preview}`).join('\n')
 }
+
+export type CanvasStats = { highlights: number; notes: number }
+
+/** Counts for catalog writeback (category card pills). */
+export function countCanvasStats(elements: readonly ExcalidrawElement[]): CanvasStats {
+  let highlights = 0
+  let notes = 0
+  for (const el of elements) {
+    if (el.isDeleted) continue
+    if (isPdfHighlight(el)) highlights++
+    else if (isPdfNote(el)) notes++
+  }
+  return { highlights, notes }
+}
+
+/** Undefined catalog stats treated as zeros (skip write on empty open). */
+export function canvasStatsNeedWriteback(
+  current: CanvasStats | undefined,
+  next: CanvasStats
+): boolean {
+  return (current?.highlights ?? 0) !== next.highlights || (current?.notes ?? 0) !== next.notes
+}

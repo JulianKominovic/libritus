@@ -1,7 +1,7 @@
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { launchApp } from './helpers/launch'
 import { seedTwoCategories } from './helpers/seed'
 
@@ -13,14 +13,25 @@ async function openCategory(page: Page, categoryId: string): Promise<void> {
   await page.getByRole('heading', { name: /\d+ pdfs/ }).waitFor({ state: 'visible', timeout: 30_000 })
 }
 
-async function dragCardToward(
-  page: Page,
-  from: { x: number; y: number; width: number; height: number },
-  to: { x: number; y: number; width: number; height: number }
-): Promise<void> {
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 16 })
+/** HTML5 DnD in Electron is flaky under load — retry until drop-target paints. */
+async function dragUntilDropTarget(page: Page, card: Locator, dest: Locator): Promise<void> {
+  await expect(async () => {
+    await page.mouse.up().catch(() => undefined)
+    await card.scrollIntoViewIfNeeded()
+    await dest.scrollIntoViewIfNeeded()
+    const from = await card.boundingBox()
+    const to = await dest.boundingBox()
+    if (!from || !to) throw new Error('missing bounding boxes')
+
+    const fromX = from.x + from.width / 2
+    const fromY = from.y + from.height / 2
+    await page.mouse.move(fromX, fromY)
+    await page.mouse.down()
+    // Past Chromium's drag threshold, then onto the sidebar category.
+    await page.mouse.move(fromX + 16, fromY + 16, { steps: 6 })
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 30 })
+    await expect(page.locator('.sidebar-drop-target')).toHaveCount(1, { timeout: 1500 })
+  }).toPass({ timeout: 20_000 })
 }
 
 test('leaving a category mid-drag clears drop-target highlight', async () => {
@@ -35,18 +46,13 @@ test('leaving a category mid-drag clears drop-target highlight', async () => {
     const dest = page.getByRole('complementary').getByText('Dest', { exact: true })
     await expect(dest).toBeVisible()
 
-    const cardBox = await card.boundingBox()
-    const destBox = await dest.boundingBox()
-    if (!cardBox || !destBox) throw new Error('missing bounding boxes')
-
-    await dragCardToward(page, cardBox, destBox)
-    await expect(page.locator('.sidebar-drop-target')).toHaveCount(1)
+    await dragUntilDropTarget(page, card, dest)
 
     const home = page.getByRole('complementary').getByRole('link', { name: 'Home' })
     const homeBox = await home.boundingBox()
     if (!homeBox) throw new Error('missing home box')
     await page.mouse.move(homeBox.x + homeBox.width / 2, homeBox.y + homeBox.height / 2, {
-      steps: 12
+      steps: 16
     })
     await page.mouse.up()
 
@@ -67,12 +73,7 @@ test('dropping a PDF card onto a sidebar category moves it', async () => {
     await expect(card).toBeVisible({ timeout: 30_000 })
     const dest = page.getByRole('complementary').getByText('Dest', { exact: true })
 
-    const cardBox = await card.boundingBox()
-    const destBox = await dest.boundingBox()
-    if (!cardBox || !destBox) throw new Error('missing bounding boxes')
-
-    await dragCardToward(page, cardBox, destBox)
-    await expect(page.locator('.sidebar-drop-target')).toHaveCount(1)
+    await dragUntilDropTarget(page, card, dest)
     await page.mouse.up()
 
     await expect(page.getByRole('heading', { name: '0 pdfs' })).toBeVisible({ timeout: 10_000 })

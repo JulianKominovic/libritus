@@ -3,6 +3,8 @@ import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/ty
 import type { Value } from 'platejs'
 import {
   annotationsSignature,
+  canvasStatsNeedWriteback,
+  countCanvasStats,
   listAnnotations,
   platePlainText
 } from './annotationList'
@@ -99,5 +101,29 @@ describe('annotationList', () => {
       baseEl({ id: 'h', customData: { pdfHighlight: true, text: 'bye' } })
     ])
     expect(annotationsSignature(a)).not.toBe(annotationsSignature(c))
+  })
+
+  test('countCanvasStats skips deleted and non-annotations', () => {
+    expect(
+      countCanvasStats([
+        baseEl({ id: 'h1', customData: { pdfHighlight: true } }),
+        baseEl({ id: 'h2', isDeleted: true, customData: { pdfHighlight: true } }),
+        baseEl({ id: 'n1', customData: { pdfNote: true } }),
+        baseEl({ id: 'n2', customData: { pdfNote: true } }),
+        baseEl({ id: 'shape' })
+      ])
+    ).toEqual({ highlights: 1, notes: 2 })
+    expect(countCanvasStats([])).toEqual({ highlights: 0, notes: 0 })
+  })
+
+  test('canvasStatsNeedWriteback treats undefined as zeros', () => {
+    expect(canvasStatsNeedWriteback(undefined, { highlights: 0, notes: 0 })).toBe(false)
+    expect(canvasStatsNeedWriteback(undefined, { highlights: 1, notes: 0 })).toBe(true)
+    expect(canvasStatsNeedWriteback({ highlights: 1, notes: 2 }, { highlights: 1, notes: 2 })).toBe(
+      false
+    )
+    expect(canvasStatsNeedWriteback({ highlights: 1, notes: 0 }, { highlights: 0, notes: 0 })).toBe(
+      true
+    )
   })
 })

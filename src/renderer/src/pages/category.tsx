@@ -30,8 +30,8 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
     options: { dropEffect: 'move' },
     item: { id: pdf.id, type: 'P' }
   }))
-  const highlightsNumber = pdf.highlights?.length
-  const commentsNumber = pdf.highlights?.flatMap((h) => h.comments)?.length
+  const highlightsNumber = pdf.canvasStats?.highlights
+  const notesNumber = pdf.canvasStats?.notes
   const essaysNumber = pdf.essays?.length
   return (
     <ContextMenu key={pdf.id}>
@@ -55,10 +55,10 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
                 {essaysNumber}
               </p>
             ) : null}
-            {commentsNumber && commentsNumber > 0 ? (
+            {notesNumber && notesNumber > 0 ? (
               <p className={pdfStatPillClassName}>
                 <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
-                {commentsNumber}
+                {notesNumber}
               </p>
             ) : null}
             {highlightsNumber && highlightsNumber > 0 ? (

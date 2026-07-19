@@ -70,6 +70,8 @@ export type Pdf = {
     json: any
     text?: string
   }[]
+  /** Canvas highlight/note counts writebacked from session (not legacy highlights). */
+  canvasStats?: { highlights: number; notes: number }
 }
 export type Category = {
   id: string
