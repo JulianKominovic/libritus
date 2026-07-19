@@ -63,6 +63,7 @@ const {
   clearPdfNoteLinkForUi,
   createNoteFromHighlight,
   createWysiwygNote,
+  fixDuplicatedPdfNotes,
   normalizePdfNote,
   repairUnvalidatedPdfNotes,
   resolveNoteFill,
@@ -274,6 +275,31 @@ describe('pdfNotes', () => {
     const next = withNotePlateValue(note, plateValueFromQuote('updated'))
     expect(isPdfNote(next)).toBe(true)
     expect(JSON.stringify(next.customData?.plateValue)).toContain('updated')
+  })
+
+  test('fixDuplicatedPdfNotes restores link and preserves id', () => {
+    const note = clearPdfNoteLinkForUi(createWysiwygNote({ x: 1, y: 2, id: 'pasted' }))
+    expect(note.link).toBeNull()
+
+    const fixed = fixDuplicatedPdfNotes([note])
+    expect(fixed).toHaveLength(1)
+    expect(fixed[0]!.id).toBe('pasted')
+    expect(fixed[0]!.link).toBe(NOTE_EMBED_LINK)
+    expect(fixed[0]!.x).toBe(1)
+    expect(fixed[0]!.y).toBe(2)
+  })
+
+  test('fixDuplicatedPdfNotes only touches stripped pdf notes', () => {
+    const note = clearPdfNoteLinkForUi(createWysiwygNote({ x: 0, y: 0, id: 'n1' }))
+    const shape = fakeHighlight({ id: 'rect-1', locked: false, customData: undefined })
+    const linked = createWysiwygNote({ x: 3, y: 4, id: 'already-ok' })
+
+    const fixed = fixDuplicatedPdfNotes([note, shape, linked])
+    expect(fixed).toHaveLength(3)
+    expect(fixed[0]!.id).toBe('n1')
+    expect(fixed[0]!.link).toBe(NOTE_EMBED_LINK)
+    expect(fixed[1]).toBe(shape)
+    expect(fixed[2]).toBe(linked)
   })
 
   test('repairUnvalidatedPdfNotes rematerializes stripped-like unknown notes', () => {

@@ -24,6 +24,7 @@ import {
   clearPdfNoteLinkForUi,
   createNoteFromHighlight,
   createWysiwygNote,
+  fixDuplicatedPdfNotes,
   getNotePlateValue,
   isPdfNote,
   normalizePdfNote,
@@ -686,6 +687,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
               elements: repaired.elements,
               captureUpdate: CaptureUpdateAction.NEVER
             })
+          }
+          // onDuplicate restores link without rematerializing (changed=false).
+          // Still strip after validate so the canvas link icon stays hidden.
+          const scene = repaired.changed ? repaired.elements : api.getSceneElements()
+          if (scene.some((el) => isPdfNote(el) && !el.isDeleted && el.link)) {
             queueStripPdfNoteLinks()
           }
         }
@@ -1025,6 +1031,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           onChange={handleExcalidrawChange}
           onScrollChange={handleScrollChange}
           onPointerDown={handlePointerDown}
+          onDuplicate={(nextElements) => fixDuplicatedPdfNotes(nextElements)}
           onLinkOpen={(_element, event) => {
             event.preventDefault()
           }}

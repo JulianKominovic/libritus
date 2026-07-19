@@ -1,6 +1,9 @@
 import { convertToExcalidrawElements, newElementWith } from '@excalidraw/excalidraw'
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
-import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
+import type {
+  ExcalidrawElement,
+  OrderedExcalidrawElement
+} from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
 import {
   emptyPlateValue,
@@ -33,7 +36,10 @@ const NOTE_GAP = 48
 
 /** Resolved morphing-50 for canvas fill (hit-test). */
 export function resolveNoteFill(): string {
-  if (typeof document === 'undefined') return NOTE_FILL_FALLBACK
+  // bun:test has `document` but no getComputedStyle — treat as headless.
+  if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') {
+    return NOTE_FILL_FALLBACK
+  }
   return (
     getComputedStyle(document.documentElement).getPropertyValue('--color-morphing-50').trim() ||
     NOTE_FILL_FALLBACK
@@ -142,9 +148,32 @@ function remapElementIds(
 }
 
 /**
+ * Restore NOTE_EMBED_LINK on duplicated/pasted notes **without changing ids**.
+ * Wire to Excalidraw `onDuplicate` so the fix is part of the same undoable
+ * transaction. Prefer this over repairUnvalidatedPdfNotes for paste/Cmd+D:
+ * rematerializing under a fresh id via updateScene(NEVER) orphans the note
+ * outside the undo stack.
+ */
+export function fixDuplicatedPdfNotes(
+  nextElements: readonly ExcalidrawElement[]
+): ExcalidrawElement[] {
+  let changed = false
+  const next = nextElements.map((el) => {
+    if (!isPdfNote(el) || el.isDeleted) return el
+    if (el.type === 'embeddable' && el.link === NOTE_EMBED_LINK) return el
+    changed = true
+    return normalizePdfNote(el)
+  })
+  return changed ? next : [...nextElements]
+}
+
+/**
  * Paste/Cmd+D of a stripped note keeps link:null. Excalidraw validates embeds once
  * per id and short-circuits on falsy URL → permanent "Empty Web-Embed". Rematerialize
  * unknown notes without NOTE_EMBED_LINK under a fresh id so validation can succeed.
+ *
+ * Prefer fixDuplicatedPdfNotes via onDuplicate for paste/duplicate (undo-safe).
+ * This remains a safety net for paths that skip onDuplicate.
  */
 export function repairUnvalidatedPdfNotes(
   elements: readonly OrderedExcalidrawElement[],

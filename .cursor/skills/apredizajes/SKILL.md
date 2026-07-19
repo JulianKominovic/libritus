@@ -15,6 +15,28 @@ Este archivo es mantenido y actualizado por el agente.
 
 ## Errores
 
+### E2E text-select a zoom ≠ 1: drag de Playwright no selecciona bajo `scale()`
+
+#### Descripción más detallada
+
+El test `text select at zoom ≠ 1` hacía Meta+wheel (zoom vía handler de text-select) y luego `mouse.down/move/up` sobre el span. `expectUnsaved` pasaba por el dirty del **camera** (zoom/scroll), no por un highlight. El session flush quedaba con `elements: []`.
+
+Causa: con el PDF layer en `transform: scale(z)`, el drag sintético de Playwright no crea `window.getSelection()` (collapsed). `elementFromPoint` sí pega en el span; un `Range` vía JS sí selecciona; el handler de `mouseup` funciona si ya hay selección.
+
+#### Corrección
+
+En e2e a zoom ≠ 1: `selectNodeContents` + mouseup (no drag). Afirmar `aria-pressed=false` en Select text (salida de modo = highlight creado), no solo Unsaved.
+
+### `resolveNoteFill`: `document` sin `getComputedStyle` en bun:test
+
+#### Descripción más detallada
+
+`resolveNoteFill` solo checaba `typeof document === 'undefined'`. En bun:test `document` existe (DOM parcial) pero `getComputedStyle` no → `ReferenceError` y fallan todos los tests de `pdfNotes`.
+
+#### Corrección
+
+Guardar también `typeof getComputedStyle === 'undefined'` y caer a `NOTE_FILL_FALLBACK`.
+
 ### Tokens `bg-light*` / `text-dark*` sin definir en CSS
 
 #### Descripción más detallada
@@ -174,3 +196,13 @@ El agente descartó el fallo del e2e (`expectSaved` timeout) porque una corrida 
 
 - `persistSignature` ignora `version` / `versionNonce` / `updated`.
 - `normalizePdfNote` en embeddables restaura `link`/fill con spread, no `newElementWith` (solo el migrate rectangle→embeddable sigue con `newElementWith`).
+
+### Paste/Cmd+D nota + undo → nota huérfana en el canvas
+
+#### Descripción más detallada
+
+Tras validar el embed, `clearPdfNoteLinkForUi` deja `link: null` (`CaptureUpdateAction.NEVER`) para ocultar el icono de link. Copy/paste o Cmd+D copia esa nota stripped. `repairUnvalidatedPdfNotes` en `onChange` rematerializaba con un **UUID nuevo** + `NOTE_EMBED_LINK` vía `updateScene(NEVER)`. Undo solo revierte el paste de Excalidraw (id viejo); el id rematerializado no está en el history → la nota pegada queda en el canvas.
+
+#### Corrección
+
+Restaurar `NOTE_EMBED_LINK` en Excalidraw `onDuplicate` con `fixDuplicatedPdfNotes` (mismo id, misma transacción undoable). No rematerializar con id nuevo + `NEVER` para el path de paste/duplicate. `repairUnvalidatedPdfNotes` queda solo como red de seguridad.

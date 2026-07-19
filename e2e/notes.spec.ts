@@ -269,3 +269,45 @@ test('note toolbar click keeps edit mode', async () => {
     await close()
   }
 })
+
+test('duplicate note then undo removes the duplicate', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-dup-undo-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const noteX = 200
+  const noteY = 150
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [seedNoteElement({ id: 'dup-src', x: noteX, y: noteY, text: 'dup me' })]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await expect(page.getByText('dup me')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('[data-pdf-note]')).toHaveCount(1)
+
+    // Select via edge click — center would activate the embed instead.
+    const canvas = await excalidrawCanvas(page)
+    const cbox = await canvas.boundingBox()
+    if (!cbox) throw new Error('no canvas')
+    await page.mouse.click(cbox.x + noteX + 8, cbox.y + noteY + 100)
+
+    // Cmd+D goes through onDuplicate (same path as paste). Clipboard paste is
+    // unreliable in Electron e2e; duplicate exercises the undo-safe fix.
+    await page.keyboard.press('ControlOrMeta+D')
+    await expect(page.locator('[data-pdf-note]')).toHaveCount(2, { timeout: 10_000 })
+    await expectUnsaved(page)
+
+    await page.keyboard.press('ControlOrMeta+Z')
+    await expect(page.locator('[data-pdf-note]')).toHaveCount(1, { timeout: 10_000 })
+  } finally {
+    await close()
+  }
+})

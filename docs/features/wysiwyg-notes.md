@@ -126,4 +126,4 @@ Escape / click outside
 5. **Center click = edit**; drag from the **edge** (Excalidraw embed UX).
 6. Do not mount full `EditorKit` / AI inside the embed (use `NoteEditorKit` with note toolbars — no AI).
 7. **`activeEmbeddable.element` is reference-equal** in Excalidraw. After any `updateScene` that replaces the note, re-set `activeEmbeddable` to the new element (and/or CSS `:has([data-editing])` pointer-events). Otherwise toolbar clicks hit the canvas and exit edit.
-8. **Paste / Cmd+D of a stripped note** (`link: null`) fails Excalidraw embed validation permanently (cached by id). `repairUnvalidatedPdfNotes` rematerializes under a fresh id + `NOTE_EMBED_LINK`, then the usual strip runs.
+8. **Paste / Cmd+D of a stripped note** (`link: null`) fails Excalidraw embed validation permanently (cached by id) if left alone. Fix the link in **`onDuplicate`** via `fixDuplicatedPdfNotes` (same id, same undoable transaction). Do **not** rematerialize under a fresh id with `updateScene(NEVER)` for paste — that orphans the note outside the undo stack. `repairUnvalidatedPdfNotes` remains a safety net for paths that skip `onDuplicate`.
