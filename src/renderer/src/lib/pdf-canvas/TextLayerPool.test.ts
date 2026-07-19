@@ -119,4 +119,19 @@ describe('TextLayerPool', () => {
     pool.destroy()
     renderGate = null
   })
+
+  test('syncVisible after destroy is a no-op', async () => {
+    renderGate = null
+    cancelCount = 0
+    const doc = fakeDoc()
+    const pool = new TextLayerPool(doc, { poolSize: 2 })
+
+    await pool.syncVisible([0])
+    expect(doc.getPageCalls()).toBe(1)
+
+    pool.destroy()
+    await pool.syncVisible([0, 1])
+    expect(doc.getPageCalls()).toBe(1)
+    expect(pool.getSlot(0)).toBeUndefined()
+  })
 })

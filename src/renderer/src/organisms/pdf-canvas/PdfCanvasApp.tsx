@@ -453,13 +453,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const destroyRuntimeSession = useCallback(async () => {
     const prev = sessionRef.current
     if (!prev) return
+    // Drop React/session refs before tearing down the worker so a stale PdfLayer
+    // syncVisible cannot call getPage on a destroyed transport.
+    sessionRef.current = null
+    setSession(null)
+    setOutline([])
     prev.pool.destroy()
     prev.textPool.destroy()
     prev.thumbPool.destroy()
     await prev.doc.destroy()
-    sessionRef.current = null
-    setSession(null)
-    setOutline([])
   }, [])
 
   const clearScene = useCallback(() => {
@@ -678,11 +680,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       }
       const current = sessionRef.current
       if (!current) return
+      sessionRef.current = null
       current.pool.destroy()
       current.textPool.destroy()
       current.thumbPool.destroy()
       void current.doc.destroy()
-      sessionRef.current = null
     }
   }, [categoryId, clearSaveTimer, pdfId])
 

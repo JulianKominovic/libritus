@@ -13,9 +13,18 @@ No es un archivo de aprendizajes para usar siempre, sino que se usa para evitar 
 
 Este archivo es mantenido y actualizado por el agente.
 
-## Errores
+### `sendWithPromise` null: text layer after PDF destroy
 
-### E2E text-select a zoom ≠ 1: drag de Playwright no selecciona bajo `scale()`
+#### Descripción más detallada
+
+Al reabrir/cambiar PDF (o durante tear-down), `destroyRuntimeSession` hacía `doc.destroy()` mientras `PdfLayer` seguía montado con el pool viejo. `pushCamera` / `syncVisible` llamaban `getPage` con el worker ya destruido → `TypeError: Cannot read properties of null (reading 'sendWithPromise')` en `Failed to build text layer`.
+
+#### Corrección
+
+- `PdfDocument.getPage` rechaza con `AbortException` si ya no está alive; `alive = false` al inicio de `destroy`.
+- Pools: flag `destroyed` + bump de generation en `destroy`; `syncVisible` no-op; catch ignora gen stale / `AbortException`.
+- Limpiar `sessionRef` / `setSession(null)` *antes* de destruir pools/doc.
+
 
 #### Descripción más detallada
 

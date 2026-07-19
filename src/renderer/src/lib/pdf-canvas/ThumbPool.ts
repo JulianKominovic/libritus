@@ -35,6 +35,7 @@ export class ThumbPool {
   private generation = 0
   private clock = 0
   private lastVisibleKey = ''
+  private destroyed = false
   private listeners = new Set<() => void>()
 
   constructor(
@@ -62,6 +63,8 @@ export class ThumbPool {
   }
 
   async syncVisible(visibleIndices: number[]): Promise<void> {
+    if (this.destroyed) return
+
     // Cap request to poolSize so we never try to hold more than capacity.
     const capped =
       visibleIndices.length <= this.poolSize
@@ -195,13 +198,16 @@ export class ThumbPool {
       this.notify()
     } catch (err) {
       this.jobs.delete(pageIndex)
+      if (this.destroyed || gen !== this.generation) return
       const name = err instanceof Error ? err.name : ''
-      if (name === 'RenderingCancelledException') return
+      if (name === 'AbortException' || name === 'RenderingCancelledException') return
       console.error(`Failed to render thumb ${pageIndex}`, err)
     }
   }
 
   destroy(): void {
+    this.destroyed = true
+    this.generation += 1
     for (const job of this.jobs.values()) {
       try {
         job.task.cancel()

@@ -14,12 +14,12 @@ import Navbar from './templates/navbar'
 import Sidebar from './templates/sidebar'
 
 const scrollPageClassName = 'px-6 md:px-8 pb-32 max-w-5xl overflow-y-auto'
-import('react-scan').then(({ scan }) =>
-  scan({
-    dangerouslyForceRunInProduction: true,
-    enabled: true
-  })
-)
+// import('react-scan').then(({ scan }) =>
+//   scan({
+//     dangerouslyForceRunInProduction: true,
+//     enabled: true
+//   })
+// )
 function App() {
   const showNavigationSidebar = useSettings((s) => s.showNavigationSidebar)
   useRouteTheme()
