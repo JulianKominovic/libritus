@@ -99,3 +99,7 @@
   .excalidraw__embeddable-container__inner {
   pointer-events: all !important;
 }
+
+.excalidraw .scroll-back-to-content {
+  display: none !important;
+}

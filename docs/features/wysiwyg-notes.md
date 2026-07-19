@@ -28,13 +28,14 @@ Out of scope (for now):
 | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | **Place note**             | Click canvas → create note centered on click; selected, not editing.                                 |
 | **Add note** (highlight)   | Creates note + elbow arrow (start unbound, end bound to note). 1st/3rd/… right of highlight; 2nd/4th/… left. |
+| **Remove** (highlight)     | Deletes the locked highlight (`isDeleted`); notes and arrows are left alone.                             |
 | **Edge / border drag**     | Excalidraw selection and move on the embeddable.                                                     |
 | **Click center**           | Activate embed → Plate editable (`activeEmbeddable`).                                                |
 | **Escape / click outside** | Leave edit mode (`activeEmbeddable` cleared). Toolbar clicks must **not** exit edit.                 |
 | **Type / format**          | `NoteEditorKit` while editing; writes `customData.plateValue`.                                       |
 | **Toolbar**                | Fixed sticky bar inside the note + floating bar on selection (no AI). Slash `/` and emoji supported. |
 
-Chrome: **Place note** chip next to **Select text** (bottom-right). Highlight chip **Add note** floats above the active highlight.
+Chrome: **Place note** chip next to **Select text** (bottom-right). Highlight chips **Add note** / **Remove** float above the active highlight (**Remove** deletes only the highlight; notes/arrows stay).
 
 Default note size: **320×240** (`NOTE_WIDTH` / `NOTE_HEIGHT`).
 

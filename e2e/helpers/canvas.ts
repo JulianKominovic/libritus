@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { Page } from 'playwright'
 import { expect } from '@playwright/test'
+import type { SessionSnapshot } from '../../src/renderer/src/lib/pdf-canvas/sessionTypes'
 
 export async function expectUnsaved(page: Page): Promise<void> {
   await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
@@ -23,10 +24,10 @@ export async function leaveToHome(page: Page): Promise<void> {
 
 /** Poll until session file exists and predicate passes (or timeout). */
 export async function waitForSession(
-  read: () => Promise<{ elements?: unknown[] } | null>,
-  predicate: (snap: { elements?: unknown[] }) => boolean,
+  read: () => Promise<SessionSnapshot | null>,
+  predicate: (snap: SessionSnapshot) => boolean,
   timeoutMs = 15_000
-): Promise<{ elements?: unknown[] }> {
+): Promise<SessionSnapshot> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     const snap = await read()
@@ -46,11 +47,7 @@ export async function excalidrawCanvas(page: Page) {
 }
 
 /** Click scene-ish point assuming restored camera scroll≈0 zoom≈1. */
-export async function clickScene(
-  page: Page,
-  sceneX: number,
-  sceneY: number
-): Promise<void> {
+export async function clickScene(page: Page, sceneX: number, sceneY: number): Promise<void> {
   const canvas = await excalidrawCanvas(page)
   const box = await canvas.boundingBox()
   if (!box) throw new Error('no canvas box')

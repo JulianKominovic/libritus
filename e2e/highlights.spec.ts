@@ -1,13 +1,21 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
 import {
+  clickScene,
   leaveToHome,
   tmpAppData,
   waitForSession,
   excalidrawCanvas,
   expectUnsaved
 } from './helpers/canvas'
-import { openPdf, readSessionFile, seedLibrary, seedNoteElement, seedSession } from './helpers/seed'
+import {
+  openPdf,
+  readSessionFile,
+  seedHighlightElement,
+  seedLibrary,
+  seedNoteElement,
+  seedSession
+} from './helpers/seed'
 
 test('text select creates locked pdfHighlight then exits mode', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-hl-')
@@ -118,6 +126,55 @@ test('text select at zoom ≠ 1 creates locked highlight near text', async () =>
     ) as { x: number; y: number; width: number; height: number }
     expect(hl.width).toBeGreaterThan(5)
     expect(hl.height).toBeGreaterThan(2)
+  } finally {
+    await close()
+  }
+})
+
+test('Remove from highlight toolbar deletes highlight on flush', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-hl-remove-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const hlX = 80
+  const hlY = 120
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [seedHighlightElement({ id: 'hl-remove', x: hlX, y: hlY, text: 'gone' })]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+
+    await clickScene(page, hlX + 40, hlY + 9)
+    await page.getByRole('button', { name: 'Remove' }).click({ timeout: 10_000 })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) =>
+        !(s.elements ?? []).some(
+          (el) =>
+            el &&
+            typeof el === 'object' &&
+            (el as { id?: string; customData?: { pdfHighlight?: boolean } }).id === 'hl-remove' &&
+            (el as { customData?: { pdfHighlight?: boolean } }).customData?.pdfHighlight === true
+        )
+    )
+    expect(
+      (snap.elements ?? []).some(
+        (el) =>
+          (el as { customData?: { pdfHighlight?: boolean } }).customData?.pdfHighlight === true
+      )
+    ).toBe(false)
   } finally {
     await close()
   }

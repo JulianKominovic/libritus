@@ -2,6 +2,7 @@ import {
   CaptureUpdateAction,
   convertToExcalidrawElements,
   Excalidraw,
+  newElementWith,
   sceneCoordsToViewportCoords
 } from '@excalidraw/excalidraw'
 import type {
@@ -205,7 +206,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const bounds = container.getBoundingClientRect()
     toolbar.style.left = `${topCenter.x - bounds.left}px`
     toolbar.style.top = `${topCenter.y - bounds.top - 8}px`
-    toolbar.style.display = 'block'
+    toolbar.style.display = 'flex'
   }, [hideHighlightToolbar])
 
   const showHighlightToolbar = useCallback(
@@ -894,6 +895,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     markUnsaved()
   }, [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks])
 
+  const removeActiveHighlight = useCallback(() => {
+    const api = apiRef.current
+    const highlightId = activeHighlightIdRef.current
+    if (!api || !highlightId) return
+
+    const scene = api.getSceneElements()
+    const highlight = scene.find((el) => el.id === highlightId)
+    if (!highlight || highlight.isDeleted) return
+
+    api.updateScene({
+      elements: scene.map((el) =>
+        el.id === highlightId ? (newElementWith(el, { isDeleted: true }) as typeof el) : el
+      ),
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY
+    })
+
+    hideHighlightToolbar()
+    markUnsaved()
+  }, [hideHighlightToolbar, markUnsaved])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -1068,15 +1089,21 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
       <div
         ref={highlightToolbarRef}
-        className="pointer-events-auto absolute z-90 -translate-x-1/2 -translate-y-full"
-        style={{ display: 'none' }}
+        className="pointer-events-auto absolute z-90 hidden -translate-x-1/2 -translate-y-full gap-1"
       >
         <button
           type="button"
-          className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white shadow hover:bg-neutral-800"
+          className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white shadow hover:bg-neutral-700"
           onClick={addNoteToActiveHighlight}
         >
           Add note
+        </button>
+        <button
+          type="button"
+          className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white shadow hover:bg-red-500"
+          onClick={removeActiveHighlight}
+        >
+          Remove
         </button>
       </div>
 
