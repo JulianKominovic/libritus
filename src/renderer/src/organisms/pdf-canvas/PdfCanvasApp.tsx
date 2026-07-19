@@ -4,10 +4,19 @@ import {
   Excalidraw,
   sceneCoordsToViewportCoords
 } from '@excalidraw/excalidraw'
-import type { ExcalidrawImperativeAPI, NormalizedZoomValue } from '@excalidraw/excalidraw/types'
+import type {
+  BinaryFiles,
+  ExcalidrawImperativeAPI,
+  NormalizedZoomValue
+} from '@excalidraw/excalidraw/types'
 import { readFile } from '@renderer/integrations/fs'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
+import {
+  fileIdsFromElements,
+  loadBinaryFiles,
+  persistNewBinaryFiles
+} from '@renderer/lib/pdf-canvas/attachments'
 import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
@@ -126,6 +135,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const openGenerationRef = useRef(0)
   const lastSavedSigRef = useRef('')
   const pendingSigRef = useRef('')
+  const persistedAttachmentIdsRef = useRef(new Set<string>())
 
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
@@ -411,6 +421,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     dirtyRef.current = false
     lastSavedSigRef.current = ''
     pendingSigRef.current = ''
+    persistedAttachmentIdsRef.current = new Set()
     clearSaveTimer()
     syncSaveChip('saved')
     setLoadError(null)
@@ -458,12 +469,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
               )
             : []
 
+        const attachmentIds = fileIdsFromElements(elements)
+        const binaryFiles = await loadBinaryFiles(attachmentIds)
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
+        for (const f of binaryFiles) persistedAttachmentIdsRef.current.add(f.id)
+
         restoringRef.current = true
         pushCamera({ scrollX, scrollY, zoom })
 
         const applyScene = () => {
           const api = apiRef.current
           if (!api) return false
+          if (binaryFiles.length > 0) api.addFiles(binaryFiles)
           api.updateScene({
             elements,
             appState: {
@@ -645,9 +662,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     [markUnsaved, pushCamera]
   )
 
-  const handleExcalidrawChange = useCallback(() => {
-    markUnsaved()
-  }, [markUnsaved])
+  const handleExcalidrawChange = useCallback(
+    (_elements: unknown, _appState: unknown, files: BinaryFiles) => {
+      if (files && Object.keys(files).length > 0) {
+        void persistNewBinaryFiles(files, persistedAttachmentIdsRef.current)
+      }
+      markUnsaved()
+    },
+    [markUnsaved]
+  )
 
   const toggleTextSelectMode = useCallback(() => {
     setTextSelectMode((prev) => {

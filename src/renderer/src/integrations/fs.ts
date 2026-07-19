@@ -10,3 +10,7 @@ export async function writeFile(filename: string, data: Uint8Array): Promise<str
 export async function readFile(filename: string): Promise<Uint8Array | null> {
   return await window.electron.ipcRenderer.invoke('read-file', { filename })
 }
+
+export async function mkdir(filename: string): Promise<boolean> {
+  return await window.electron.ipcRenderer.invoke('mkdir', { filename })
+}

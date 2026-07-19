@@ -10,7 +10,7 @@ Libritus already has a category library (`categories.json` + `{pdfId}.pdf` in El
 
 1. **Library stays Libritus categories** — home / category grid / upload unchanged.
 2. **Session per document** — while working on a PDF, persist all Excalidraw annotations + last reading position.
-3. **PDF ↔ scene separation** — PDF bytes stay in `{pdfId}.pdf`; the Excalidraw snapshot never includes pages or bitmaps — only elements + camera.
+3. **PDF ↔ scene separation** — PDF bytes stay in `{pdfId}.pdf`; canvas image bytes stay in `attachments/`; the Excalidraw snapshot never includes pages, bitmaps, or attachment payloads — only elements + camera.
 4. Open a PDF → load bytes from disk → restore snapshot (if any) → resume reading.
 5. **Saved / Unsaved** visible in UI (also debugs the persistence pipeline).
 
@@ -37,9 +37,13 @@ Each PDF has a stable `pdfId` (UUID) from the existing upload flow in `stores/ca
   {pdfId}.pdf                # PDF bytes
   {pdfId}.png                # thumbnail (existing)
   {pdfId}.session.json       # Excalidraw snapshot + camera (canvas)
+  attachments/
+    {fileId}.png             # canvas images (ext from mime; never in session JSON)
 ```
 
 **Why disk, not IndexedDB:** desktop Electron app; large PDFs fit better as files; catalog already lives on disk.
+
+**Canvas images:** Excalidraw `image` elements keep a `fileId` in the scene. Bytes live under `attachments/{fileId}.{ext}` — written on insert, reloaded via `addFiles` on open. The session snapshot never embeds `files`, dataURLs, or base64.
 
 ### `{pdfId}.session.json`
 
@@ -62,11 +66,11 @@ type SessionSnapshot = {
 }
 ```
 
-**What goes in `elements`:** whatever Excalidraw has in the scene (`getSceneElements()`), filtered to exclude `isDeleted` when practical. The PDF is the `PdfLayer` underneath — not an element.
+**What goes in `elements`:** whatever Excalidraw has in the scene (`getSceneElements()`), filtered to exclude `isDeleted` when practical. The PDF is the `PdfLayer` underneath — not an element. Image elements store only `fileId` (bytes in `attachments/`).
 
 WYSIWYG notes store Plate `plateValue` in `customData` on the note rectangle (`pdfNote: true`). No separate notes file — see [`wysiwyg-notes.md`](wysiwyg-notes.md).
 
-**Camera:** persist `scrollX`, `scrollY`, `zoom` from the same channel that feeds `CameraState` (`onScrollChange`). On restore: `updateScene({ elements, appState: { scrollX, scrollY, zoom } })` + sync camera refs.
+**Camera:** persist `scrollX`, `scrollY`, `zoom` from the same channel that feeds `CameraState` (`onScrollChange`). On restore: load attachment bytes → `addFiles` → `updateScene({ elements, appState: { scrollX, scrollY, zoom } })` + sync camera refs.
 
 ### Relation to `categories.json`
 
@@ -89,7 +93,7 @@ Existing `uploadPdf` → write `{pdfId}.pdf` + update catalog → navigate to vi
 
 1. Route `/category/:categoryId/:pdfId` → `readFile('{pdfId}.pdf')` → `ArrayBuffer` → `PdfDocument.open`.
 2. Clear Excalidraw scene before loading snapshot.
-3. If `{pdfId}.session.json` exists: restore elements + camera.
+3. If `{pdfId}.session.json` exists: restore elements + camera; for any image `fileId`s, load `attachments/{fileId}.*` and `addFiles` before `updateScene`.
 4. Else: initial camera.
 5. Mark UI **Saved**.
 
@@ -100,18 +104,20 @@ UI status: `Saved` | `Unsaved` | `Saving…` | `Error`.
 | Event | Behavior |
 |-------|----------|
 | Element / camera change | Mark **Unsaved**; schedule save with **debounce 5 s** |
+| New Excalidraw image file | Write bytes to `attachments/{fileId}.{ext}` immediately (not in session JSON) |
 | Debounce fires | Write session JSON → **Saved** (or **Error**) |
 | Leave route / open another PDF | **Immediate flush** if Unsaved |
 | App close | Best-effort flush via `beforeunload` |
 
-Payload: scene elements + camera → `{pdfId}.session.json`.
+Payload: scene elements + camera → `{pdfId}.session.json` (no attachment bytes).
 
 ---
 
 ## Implementation notes
 
-- Helpers live in `src/renderer/src/lib/pdf-canvas/session.ts`.
-- Orchestration in `PdfCanvasApp` (dirty signature, debounce, restore generation counter).
+- Session helpers: `src/renderer/src/lib/pdf-canvas/session.ts`.
+- Attachment helpers: `src/renderer/src/lib/pdf-canvas/attachments.ts`.
+- Orchestration in `PdfCanvasApp` (dirty signature, debounce, restore generation counter, attachment persist/restore).
 - Do not persist selection-only `onChange` noise — signature should ignore selection.
 
 ---
