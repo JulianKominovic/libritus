@@ -1,9 +1,13 @@
+import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import {
   forwardRef,
   useEffect,
   useImperativeHandle,
   useRef,
 } from 'react'
+
+const chromePress = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.96]'
+const chromeHover = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-100'
 
 export type PdfFindBarHandle = {
   /** 1-based current index; total 0 means no hits. */
@@ -63,13 +67,13 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(
     }, [])
 
     return (
-      <div className="pointer-events-auto flex items-center gap-1 rounded-md bg-neutral-900 px-1.5 py-1 text-sm font-medium text-white shadow">
+      <div className="pointer-events-auto flex h-10 items-center gap-0.5 rounded-lg bg-white px-1 text-sm font-medium text-morphing-900 shadow-md shadow-morphing-900/10 ring-1 ring-black/10">
         <input
           ref={inputRef}
           type="search"
           aria-label="Search PDF"
           placeholder="Find…"
-          className="w-36 rounded bg-neutral-800 px-1.5 py-0.5 text-sm text-white outline-none ring-0 placeholder:text-neutral-500 focus:bg-neutral-700"
+          className="h-8 w-36 rounded-sm bg-morphing-100 px-2 text-sm text-morphing-900 outline-none ring-0 placeholder:text-morphing-400 focus:bg-morphing-50"
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
@@ -96,7 +100,7 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(
         />
         <span
           ref={countRef}
-          className="min-w-[2.5rem] px-0.5 text-center text-neutral-300 tabular-nums"
+          className="min-w-[2.5rem] px-0.5 text-center text-sm tabular-nums text-morphing-500"
           aria-live="polite"
         >
           0/0
@@ -105,27 +109,27 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(
           ref={prevBtnRef}
           type="button"
           aria-label="Previous match"
-          className="rounded px-1.5 py-0.5 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`flex min-h-10 min-w-10 items-center justify-center rounded-sm text-morphing-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
           onClick={onPrev}
         >
-          ▲
+          <ChevronUp className="size-4" aria-hidden />
         </button>
         <button
           ref={nextBtnRef}
           type="button"
           aria-label="Next match"
-          className="rounded px-1.5 py-0.5 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`flex min-h-10 min-w-10 items-center justify-center rounded-sm text-morphing-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
           onClick={onNext}
         >
-          ▼
+          <ChevronDown className="size-4" aria-hidden />
         </button>
         <button
           type="button"
           aria-label="Close find"
-          className="rounded px-1.5 py-0.5 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+          className={`flex min-h-10 min-w-10 items-center justify-center rounded-sm text-morphing-500 ${chromePress} ${chromeHover} [@media(hover:hover)_and_(pointer:fine)]:hover:text-morphing-900`}
           onClick={onClose}
         >
-          ✕
+          <X className="size-4" aria-hidden />
         </button>
       </div>
     )

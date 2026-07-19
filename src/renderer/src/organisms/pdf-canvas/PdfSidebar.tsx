@@ -1,14 +1,9 @@
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState
-} from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import type { AnnotationListItem } from '@renderer/lib/pdf-canvas/annotationList'
 import type { OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import type { ThumbPool, ThumbSlot } from '@renderer/lib/pdf-canvas/ThumbPool'
+import { cn } from '@renderer/lib/utils'
 
 export type PdfSidebarHandle = {
   setActivePage: (page1Based: number) => void
@@ -28,6 +23,8 @@ const THUMB_ROW_H = 118
 const THUMB_BUFFER = 2
 
 type Tab = 'outline' | 'pages' | 'annotations'
+
+const pressable = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.96]'
 
 function OutlineTree({
   nodes,
@@ -53,9 +50,14 @@ function OutlineTree({
                   ? `Go to ${node.title}, page ${node.pageIndex! + 1}`
                   : `${node.title} (unavailable)`
               }
-              className={`w-full rounded px-2 py-1 text-left text-xs leading-snug disabled:cursor-not-allowed disabled:opacity-40 ${
-                enabled ? 'text-white hover:bg-neutral-800' : 'text-neutral-500'
-              }`}
+              className={cn(
+                'min-h-10 w-full rounded-md px-2 py-2 text-left text-xs leading-snug',
+                'disabled:cursor-not-allowed disabled:opacity-40',
+                pressable,
+                enabled
+                  ? 'text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-100'
+                  : 'text-morphing-400'
+              )}
               style={{ paddingLeft: 8 + depth * 12 }}
               onClick={() => {
                 if (node.pageIndex != null) onGoToPage(node.pageIndex)
@@ -104,25 +106,28 @@ function ThumbRow({
       type="button"
       aria-label={`Go to page ${pageIndex0 + 1}`}
       aria-current={active ? 'page' : undefined}
-      className={`absolute left-0 right-0 flex flex-col items-center gap-1 px-2 py-1 ${
-        active ? 'bg-neutral-800' : 'hover:bg-neutral-800/60'
-      }`}
+      className={cn(
+        'absolute left-0 right-0 flex flex-col items-center gap-1.5 rounded-lg px-2.5 py-1.5',
+        'transition-[transform,background-color] duration-150 ease-out active:scale-[0.96]',
+        active ? 'bg-morphing-100' : '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
+      )}
       style={{ top: pageIndex0 * THUMB_ROW_H, height: THUMB_ROW_H }}
       onClick={() => onGoToPage(pageIndex0)}
     >
       <div
-        className={`w-full overflow-hidden rounded border bg-white ${
-          active ? 'border-white' : 'border-neutral-700'
-        }`}
-        style={{ height: THUMB_ROW_H - 28 }}
+        className={cn(
+          'w-full overflow-hidden rounded-md bg-white outline-solid outline-1 -outline-offset-1',
+          active ? 'outline-black/20 shadow-sm' : 'outline-black/10'
+        )}
+        style={{ height: THUMB_ROW_H - 32 }}
       >
         {slot?.ready ? (
           <div ref={hostRef} className="flex h-full items-start justify-center" />
         ) : (
-          <div className="h-full w-full animate-pulse bg-neutral-200" />
+          <div className="h-full w-full animate-pulse bg-morphing-100" />
         )}
       </div>
-      <span className="text-[11px] tabular-nums text-neutral-300">{pageIndex0 + 1}</span>
+      <span className="text-[11px] tabular-nums text-morphing-600">{pageIndex0 + 1}</span>
     </button>
   )
 }
@@ -137,6 +142,12 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
   const activePageRef = useRef(initialPage)
   const activeMarkerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  // Sidebar often mounts before loadOutline resolves; flip Pages → Outline once nodes arrive.
+  useEffect(() => {
+    if (outline.length === 0) return
+    setTab((prev) => (prev === 'pages' ? 'outline' : prev))
+  }, [outline.length])
 
   const syncActiveMarker = useCallback((page1Based: number) => {
     const el = activeMarkerRef.current
@@ -170,10 +181,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
     const scrollTop = el.scrollTop
     const viewH = el.clientHeight
     const start = Math.max(0, Math.floor(scrollTop / THUMB_ROW_H) - THUMB_BUFFER)
-    const end = Math.min(
-      pageCount,
-      Math.ceil((scrollTop + viewH) / THUMB_ROW_H) + THUMB_BUFFER
-    )
+    const end = Math.min(pageCount, Math.ceil((scrollTop + viewH) / THUMB_ROW_H) + THUMB_BUFFER)
     setRange((prev) => (prev.start === start && prev.end === end ? prev : { start, end }))
     const indices: number[] = []
     for (let i = start; i < end; i++) indices.push(i)
@@ -205,77 +213,68 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
   return (
     <aside
       aria-label="Document outline, page thumbnails, and annotations"
-      className="pointer-events-auto absolute bottom-3 left-3 top-3 z-100 flex w-56 flex-col overflow-hidden rounded-md bg-neutral-900 text-white shadow"
+      className={cn(
+        'pointer-events-auto absolute bottom-3 right-3 top-3 z-100 flex w-56 flex-col overflow-hidden',
+        'rounded-xl bg-white text-morphing-900',
+        'shadow-md shadow-morphing-900/10 ring-1 ring-black/10'
+      )}
     >
-      <div className="flex shrink-0 border-b border-neutral-700">
-        <button
-          type="button"
-          aria-pressed={tab === 'outline'}
-          className={`flex-1 px-1.5 py-1.5 text-[11px] font-medium ${
-            tab === 'outline' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-          }`}
-          onClick={() => setTab('outline')}
-        >
-          Outline
-        </button>
-        <button
-          type="button"
-          aria-pressed={tab === 'pages'}
-          className={`flex-1 px-1.5 py-1.5 text-[11px] font-medium ${
-            tab === 'pages' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-          }`}
-          onClick={() => setTab('pages')}
-        >
-          Pages
-        </button>
-        <button
-          type="button"
-          aria-pressed={tab === 'annotations'}
-          className={`flex-1 px-1.5 py-1.5 text-[11px] font-medium ${
-            tab === 'annotations'
-              ? 'bg-neutral-800 text-white'
-              : 'text-neutral-400 hover:text-white'
-          }`}
-          onClick={() => setTab('annotations')}
-        >
-          Annotations
-        </button>
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as Tab)}
+        className="flex min-h-0 flex-1 flex-col gap-0"
+      >
+        <div className="shrink-0 space-y-2 p-2">
+          <div className="px-1 text-[10px] tabular-nums tracking-wide text-morphing-500">
+            <span ref={activeMarkerRef}>Page {active}</span>
+          </div>
+          <TabsList className="h-10 w-full rounded-md">
+            <TabsTrigger value="outline" className="rounded px-1.5 text-[11px]">
+              Outline
+            </TabsTrigger>
+            <TabsTrigger value="pages" className="rounded px-1.5 text-[11px]">
+              Pages
+            </TabsTrigger>
+            <TabsTrigger value="annotations" className="rounded px-1.5 text-[11px]">
+              Annotations
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      <div className="shrink-0 border-b border-neutral-800 px-2 py-1 text-[10px] text-neutral-400">
-        <span ref={activeMarkerRef}>Page {active}</span>
-      </div>
-
-      {tab === 'outline' ? (
-        <div className="min-h-0 flex-1 overflow-y-auto p-1">
+        <TabsContent value="outline" className="mt-0 min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
           {outline.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-neutral-500">No outline in this PDF.</p>
+            <p className="px-2 py-3 text-xs text-pretty text-morphing-400">
+              No outline in this PDF.
+            </p>
           ) : (
             <OutlineTree nodes={outline} depth={0} onGoToPage={onGoToPage} />
           )}
-        </div>
-      ) : tab === 'pages' ? (
-        <div
-          ref={listRef}
-          className="relative min-h-0 flex-1 overflow-y-auto"
-          onScroll={updateVisible}
-        >
-          <div className="relative" style={{ height: pageCount * THUMB_ROW_H }}>
-            {visibleIndices.map((pageIndex0) => (
-              <ThumbRow
-                key={pageIndex0}
-                pageIndex0={pageIndex0}
-                active={pageIndex0 + 1 === active}
-                slot={thumbPool.getSlot(pageIndex0)}
-                onGoToPage={onGoToPage}
-              />
-            ))}
+        </TabsContent>
+
+        <TabsContent value="pages" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <div ref={listRef} className="relative h-full overflow-y-auto" onScroll={updateVisible}>
+            <div className="relative" style={{ height: pageCount * THUMB_ROW_H }}>
+              {visibleIndices.map((pageIndex0) => (
+                <ThumbRow
+                  key={pageIndex0}
+                  pageIndex0={pageIndex0}
+                  active={pageIndex0 + 1 === active}
+                  slot={thumbPool.getSlot(pageIndex0)}
+                  onGoToPage={onGoToPage}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto p-1">
+        </TabsContent>
+
+        <TabsContent
+          value="annotations"
+          className="mt-0 min-h-0 flex-1 overflow-y-auto px-1.5 pb-2"
+        >
           {annotations.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-neutral-500">No highlights or notes yet.</p>
+            <p className="px-2 py-3 text-xs text-pretty text-morphing-400">
+              No highlights or notes yet.
+            </p>
           ) : (
             <ul className="space-y-0.5">
               {annotations.map((item) => {
@@ -285,13 +284,17 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
                     <button
                       type="button"
                       aria-label={`${kindLabel}: ${item.preview}`}
-                      className="w-full rounded px-2 py-1.5 text-left hover:bg-neutral-800"
+                      className={cn(
+                        'min-h-10 w-full rounded-md px-2 py-2 text-left',
+                        pressable,
+                        '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-100'
+                      )}
                       onClick={() => onSelectAnnotation(item.id)}
                     >
-                      <span className="block text-[10px] uppercase tracking-wide text-neutral-400">
+                      <span className="block text-[10px] uppercase tracking-wide text-morphing-500">
                         {kindLabel}
                       </span>
-                      <span className="block truncate text-xs leading-snug text-white">
+                      <span className="block truncate text-xs leading-snug text-morphing-900">
                         {item.preview}
                       </span>
                     </button>
@@ -300,8 +303,8 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
               })}
             </ul>
           )}
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </aside>
   )
 })

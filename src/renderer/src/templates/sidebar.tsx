@@ -292,7 +292,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               <p className="text-sm cursor-pointer truncate w-full text-left overflow-hidden">
                 {categoryNode.name}
               </p>
-              <p className="text-xs text-morphing-600 shrink-0 inline-block w-fit">
+              <p className="inline-block w-fit shrink-0 text-xs tabular-nums text-morphing-600">
                 {categoryNode.pdfs.length}
               </p>
             </ContextMenuTrigger>
@@ -392,7 +392,7 @@ function Sidebar() {
         <div className="overflow-y-auto h-full min-h-0" ref={containerRef}>
           <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-600">
             <strong className="font-medium">{t('categories')} </strong>
-            <span>{pdfsCount} pdfs</span>
+            <span className="tabular-nums">{pdfsCount} pdfs</span>
           </p>
           <TreeView containerRef={containerRef} />
         </div>

@@ -118,7 +118,7 @@ function SettingsPage() {
                       value={[field.value]}
                       onValueChange={(value) => field.onChange(value[0])}
                     />
-                    <p className="text-sm text-muted-foreground">{field.value}</p>
+                    <p className="text-sm tabular-nums text-muted-foreground">{field.value}</p>
                   </hgroup>
                 )
               }

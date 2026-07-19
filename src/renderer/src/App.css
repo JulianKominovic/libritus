@@ -159,10 +159,10 @@
     -electron-corner-smoothing: system-ui;
   }
   html {
-    @apply cursor-default overscroll-none;
+    @apply cursor-default overscroll-none antialiased;
   }
   body {
-    @apply h-screen bg-morphing-50 text-morphing-900;
+    @apply h-screen bg-morphing-50 text-morphing-900 antialiased;
   }
   #root {
     @apply h-full overflow-hidden;

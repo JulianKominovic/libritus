@@ -206,3 +206,13 @@ Tras validar el embed, `clearPdfNoteLinkForUi` deja `link: null` (`CaptureUpdate
 #### Corrección
 
 Restaurar `NOTE_EMBED_LINK` en Excalidraw `onDuplicate` con `fixDuplicatedPdfNotes` (mismo id, misma transacción undoable). No rematerializar con id nuevo + `NEVER` para el path de paste/duplicate. `repairUnvalidatedPdfNotes` queda solo como red de seguridad.
+
+### PdfSidebar tab inicial: outline async llega tarde
+
+#### Descripción más detallada
+
+Con `showPdfOutline: true`, el sidebar monta cuando hay `session` pero `loadOutline` aún no resolvió → `useState(outline.length > 0 ? 'outline' : 'pages')` queda en **Pages**. Cuando llega el outline, el tab no cambia. El e2e `outline entry and thumb jump` espera el botón `Go to Chapter Two` (en el tab Outline oculto) y hace timeout. Antes el sidebar se abría con un toggle *después* de cargar, así que a veces el outline ya estaba listo al montar.
+
+#### Corrección
+
+`useEffect` que, si `outline.length > 0` y el tab actual es `pages`, pasa a `outline` (no pisa Annotations ni un tab ya elegido).

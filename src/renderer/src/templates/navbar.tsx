@@ -128,7 +128,7 @@ function Navbar() {
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
-          className="!p-2 aspect-square !size-8 text-morphing-600"
+          className="!size-10 aspect-square !p-2 text-morphing-600"
           onClick={() => {
             void flushActiveSession().then(() => window.history.back())
           }}
@@ -137,7 +137,7 @@ function Navbar() {
         </Button>
         <Button
           variant="ghost"
-          className="!p-2 aspect-square !size-8 text-morphing-600 -mx-2"
+          className="-mx-2 !size-10 aspect-square !p-2 text-morphing-600"
           onClick={() => {
             void flushActiveSession().then(() => window.history.forward())
           }}
@@ -146,7 +146,7 @@ function Navbar() {
         </Button>
         <Button
           variant="ghost"
-          className="!p-2 aspect-square !size-8 text-morphing-600"
+          className="!size-10 aspect-square !p-2 text-morphing-600"
           onClick={() => setShowNavigationSidebar(!showNavigationSidebar)}
         >
           <DynamicIcon name={showNavigationSidebar ? 'panel-left' : 'panel-left-open'} />
@@ -191,7 +191,9 @@ function Navbar() {
         {isPdf && (
           <Button
             variant="ghost"
-            className="!p-2 aspect-square !size-8 text-morphing-600"
+            className="!size-10 aspect-square !p-2 text-morphing-600"
+            aria-label="Toggle PDF sidebar"
+            aria-pressed={showPdfOutline}
             onClick={() => setShowPdfOutline(!showPdfOutline)}
           >
             <DynamicIcon name={showPdfOutline ? 'panel-right' : 'panel-right-open'} />

@@ -23,13 +23,13 @@ test('outline entry and thumb jump to page', async () => {
     const current = page.getByLabel('Current page')
     await expect(current).toHaveValue('1')
 
-    await page.getByLabel('Toggle pages sidebar').click()
-    await expect(page.getByLabel('Document outline, page thumbnails, and annotations')).toBeVisible()
+    const sidebar = page.getByLabel('Document outline, page thumbnails, and annotations')
+    await expect(sidebar).toBeVisible()
 
     await page.getByRole('button', { name: /Go to Chapter Two/ }).click()
     await expect(current).toHaveValue('2', { timeout: 10_000 })
 
-    await page.getByRole('button', { name: 'Pages', exact: true }).click()
+    await page.getByRole('tab', { name: 'Pages' }).click()
     await page.getByRole('button', { name: 'Go to page 1' }).click()
     await expect(current).toHaveValue('1', { timeout: 10_000 })
   } finally {
@@ -55,7 +55,9 @@ test('thumb click navigates on PDF without outline', async () => {
     const current = page.getByLabel('Current page')
     await expect(current).toHaveValue('1')
 
-    await page.getByLabel('Toggle pages sidebar').click()
+    await expect(
+      page.getByLabel('Document outline, page thumbnails, and annotations')
+    ).toBeVisible()
     // No outline → Pages tab is default; click thumb for page 2
     await page.getByRole('button', { name: 'Go to page 2' }).click()
     await expect(current).toHaveValue('2', { timeout: 10_000 })

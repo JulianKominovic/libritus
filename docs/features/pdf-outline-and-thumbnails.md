@@ -25,10 +25,10 @@ Out of scope (for now):
 
 | Surface | Behavior |
 |---------|----------|
+| **Toggle** | Navbar panel-right + Settings `showPdfOutline`; right overlay when open. |
 | **Outline** | Tree from pdf.js outline API. Missing outline → empty / hidden, not an error. |
 | **Thumbnails** | One slot per page or virtualized list; active page marked from viewport center. |
 | **Click item** | `goToPage` / destination scroll; same zoom + stable X as nav. |
-| **Toggle** | Collapsible sidebar or panel; must not steal pan/zoom when closed. |
 
 In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 

@@ -41,11 +41,10 @@ test('annotation panel lists items and jump selects note', async () => {
     })
     await openPdf(page, categoryId, pdfId)
 
-    await page.getByLabel('Toggle pages sidebar').click()
     const sidebar = page.getByLabel('Document outline, page thumbnails, and annotations')
     await expect(sidebar).toBeVisible()
 
-    await page.getByRole('button', { name: 'Annotations', exact: true }).click()
+    await page.getByRole('tab', { name: 'Annotations' }).click()
     await expect(
       page.getByRole('button', { name: 'Highlight: panel highlight text' })
     ).toBeVisible()
@@ -71,8 +70,10 @@ test('annotation panel empty state', async () => {
     })
     await openPdf(page, categoryId, pdfId)
 
-    await page.getByLabel('Toggle pages sidebar').click()
-    await page.getByRole('button', { name: 'Annotations', exact: true }).click()
+    await expect(
+      page.getByLabel('Document outline, page thumbnails, and annotations')
+    ).toBeVisible()
+    await page.getByRole('tab', { name: 'Annotations' }).click()
     await expect(page.getByText('No highlights or notes yet.')).toBeVisible()
   } finally {
     await close()

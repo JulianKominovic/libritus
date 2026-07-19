@@ -18,7 +18,7 @@ const SLOW_DEBOUNCE_TIME = 350
 const FAST_DEBOUNCE_TIME = 50
 
 const pdfStatPillClassName =
-  'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1'
+  'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1 tabular-nums'
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
   const [, drag, preview] = useDrag(() => ({
@@ -39,7 +39,7 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
         <Link
           to={`/category/${categoryId}/${pdf.id}`}
           className={
-            'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] hover:scale-105 duration-300 transition-transform group'
+            'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-transform duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:scale-105 group'
           }
         >
           <img
@@ -122,8 +122,8 @@ function Category() {
       <div className="flex items-center gap-2 pt-4">
         <div
           className={cn(
-            'cursor-pointer size-8 rounded-[50%] overflow-hidden aspect-square border-morphing-600 border transition-transform flex-shrink-0',
-            isDefault ? '' : 'hover:scale-110'
+            'cursor-pointer size-10 rounded-[50%] overflow-hidden aspect-square border-morphing-600 border transition-transform flex-shrink-0',
+            isDefault ? '' : '[@media(hover:hover)_and_(pointer:fine)]:hover:scale-110'
           )}
         >
           <input
@@ -175,7 +175,9 @@ function Category() {
         readOnly={isDefault}
         rows={3}
       />
-      <h2 className="text-sm text-muted-foreground mb-6">{category.pdfs.length} pdfs</h2>
+      <h2 className="mb-6 text-sm tabular-nums text-muted-foreground">
+        {category.pdfs.length} pdfs
+      </h2>
       <div className="flex flex-wrap gap-8 group/container">
         {category.pdfs
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())

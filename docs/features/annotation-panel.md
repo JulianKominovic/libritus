@@ -27,12 +27,13 @@ Out of scope (for now):
 
 | Control | Behavior |
 |---------|----------|
-| **Tab** | Third tab on the left sidebar: Outline / Pages / Annotations. |
+| **Toggle** | Navbar panel-right button (and Settings → “Show PDF sidebar”); panel on the right. |
+| **Tab** | Outline / Pages / Annotations (shared Tabs UI). |
 | **List** | Flat list sorted by scene Y then X; kind label + truncated preview. |
 | **Row click** | Camera to element center; set `selectedElementIds` (no auto-edit). |
 | **Empty** | “No highlights or notes yet.” |
 
-Chrome: same collapsible sidebar as outline/thumbs (`pointer-events-auto` in text-select mode).
+Chrome: right overlay sidebar (`pointer-events-auto` in text-select mode).
 
 ---
 
@@ -64,4 +65,4 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 1. Scene-derived list only (no second DB).
 2. Jump + select; do not auto-activate note edit.
 3. Highlights + notes first; shapes/arrows later if needed.
-4. Third tab on `PdfSidebar` (not a separate panel).
+4. Third tab on `PdfSidebar` (not a separate panel); toggle via navbar / settings.

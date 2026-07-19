@@ -58,6 +58,7 @@ import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
+import { useSettings } from '@renderer/stores/settings'
 import type { Value } from 'platejs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
@@ -162,11 +163,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   /** Note ids Excalidraw has already validated (may have link stripped for UI). */
   const noteIdsRef = useRef(new Set<string>())
 
+  const showPdfOutline = useSettings((s) => s.showPdfOutline)
+
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
   const [placeNoteMode, setPlaceNoteMode] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [annotations, setAnnotations] = useState<AnnotationListItem[]>([])
   const annotationsSigRef = useRef('')
@@ -430,7 +432,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     sessionRef.current = null
     setSession(null)
     setOutline([])
-    setSidebarOpen(false)
   }, [])
 
   const clearScene = useCallback(() => {
@@ -1031,10 +1032,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     })
   }, [])
 
-  const toggleSidebar = useCallback(() => {
-    setSidebarOpen((prev) => !prev)
-  }, [])
-
   const handlePointerDown = useCallback(
     (_activeTool: unknown, pointerDownState: { origin: { x: number; y: number } }) => {
       const api = apiRef.current
@@ -1308,21 +1305,21 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       >
         <button
           type="button"
-          className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white shadow hover:bg-neutral-700"
+          className="min-h-10 rounded-md bg-white px-3 text-xs font-medium text-morphing-900 shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50"
           onClick={addNoteToActiveHighlight}
         >
           Add note
         </button>
         <button
           type="button"
-          className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white shadow hover:bg-red-500"
+          className="min-h-10 rounded-md bg-red-50 px-3 text-xs font-medium text-red-700 shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-red-100"
           onClick={removeActiveHighlight}
         >
           Remove
         </button>
       </div>
 
-      {session && pageCount > 0 && sidebarOpen ? (
+      {session && pageCount > 0 && showPdfOutline ? (
         <PdfSidebar
           ref={pdfSidebarRef}
           outline={outline}
@@ -1357,44 +1354,34 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         </div>
       ) : null}
 
-      <div className="pointer-events-none absolute right-3 top-3 z-100">
+      <div className="pointer-events-none absolute left-3 top-3 z-100">
         <span
           ref={saveChipRef}
-          className={`rounded-md px-2 py-1 text-xs shadow ${
+          className={`min-w-[4.5rem] rounded-md px-2.5 py-1.5 text-center text-xs shadow-md shadow-morphing-900/10 ring-1 ring-black/10 ${
             saveStatus === 'error'
               ? 'bg-red-50 text-red-700'
               : saveStatus === 'unsaved'
                 ? 'bg-amber-50 text-amber-800'
-                : 'bg-white/90 text-neutral-600'
+                : 'bg-white text-morphing-600'
           }`}
         >
           {SAVE_STATUS_LABEL[saveStatus]}
         </span>
       </div>
 
-      <div className="pointer-events-auto absolute bottom-16 right-4 z-100 flex flex-col items-end gap-2">
-        <button
-          type="button"
-          aria-pressed={sidebarOpen}
-          aria-label="Toggle pages sidebar"
-          disabled={!session}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
-            sidebarOpen
-              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
-              : 'bg-neutral-900 text-white hover:bg-neutral-800'
-          }`}
-          onClick={toggleSidebar}
-        >
-          Pages
-        </button>
+      <div
+        className={`pointer-events-auto absolute bottom-16 z-100 flex flex-col items-end gap-2 ${
+          showPdfOutline ? 'right-[15.5rem]' : 'right-4'
+        }`}
+      >
         <button
           type="button"
           aria-pressed={findOpen}
           disabled={!session}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`min-h-10 rounded-lg px-3 text-sm font-medium shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 ${
             findOpen
-              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
-              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+              ? 'bg-morphing-100 text-morphing-900'
+              : 'bg-white text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
           }`}
           onClick={toggleFind}
         >
@@ -1404,10 +1391,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           type="button"
           aria-pressed={placeNoteMode}
           disabled={!session}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`min-h-10 rounded-lg px-3 text-sm font-medium shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 ${
             placeNoteMode
-              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
-              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+              ? 'bg-morphing-100 text-morphing-900'
+              : 'bg-white text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
           }`}
           onClick={togglePlaceNoteMode}
         >
@@ -1417,10 +1404,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           type="button"
           aria-pressed={textSelectMode}
           disabled={!session}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`min-h-10 rounded-lg px-3 text-sm font-medium shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 ${
             textSelectMode
-              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
-              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+              ? 'bg-morphing-100 text-morphing-900'
+              : 'bg-white text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
           }`}
           onClick={toggleTextSelectMode}
         >
