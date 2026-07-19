@@ -2,7 +2,7 @@
 
 Document structure chrome: PDF outline/bookmarks and a page thumbnail strip/sidebar so the user can orient in long documents.
 
-**Status:** planned.
+**Status:** implemented (`PdfSidebar` + `pdfOutline` + `ThumbPool`, wired in `PdfCanvasApp`).
 
 ---
 
@@ -40,11 +40,12 @@ In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 
 - Load via pdf.js document outline; destinations → `pageIndex` (+ optional Y in page space).
 - Destinations that cannot resolve: skip or disable row; do not crash open.
+- Jump today: page center via existing `goToPage` (dest Y deferred).
 
 ### Thumbnails
 
-- Separate small pool (or soft cache), **not** the main `PagePool` bitmaps at `FIXED_RENDER_SCALE`.
-- Low scale (e.g. ~0.2–0.5); LRU + cancel; idle generation preferred over blocking open.
+- Separate `ThumbPool` at `THUMB_SCALE = 0.25`, **not** the main `PagePool` bitmaps at `FIXED_RENDER_SCALE`.
+- Hard-capped LRU + cancel; virtualized list drives `syncVisible`.
 - Identity: `pageIndex` 0-based.
 
 ---

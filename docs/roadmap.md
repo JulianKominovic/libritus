@@ -13,7 +13,7 @@ North star for migrating Libritus from the classic lector viewer to a scalable i
 - Session autosave: `{pdfId}.session.json` (elements + camera).
 - Keep existing categories library / upload / Electron FS.
 
-**Explicitly deferred in v1:** outline/search chrome; reintroducing essays as a canvas HUD (legacy essays UI removed with lector).
+**Explicitly deferred in v1:** reintroducing essays as a canvas HUD (legacy essays UI removed with lector).
 
 Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
@@ -21,16 +21,16 @@ Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 ## v1.1
 
-Feature specs (planned): [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md) · [`annotation-panel`](features/annotation-panel.md) · [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`annotation-polish`](features/annotation-polish.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
+Feature specs (planned): [`annotation-panel`](features/annotation-panel.md) · [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`annotation-polish`](features/annotation-polish.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
 
-Done in v1.1 so far: [`pdf-search`](features/pdf-search.md).
+Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md).
 
 | Item | Notes |
 |------|--------|
 | Canonical annotation model | `pageIndex` + page-space geometry; Excalidraw remains paint layer — [`page-space-annotations.md`](features/page-space-annotations.md) |
 | Stable page-anchored highlights | Bridge toward non-Excalidraw renderer |
 | Migrate legacy data | Map old `categories.json` highlights/comments into canvas session or canonical store — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md) |
-| Essays / outline | Reintroduce as canvas HUD or side panels without lector — [`essays-hud.md`](features/essays-hud.md), [`pdf-outline-and-thumbnails.md`](features/pdf-outline-and-thumbnails.md) |
+| Essays HUD | Reintroduce as canvas HUD without lector — [`essays-hud.md`](features/essays-hud.md) |
 | Library polish | Optional `contentHash`, rename, reveal in Finder |
 
 ---

@@ -21,6 +21,8 @@ import {
 import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
+import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
+import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import {
   clearPdfNoteLinkForUi,
   createNoteFromHighlight,
@@ -58,6 +60,7 @@ import { NoteEmbed } from './NoteEmbed'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfFindBar, type PdfFindBarHandle } from './PdfFindBar'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
+import { PdfSidebar, type PdfSidebarHandle } from './PdfSidebar'
 
 import '@excalidraw/excalidraw/index.css'
 import '@renderer/excalidraw.css'
@@ -85,6 +88,7 @@ type RuntimeSession = {
   layout: PageLayout
   pool: PagePool
   textPool: TextLayerPool
+  thumbPool: ThumbPool
 }
 
 type PdfCanvasAppProps = {
@@ -128,6 +132,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const cameraRef = useRef<CameraState>(INITIAL_CAMERA)
   const pdfLayerRef = useRef<PdfLayerHandle>(null)
   const pageNavigatorRef = useRef<PageNavigatorHandle>(null)
+  const pdfSidebarRef = useRef<PdfSidebarHandle>(null)
   const findBarRef = useRef<PdfFindBarHandle>(null)
   const searcherRef = useRef<PdfTextSearch | null>(null)
   const matchesRef = useRef<SearchMatch[]>([])
@@ -155,6 +160,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [textSelectMode, setTextSelectMode] = useState(false)
   const [placeNoteMode, setPlaceNoteMode] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [outline, setOutline] = useState<OutlineNode[]>([])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -240,6 +247,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         if (page1Based !== currentPageRef.current) {
           currentPageRef.current = page1Based
           pageNavigatorRef.current?.setCurrentPage(page1Based)
+          pdfSidebarRef.current?.setActivePage(page1Based)
         }
       }
 
@@ -400,9 +408,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     if (!prev) return
     prev.pool.destroy()
     prev.textPool.destroy()
+    prev.thumbPool.destroy()
     await prev.doc.destroy()
     sessionRef.current = null
     setSession(null)
+    setOutline([])
+    setSidebarOpen(false)
   }, [])
 
   const clearScene = useCallback(() => {
@@ -470,9 +481,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         const layout = new PageLayout(doc.pageSizes)
         const pool = new PagePool(doc)
         const textPool = new TextLayerPool(doc)
-        const next: RuntimeSession = { doc, layout, pool, textPool }
+        const thumbPool = new ThumbPool(doc)
+        const next: RuntimeSession = { doc, layout, pool, textPool, thumbPool }
         sessionRef.current = next
         setSession(next)
+
+        void loadOutline(doc).then((nodes) => {
+          if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
+          setOutline(nodes)
+        })
 
         const cam = snapshot?.camera
         const scrollX = cam?.scrollX ?? INITIAL_CAMERA.scrollX
@@ -608,6 +625,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (!current) return
       current.pool.destroy()
       current.textPool.destroy()
+      current.thumbPool.destroy()
       void current.doc.destroy()
       sessionRef.current = null
     }
@@ -961,6 +979,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     })
   }, [])
 
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => !prev)
+  }, [])
+
   const handlePointerDown = useCallback(
     (_activeTool: unknown, pointerDownState: { origin: { x: number; y: number } }) => {
       const api = apiRef.current
@@ -1169,7 +1191,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full overflow-hidden bg-neutral-200${
+      data-pdf-canvas-root
+      className={`relative h-full w-full overflow-hidden bg-morphing-50${
         textSelectMode ? ' text-select-mode' : ''
       }`}
     >
@@ -1247,6 +1270,17 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         </button>
       </div>
 
+      {session && pageCount > 0 && sidebarOpen ? (
+        <PdfSidebar
+          ref={pdfSidebarRef}
+          outline={outline}
+          pageCount={pageCount}
+          thumbPool={session.thumbPool}
+          initialPage={currentPageRef.current}
+          onGoToPage={goToPage}
+        />
+      ) : null}
+
       {session && pageCount > 0 ? (
         <div className="pointer-events-none absolute bottom-3 left-1/2 z-100 flex -translate-x-1/2 items-center gap-2">
           <PageNavigator
@@ -1285,6 +1319,20 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       </div>
 
       <div className="pointer-events-auto absolute bottom-16 right-4 z-100 flex flex-col items-end gap-2">
+        <button
+          type="button"
+          aria-pressed={sidebarOpen}
+          aria-label="Toggle pages sidebar"
+          disabled={!session}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium shadow disabled:cursor-not-allowed disabled:opacity-40 ${
+            sidebarOpen
+              ? 'bg-white text-neutral-900 ring-2 ring-neutral-900'
+              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+          }`}
+          onClick={toggleSidebar}
+        >
+          Pages
+        </button>
         <button
           type="button"
           aria-pressed={findOpen}
@@ -1327,7 +1375,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       </div>
 
       {loadError ? (
-        <div className="pointer-events-none absolute inset-0 z-110 flex items-center justify-center bg-neutral-200/80">
+        <div className="pointer-events-none absolute inset-0 z-110 flex items-center justify-center bg-morphing-50/80">
           <p className="rounded-md bg-white px-4 py-2 text-sm text-red-700 shadow">{loadError}</p>
         </div>
       ) : null}

@@ -19,6 +19,20 @@ test('opens seeded PDF and shows page navigator', async () => {
 
     await expect(page.getByLabel('Current page')).toBeVisible()
     await expect(page.getByLabel('Next page')).toBeVisible()
+
+    // Canvas chrome must track :root --color-morphing-50 (not hardcoded neutral gray).
+    const { canvasBg, morphing50 } = await page.evaluate(() => {
+      const root = document.querySelector('[data-pdf-canvas-root]')
+      const canvasBg = root ? getComputedStyle(root).backgroundColor : ''
+      const probe = document.createElement('div')
+      probe.style.backgroundColor = 'var(--color-morphing-50)'
+      document.body.appendChild(probe)
+      const morphing50 = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      return { canvasBg, morphing50 }
+    })
+    expect(canvasBg).toBe(morphing50)
+    expect(morphing50).not.toBe('')
   } finally {
     await close()
   }
