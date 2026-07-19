@@ -216,3 +216,13 @@ Con `showPdfOutline: true`, el sidebar monta cuando hay `session` pero `loadOutl
 #### Corrección
 
 `useEffect` que, si `outline.length > 0` y el tab actual es `pages`, pasa a `outline` (no pisa Annotations ni un tab ya elegido).
+
+### Sidebar DnD: `isDropTarget` sticky tras dragleave
+
+#### Descripción más detallada
+
+Al arrastrar un PDF de la lista de categoría sobre otra categoría en la sidebar y salir sin soltar, el highlight (`bg-morphing-100` + padding) quedaba indefinidamente. Se estilizaba con `isDropTarget` de `@minoru/react-dnd-treeview`, que refleja `placeholderContext.dropTargetId` — solo se limpia en `drop` o en `hover` mientras sigue `isOver`. Al hacer leave, no se llama `hidePlaceholder`.
+
+#### Corrección
+
+Usar `classes.dropTarget` del Tree (la lib lo aplica solo con `isOver` live). No estilar con `isDropTarget`. E2E: hover → leave → up limpia `.sidebar-drop-target`; drop completo mueve el PDF.

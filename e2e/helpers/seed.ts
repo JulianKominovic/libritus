@@ -68,6 +68,54 @@ export async function seedLibrary(opts: SeedLibraryOpts): Promise<{
   return { categoryId, pdfId }
 }
 
+/** Two categories: source has one PDF, destination is empty. */
+export async function seedTwoCategories(opts: {
+  appDataDir: string
+  sourceId?: string
+  destId?: string
+  pdfId?: string
+  pages?: number
+}): Promise<{
+  sourceId: string
+  destId: string
+  pdfId: string
+}> {
+  const sourceId = opts.sourceId ?? 'e2e-source'
+  const destId = opts.destId ?? 'e2e-dest'
+  const pdfId = opts.pdfId ?? DEFAULT_PDF_ID
+  const pages = opts.pages ?? 1
+  const fixture = path.join(process.cwd(), 'e2e/fixtures/sample.pdf')
+
+  await mkdir(opts.appDataDir, { recursive: true })
+  await copyFile(fixture, path.join(opts.appDataDir, `${pdfId}.pdf`))
+
+  const now = new Date().toISOString()
+  const categories = [
+    {
+      id: sourceId,
+      name: 'Source',
+      description: 'source category',
+      createdAt: now,
+      updatedAt: now,
+      icon: 'circle-dot',
+      color: '#555',
+      pdfs: [pdfEntry(pdfId, pages, now)]
+    },
+    {
+      id: destId,
+      name: 'Dest',
+      description: 'destination category',
+      createdAt: now,
+      updatedAt: now,
+      icon: 'folder',
+      color: '#888',
+      pdfs: []
+    }
+  ]
+  await writeFile(path.join(opts.appDataDir, 'categories.json'), JSON.stringify(categories))
+  return { sourceId, destId, pdfId }
+}
+
 /** Append another PDF to an existing seeded category (does not overwrite catalog). */
 export async function seedExtraPdf(opts: SeedLibraryOpts & { categoryId: string }): Promise<{
   categoryId: string

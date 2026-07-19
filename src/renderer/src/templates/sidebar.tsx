@@ -153,6 +153,10 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
       }}
       rootId={0}
       sort={false}
+      // Highlight via ::before (inset padding look, no layout shift). See App.css.
+      classes={{
+        dropTarget: 'sidebar-drop-target'
+      }}
       onDrop={async (_, { monitor, dropTargetId: ogDropTargetId, dragSource }) => {
         const itemType = monitor.getItemType()
         let dropTargetId = `${ogDropTargetId}`
@@ -201,7 +205,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
         movePdf(dragSourceId as string, dropTargetId as string)
       }}
       initialOpen={initialOpen}
-      render={(node, { depth, isOpen, onToggle, isDragging, isDropTarget }) => {
+      render={(node, { depth, isOpen, onToggle, isDragging }) => {
         const isPdf = node.data?.type === 'P'
         // const isActive =
         //   (isPdf
@@ -254,10 +258,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
           return (
             <Button
               variant={'none'}
-              className={cn(
-                '!p-0 h-10 w-full justify-start',
-                isDropTarget ? 'bg-morphing-100 !px-2' : ''
-              )}
+              className="!p-0 h-10 w-full justify-start"
               onClick={() => {
                 createCategory().then(async (category) => {
                   await flushActiveSession()
@@ -278,8 +279,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               className={cn(
                 buttonVariants({ variant: 'none' }),
                 'w-full relative justify-start !p-0 h-10 line-clamp-3 flex',
-                isActive ? 'font-semibold active' : '',
-                isDropTarget ? 'bg-morphing-100 !px-2' : ''
+                isActive ? 'font-semibold active' : ''
               )}
               onClick={() => {
                 onToggle()
@@ -389,7 +389,7 @@ function Sidebar() {
         >
           <DynamicIcon name="home" /> {t('home')}
         </Link>
-        <div className="overflow-y-auto h-full min-h-0" ref={containerRef}>
+        <div className="overflow-y-auto h-full min-h-0 -mx-2 px-2" ref={containerRef}>
           <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-600">
             <strong className="font-medium">{t('categories')} </strong>
             <span className="tabular-nums">{pdfsCount} pdfs</span>

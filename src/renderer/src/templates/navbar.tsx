@@ -128,7 +128,7 @@ function Navbar() {
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
-          className="!size-10 aspect-square !p-2 text-morphing-600"
+          className="text-morphing-600"
           onClick={() => {
             void flushActiveSession().then(() => window.history.back())
           }}
@@ -137,7 +137,7 @@ function Navbar() {
         </Button>
         <Button
           variant="ghost"
-          className="-mx-2 !size-10 aspect-square !p-2 text-morphing-600"
+          className="-mx-2 text-morphing-600"
           onClick={() => {
             void flushActiveSession().then(() => window.history.forward())
           }}
@@ -146,7 +146,7 @@ function Navbar() {
         </Button>
         <Button
           variant="ghost"
-          className="!size-10 aspect-square !p-2 text-morphing-600"
+          className="text-morphing-600"
           onClick={() => setShowNavigationSidebar(!showNavigationSidebar)}
         >
           <DynamicIcon name={showNavigationSidebar ? 'panel-left' : 'panel-left-open'} />
