@@ -6,6 +6,7 @@ import {
   useRef,
   useState
 } from 'react'
+import type { AnnotationListItem } from '@renderer/lib/pdf-canvas/annotationList'
 import type { OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import type { ThumbPool, ThumbSlot } from '@renderer/lib/pdf-canvas/ThumbPool'
 
@@ -17,14 +18,16 @@ export type PdfSidebarProps = {
   outline: OutlineNode[]
   pageCount: number
   thumbPool: ThumbPool
+  annotations: AnnotationListItem[]
   initialPage?: number
   onGoToPage: (pageIndex0: number) => void
+  onSelectAnnotation: (id: string) => void
 }
 
 const THUMB_ROW_H = 118
 const THUMB_BUFFER = 2
 
-type Tab = 'outline' | 'pages'
+type Tab = 'outline' | 'pages' | 'annotations'
 
 function OutlineTree({
   nodes,
@@ -125,7 +128,7 @@ function ThumbRow({
 }
 
 export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function PdfSidebar(
-  { outline, pageCount, thumbPool, initialPage = 1, onGoToPage },
+  { outline, pageCount, thumbPool, annotations, initialPage = 1, onGoToPage, onSelectAnnotation },
   ref
 ) {
   const [tab, setTab] = useState<Tab>(outline.length > 0 ? 'outline' : 'pages')
@@ -201,14 +204,14 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
 
   return (
     <aside
-      aria-label="Document outline and page thumbnails"
-      className="pointer-events-auto absolute bottom-3 left-3 top-3 z-100 flex w-52 flex-col overflow-hidden rounded-md bg-neutral-900 text-white shadow"
+      aria-label="Document outline, page thumbnails, and annotations"
+      className="pointer-events-auto absolute bottom-3 left-3 top-3 z-100 flex w-56 flex-col overflow-hidden rounded-md bg-neutral-900 text-white shadow"
     >
       <div className="flex shrink-0 border-b border-neutral-700">
         <button
           type="button"
           aria-pressed={tab === 'outline'}
-          className={`flex-1 px-2 py-1.5 text-xs font-medium ${
+          className={`flex-1 px-1.5 py-1.5 text-[11px] font-medium ${
             tab === 'outline' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
           }`}
           onClick={() => setTab('outline')}
@@ -218,12 +221,24 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
         <button
           type="button"
           aria-pressed={tab === 'pages'}
-          className={`flex-1 px-2 py-1.5 text-xs font-medium ${
+          className={`flex-1 px-1.5 py-1.5 text-[11px] font-medium ${
             tab === 'pages' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
           }`}
           onClick={() => setTab('pages')}
         >
           Pages
+        </button>
+        <button
+          type="button"
+          aria-pressed={tab === 'annotations'}
+          className={`flex-1 px-1.5 py-1.5 text-[11px] font-medium ${
+            tab === 'annotations'
+              ? 'bg-neutral-800 text-white'
+              : 'text-neutral-400 hover:text-white'
+          }`}
+          onClick={() => setTab('annotations')}
+        >
+          Annotations
         </button>
       </div>
 
@@ -239,7 +254,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
             <OutlineTree nodes={outline} depth={0} onGoToPage={onGoToPage} />
           )}
         </div>
-      ) : (
+      ) : tab === 'pages' ? (
         <div
           ref={listRef}
           className="relative min-h-0 flex-1 overflow-y-auto"
@@ -256,6 +271,35 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
               />
             ))}
           </div>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto p-1">
+          {annotations.length === 0 ? (
+            <p className="px-2 py-3 text-xs text-neutral-500">No highlights or notes yet.</p>
+          ) : (
+            <ul className="space-y-0.5">
+              {annotations.map((item) => {
+                const kindLabel = item.kind === 'highlight' ? 'Highlight' : 'Note'
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      aria-label={`${kindLabel}: ${item.preview}`}
+                      className="w-full rounded px-2 py-1.5 text-left hover:bg-neutral-800"
+                      onClick={() => onSelectAnnotation(item.id)}
+                    >
+                      <span className="block text-[10px] uppercase tracking-wide text-neutral-400">
+                        {kindLabel}
+                      </span>
+                      <span className="block truncate text-xs leading-snug text-white">
+                        {item.preview}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       )}
     </aside>

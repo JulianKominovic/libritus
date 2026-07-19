@@ -2,7 +2,7 @@
 
 Sidebar/panel listing the user’s highlights and notes for the open PDF, with jump-to on click.
 
-**Status:** planned.
+**Status:** implemented (`PdfSidebar` Annotations tab + `annotationList`, wired in `PdfCanvasApp`).
 
 ---
 
@@ -19,6 +19,7 @@ Out of scope (for now):
 - Full-text search inside notes (can share UI chrome with [`pdf-search.md`](pdf-search.md) later).
 - Editing note content inside the panel (jump + open on canvas / activate embed).
 - Freehand / arbitrary shapes in v1 of the panel (highlights + `pdfNote` only).
+- Delete from the panel (use canvas Remove).
 
 ---
 
@@ -26,21 +27,22 @@ Out of scope (for now):
 
 | Control | Behavior |
 |---------|----------|
-| **List** | Group or filter: Highlights / Notes (or flat chronological). |
-| **Row click** | Camera to element bounds; set `selectedElementIds`. |
-| **Empty** | Short empty state (“No highlights yet”). |
-| **Delete (optional)** | Same semantics as canvas: highlight Remove does not delete linked notes. |
+| **Tab** | Third tab on the left sidebar: Outline / Pages / Annotations. |
+| **List** | Flat list sorted by scene Y then X; kind label + truncated preview. |
+| **Row click** | Camera to element center; set `selectedElementIds` (no auto-edit). |
+| **Empty** | “No highlights or notes yet.” |
 
-Chrome: collapsible side panel; `pointer-events-auto` in text-select mode.
+Chrome: same collapsible sidebar as outline/thumbs (`pointer-events-auto` in text-select mode).
 
 ---
 
 ## Model / approach
 
-- Source of truth: Excalidraw scene elements with `customData.pdfHighlight` / `customData.pdfNote` (see notes/highlight helpers).
-- Derive list in a pure function from `elements` (filter `isDeleted`); do **not** keep a parallel annotation store.
-- Jump: compute world AABB of the element → scroll camera (reuse layout/camera helpers). Avoid `setState` loops driven by Excalidraw `onChange` for geometry — list identity/content only.
-- Note preview: strip Plate `plateValue` to plain text (small helper); truncate.
+- Source of truth: Excalidraw scene elements with `customData.pdfHighlight` / `customData.pdfNote`.
+- Derive list in `listAnnotations` (filter `isDeleted`); do **not** keep a parallel annotation store.
+- React list updates gated by `annotationsSignature` (id / kind / preview only — not geometry).
+- Jump: element AABB center → `scrollX` / `scrollY` + select.
+- Note preview: `platePlainText(plateValue)` truncated.
 
 When page-space lands ([`page-space-annotations.md`](page-space-annotations.md)), list rows can show `pageIndex` and sort by document order.
 
@@ -49,16 +51,17 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 ## Relation to other features
 
 | Feature | Interaction |
-|---------|-------------|
-| **WYSIWYG notes** | Rows for `pdfNote`; click may select, not auto-enter edit. |
-| **Highlights** | Rows for locked highlight rects; snippet from stored text if we add it, else “Highlight”. |
+|---------|----------|
+| **WYSIWYG notes** | Rows for `pdfNote`; click selects, does not auto-enter edit. |
+| **Highlights** | Rows for locked highlight rects; snippet from `customData.text`. |
 | **Sessions** | No separate file — scene already persists. |
 | **Essays HUD** | Essays are a different surface; do not mix into this list until essays exist. |
 
 ---
 
-## Closed decisions (draft)
+## Closed decisions
 
 1. Scene-derived list only (no second DB).
 2. Jump + select; do not auto-activate note edit.
 3. Highlights + notes first; shapes/arrows later if needed.
+4. Third tab on `PdfSidebar` (not a separate panel).

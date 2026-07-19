@@ -24,7 +24,7 @@ test('outline entry and thumb jump to page', async () => {
     await expect(current).toHaveValue('1')
 
     await page.getByLabel('Toggle pages sidebar').click()
-    await expect(page.getByLabel('Document outline and page thumbnails')).toBeVisible()
+    await expect(page.getByLabel('Document outline, page thumbnails, and annotations')).toBeVisible()
 
     await page.getByRole('button', { name: /Go to Chapter Two/ }).click()
     await expect(current).toHaveValue('2', { timeout: 10_000 })

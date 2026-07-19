@@ -14,6 +14,11 @@ import { readFile } from '@renderer/integrations/fs'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import {
+  annotationsSignature,
+  listAnnotations,
+  type AnnotationListItem
+} from '@renderer/lib/pdf-canvas/annotationList'
+import {
   fileIdsFromElements,
   loadBinaryFiles,
   persistNewBinaryFiles
@@ -120,6 +125,7 @@ function syncReadingProgress(categoryId: string, pdfId: string, pages: number, t
  * - saveStatus: persistence chip
  * - place-note mode chip
  * - find bar open
+ * - sidebar annotations list (id/kind/preview signature only)
  *
  * Everything else (camera, page, highlight chip) is ref + DOM.
  * Notes: Excalidraw embeddable + renderEmbeddable (no parallel HUD).
@@ -162,6 +168,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [findOpen, setFindOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [outline, setOutline] = useState<OutlineNode[]>([])
+  const [annotations, setAnnotations] = useState<AnnotationListItem[]>([])
+  const annotationsSigRef = useRef('')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -257,6 +265,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     },
     [positionHighlightToolbar]
   )
+
+  /** List identity/preview only — skip setState when signature unchanged. */
+  const syncAnnotations = useCallback((elements: Parameters<typeof listAnnotations>[0]) => {
+    const items = listAnnotations(elements)
+    const sig = annotationsSignature(items)
+    if (sig === annotationsSigRef.current) return
+    annotationsSigRef.current = sig
+    setAnnotations(items)
+  }, [])
 
   const clearSaveTimer = useCallback(() => {
     if (saveTimerRef.current != null) {
@@ -449,6 +466,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     pendingSigRef.current = ''
     persistedAttachmentIdsRef.current = new Set()
     noteIdsRef.current = new Set()
+    annotationsSigRef.current = ''
+    setAnnotations([])
     clearSaveTimer()
     syncSaveChip('saved')
     setLoadError(null)
@@ -560,6 +579,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         // Validate embeds (needs link) then clear so canvas link icon disappears.
         stripPdfNoteLinksAfterValidate()
 
+        syncAnnotations(elements)
+
         restoringRef.current = false
         readyRef.current = true
         dirtyRef.current = false
@@ -588,6 +609,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     pdfId,
     pushCamera,
     stripPdfNoteLinksAfterValidate,
+    syncAnnotations,
     syncSaveChip
   ])
 
@@ -747,11 +769,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           if (scene.some((el) => isPdfNote(el) && !el.isDeleted && el.link)) {
             queueStripPdfNoteLinks()
           }
+          syncAnnotations(scene)
         }
       }
       markUnsaved()
     },
-    [markUnsaved, queueStripPdfNoteLinks]
+    [markUnsaved, queueStripPdfNoteLinks, syncAnnotations]
   )
 
   const toggleTextSelectMode = useCallback(() => {
@@ -844,6 +867,35 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       api.updateScene({
         appState: {
           scrollY: target.scrollY
+        }
+      })
+      markUnsaved()
+    },
+    [markUnsaved, pushCamera]
+  )
+
+  const goToAnnotation = useCallback(
+    (id: string) => {
+      const api = apiRef.current
+      const layout = sessionRef.current?.layout
+      if (!api || !layout) return
+
+      const el = api.getSceneElements().find((e) => e.id === id && !e.isDeleted)
+      if (!el) return
+
+      const cam = cameraRef.current
+      const z = cam.zoom || 1
+      const cx = el.x + el.width / 2
+      const cy = el.y + el.height / 2
+      const scrollX = -cx + cam.viewportWidth / (2 * z)
+      const scrollY = layout.scrollForWorldY(cy, cam).scrollY
+
+      pushCamera({ scrollX, scrollY })
+      api.updateScene({
+        appState: {
+          scrollX,
+          scrollY,
+          selectedElementIds: { [id]: true }
         }
       })
       markUnsaved()
@@ -1276,8 +1328,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           outline={outline}
           pageCount={pageCount}
           thumbPool={session.thumbPool}
+          annotations={annotations}
           initialPage={currentPageRef.current}
           onGoToPage={goToPage}
+          onSelectAnnotation={goToAnnotation}
         />
       ) : null}
 
