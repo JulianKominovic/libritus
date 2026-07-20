@@ -4,6 +4,27 @@ import type { SessionCamera } from './sessionTypes'
 /** US Letter width in PDF points — canonical world page width at zoom 1. */
 export const REFERENCE_PAGE_WIDTH = 612
 
+/** Device pixels per world CSS px at zoom 1 (Letter @ FIXED_RENDER_SCALE). */
+export const TARGET_WORLD_DENSITY = 2
+
+/** pdf.js scale bounds relative to native page points. */
+const MIN_RENDER_SCALE = 1
+const MAX_RENDER_SCALE = 4
+
+/**
+ * pdf.js viewport scale so bitmaps stay ~TARGET_WORLD_DENSITY in world CSS space.
+ * Letter worldScale=1 → 2; small pages raise scale; huge pages lower it (clamped).
+ */
+export function renderScaleForWorld(
+  worldScale: number,
+  targetDensity = TARGET_WORLD_DENSITY
+): number {
+  const raw = targetDensity * worldScale
+  if (raw < MIN_RENDER_SCALE) return MIN_RENDER_SCALE
+  if (raw > MAX_RENDER_SCALE) return MAX_RENDER_SCALE
+  return raw
+}
+
 export type PageWorldScale = {
   scale: number
   sizes: PageSize[]

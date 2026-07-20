@@ -21,17 +21,20 @@ type ActiveJob = {
 
 export type PagePoolOptions = {
   poolSize?: number
+  /** pdf.js scale (native points). Prefer renderScaleForWorld(worldScale). */
+  renderScale?: number
 }
 
 /**
  * Fixed pool of canvas slots. Evicts LRU pages when capacity is exceeded.
- * Renders once at FIXED_RENDER_SCALE; zoom is CSS-only on the parent layer.
+ * Renders once at a fixed bitmap scale; zoom is CSS-only on the parent layer.
  * Cancels in-flight renders when a page leaves the visible set.
  */
 export class PagePool {
   private readonly slots = new Map<number, PageSlot>()
   private readonly jobs = new Map<number, ActiveJob>()
   private readonly poolSize: number
+  private readonly renderScale: number
   private generation = 0
   private clock = 0
   private lastVisibleKey = ''
@@ -43,6 +46,7 @@ export class PagePool {
     options: PagePoolOptions = {}
   ) {
     this.poolSize = options.poolSize ?? DEFAULT_POOL_SIZE
+    this.renderScale = options.renderScale ?? FIXED_RENDER_SCALE
   }
 
   subscribe(listener: () => void): () => void {
@@ -148,7 +152,7 @@ export class PagePool {
   }
 
   private async renderSlot(pageIndex: number, gen: number): Promise<void> {
-    const scale = FIXED_RENDER_SCALE
+    const scale = this.renderScale
     let slot = this.slots.get(pageIndex)
     if (!slot) {
       slot = {

@@ -105,4 +105,15 @@ describe('PagePool', () => {
     pool.destroy()
     renderGate = null
   })
+
+  test('uses injected renderScale on slots', async () => {
+    renderGate = null
+    const doc = fakeDoc()
+    const pool = new PagePool(doc, { poolSize: 2, renderScale: 3.5 })
+
+    await pool.syncVisible([0])
+    expect(pool.getSlot(0)?.scale).toBe(3.5)
+
+    pool.destroy()
+  })
 })

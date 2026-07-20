@@ -1,6 +1,9 @@
 import type { PDFPageProxy, RenderTask } from './pdfjs'
 
-/** Bitmap density in CSS pixels; camera zoom is applied only via CSS transform. */
+/**
+ * Default bitmap density (device px per world CSS px at zoom 1).
+ * PagePool should pass renderScaleForWorld(worldScale) instead of this alone.
+ */
 export const FIXED_RENDER_SCALE = 2
 
 export async function renderPageToCanvas(

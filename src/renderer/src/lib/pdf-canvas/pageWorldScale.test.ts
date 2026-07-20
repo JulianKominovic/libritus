@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   REFERENCE_PAGE_WIDTH,
   pageWorldScale,
+  renderScaleForWorld,
   scaleSessionScene
 } from './pageWorldScale'
 
@@ -37,6 +38,24 @@ describe('pageWorldScale', () => {
 
   test('empty → scale 1', () => {
     expect(pageWorldScale([])).toEqual({ scale: 1, sizes: [] })
+  })
+})
+
+describe('renderScaleForWorld', () => {
+  test('worldScale 1 → 2', () => {
+    expect(renderScaleForWorld(1)).toBe(2)
+  })
+
+  test('worldScale 2 → 4', () => {
+    expect(renderScaleForWorld(2)).toBe(4)
+  })
+
+  test('worldScale 0.5 → 1 (min clamp)', () => {
+    expect(renderScaleForWorld(0.5)).toBe(1)
+  })
+
+  test('huge worldScale clamps to 4', () => {
+    expect(renderScaleForWorld(10)).toBe(4)
   })
 })
 

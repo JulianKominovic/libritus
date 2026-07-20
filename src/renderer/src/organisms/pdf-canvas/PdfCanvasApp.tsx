@@ -55,6 +55,7 @@ import {
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
   pageWorldScale,
+  renderScaleForWorld,
   scaleSessionScene
 } from '@renderer/lib/pdf-canvas/pageWorldScale'
 import {
@@ -543,7 +544,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
         const { scale: worldScale, sizes: worldSizes } = pageWorldScale(doc.pageSizes)
         const layout = new PageLayout(worldSizes, undefined, worldScale)
-        const pool = new PagePool(doc)
+        const pool = new PagePool(doc, { renderScale: renderScaleForWorld(worldScale) })
         const textPool = new TextLayerPool(doc, { scale: worldScale })
         const thumbPool = new ThumbPool(doc)
         const next: RuntimeSession = { doc, layout, pool, textPool, thumbPool }
