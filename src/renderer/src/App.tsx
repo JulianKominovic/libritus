@@ -43,7 +43,7 @@ function App() {
         <Sidebar />
         <Switch>
           <Route path="/" key={'home-page'}>
-            <DragAndDropZone>
+            <DragAndDropZone className={cn(scrollPageClassName, 'min-h-0 h-full')}>
               <HomePage />
             </DragAndDropZone>
           </Route>

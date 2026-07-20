@@ -18,7 +18,13 @@ function DragAndDropZone({
   forceCategoryId?: string
 } & React.HTMLAttributes<HTMLDivElement>) {
   const { categoryId } = useParams<{ categoryId: string | undefined }>()
-  const safeCategoryId = forceCategoryId || categoryId || 'default'
+  const categories = usePdfs((p) => p.categories)
+  const safeCategoryId =
+    forceCategoryId ||
+    categoryId ||
+    categories.find((c) => c.id === 'default')?.id ||
+    categories[0]?.id ||
+    'default'
   const uploadPdf = usePdfs((p) => p.uploadPdf)
   const [message, setMessage] = useState<
     'success' | 'error' | 'idle' | 'waiting-drop' | 'uploading'
@@ -64,7 +70,7 @@ function DragAndDropZone({
         delayedSetMessage('idle')
       }
     }),
-    []
+    [safeCategoryId, uploadPdf, delayedSetMessage]
   )
 
   const title = useMemo(() => {
