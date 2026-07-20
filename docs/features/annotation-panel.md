@@ -40,7 +40,8 @@ Chrome: right overlay sidebar (`pointer-events-auto` in text-select mode).
 ## Model / approach
 
 - Source of truth: Excalidraw scene elements with `customData.pdfHighlight` / `customData.pdfNote`.
-- Derive list in `listAnnotations` (filter `isDeleted`); do **not** keep a parallel annotation store.
+- Multi-line text selection stamps a shared `customData.groupId` on every highlight rect → one list row, one Remove target, one logical highlight for stats.
+- Derive list in `listAnnotations` (filter `isDeleted`, dedupe highlights by `groupId`); do **not** keep a parallel annotation store.
 - React list updates gated by `annotationsSignature` (id / kind / preview only — not geometry).
 - Jump: element AABB center → `scrollX` / `scrollY` + select.
 - Note preview: `platePlainText(plateValue)` truncated.
@@ -54,7 +55,7 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 | Feature | Interaction |
 |---------|----------|
 | **WYSIWYG notes** | Rows for `pdfNote`; click selects, does not auto-enter edit. |
-| **Highlights** | Rows for locked highlight rects; snippet from `customData.text`. |
+| **Highlights** | One row per `groupId` (multi-line selection = one unit); snippet from `customData.text`. |
 | **Sessions** | No separate file — scene already persists. |
 | **Essays HUD** | Essays are a different surface; do not mix into this list until essays exist. |
 

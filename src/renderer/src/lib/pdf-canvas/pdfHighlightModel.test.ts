@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
-import { findPdfHighlightAt, isPdfHighlight } from './pdfHighlightModel'
+import {
+  findPdfHighlightAt,
+  highlightGroupId,
+  highlightGroupMembers,
+  isPdfHighlight
+} from './pdfHighlightModel'
 
 function fakeHighlight(
   partial: Partial<OrderedExcalidrawElement> & { id: string; x: number; y: number }
@@ -41,6 +46,52 @@ describe('pdfHighlightModel', () => {
     expect(
       isPdfHighlight({ ...hl, customData: { pdfNote: true } } as OrderedExcalidrawElement)
     ).toBe(false)
+  })
+
+  test('highlightGroupId falls back to element id when missing', () => {
+    const legacy = fakeHighlight({ id: 'legacy', x: 0, y: 0 })
+    expect(highlightGroupId(legacy)).toBe('legacy')
+
+    const grouped = fakeHighlight({
+      id: 'r1',
+      x: 0,
+      y: 0,
+      customData: { pdfHighlight: true, text: 'hi', groupId: 'g1' }
+    })
+    expect(highlightGroupId(grouped)).toBe('g1')
+  })
+
+  test('highlightGroupMembers returns live rects for a group', () => {
+    const a = fakeHighlight({
+      id: 'a',
+      x: 0,
+      y: 0,
+      customData: { pdfHighlight: true, text: 't', groupId: 'g' }
+    })
+    const b = fakeHighlight({
+      id: 'b',
+      x: 0,
+      y: 20,
+      customData: { pdfHighlight: true, text: 't', groupId: 'g' }
+    })
+    const other = fakeHighlight({
+      id: 'c',
+      x: 0,
+      y: 40,
+      customData: { pdfHighlight: true, text: 't', groupId: 'other' }
+    })
+    const deleted = fakeHighlight({
+      id: 'd',
+      x: 0,
+      y: 60,
+      isDeleted: true,
+      customData: { pdfHighlight: true, text: 't', groupId: 'g' }
+    })
+
+    expect(highlightGroupMembers([a, b, other, deleted], 'g').map((el) => el.id)).toEqual([
+      'a',
+      'b'
+    ])
   })
 
   test('findPdfHighlightAt: miss, hit, deleted skip, top-most wins', () => {

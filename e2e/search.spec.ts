@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
+import { closePdfSidebar } from './helpers/canvas'
 import { openPdf, seedLibrary } from './helpers/seed'
 
 test('search finds text, shows hit, Escape closes', async () => {
@@ -15,6 +16,7 @@ test('search finds text, shows hit, Escape closes', async () => {
       timeout: 30_000
     })
     await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
 
     const searchBtn = page.getByRole('button', { name: 'Search', exact: true })
     await expect(searchBtn).toBeVisible()
@@ -51,6 +53,7 @@ test('search next / prev cycles matches across pages', async () => {
       timeout: 30_000
     })
     await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
 
     await page.getByRole('button', { name: 'Search', exact: true }).click()
     const input = page.getByLabel('Search PDF')

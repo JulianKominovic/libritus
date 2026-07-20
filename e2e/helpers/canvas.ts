@@ -14,6 +14,17 @@ export async function expectSaved(page: Page): Promise<void> {
   await expect(page.getByText('Unsaved')).toBeHidden({ timeout: 15_000 })
 }
 
+/** PDF sidebar overlays the center toolbar on purpose — close it before toolbar clicks. */
+export async function closePdfSidebar(page: Page): Promise<void> {
+  const toggle = page.getByRole('button', { name: 'Toggle PDF sidebar' })
+  if ((await toggle.getAttribute('aria-pressed')) === 'true') {
+    await toggle.click()
+  }
+  await expect(
+    page.getByLabel('Document outline, page thumbnails, and annotations')
+  ).toBeHidden({ timeout: 5_000 })
+}
+
 /** Click Home breadcrumb (triggers flushActiveSession before navigate). */
 export async function leaveToHome(page: Page): Promise<void> {
   const home = page.getByRole('link', { name: 'Home' }).first()

@@ -12,6 +12,7 @@ import {
   type PdfNoteData,
   plateValueFromQuote
 } from './pdfNoteModel'
+import { highlightGroupId } from './pdfHighlightModel'
 
 export {
   emptyPlateValue,
@@ -265,8 +266,9 @@ export function createNoteFromHighlight(
   const quoted =
     typeof highlight.customData?.text === 'string' ? highlight.customData.text.trim() : ''
 
+  const groupId = highlightGroupId(highlight)
   const prior = existingElements.filter(
-    (el) => isPdfNote(el) && el.customData?.sourceHighlightId === highlight.id
+    (el) => isPdfNote(el) && el.customData?.sourceHighlightId === groupId
   ).length
   const side = prior % 2 === 0 ? 'right' : 'left'
 
@@ -284,7 +286,7 @@ export function createNoteFromHighlight(
   const noteData = {
     pdfNote: true as const,
     plateValue: getNotePlateValue(noteBase),
-    sourceHighlightId: highlight.id
+    sourceHighlightId: groupId
   } satisfies PdfNoteData
 
   const endX = side === 'right' ? noteBase.x : noteBase.x + noteBase.width

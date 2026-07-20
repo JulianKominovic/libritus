@@ -6,24 +6,27 @@ const zoom = (value: number): { value: NormalizedZoomValue } => ({
   value: value as NormalizedZoomValue
 })
 
-function mockSelection(clientRect: {
-  left: number
-  top: number
-  right: number
-  bottom: number
-  width: number
-  height: number
-}): void {
+function mockSelection(
+  clientRects: Array<{
+    left: number
+    top: number
+    right: number
+    bottom: number
+    width: number
+    height: number
+  }>,
+  text = 'Libritus'
+): void {
   const range = {
     getClientRects: () =>
-      [{ ...clientRect, x: clientRect.left, y: clientRect.top }] as unknown as DOMRectList
+      clientRects.map((r) => ({ ...r, x: r.left, y: r.top })) as unknown as DOMRectList
   }
   Object.defineProperty(globalThis, 'window', {
     value: {
       getSelection: () => ({
         isCollapsed: false,
         rangeCount: 1,
-        toString: () => 'Libritus',
+        toString: () => text,
         getRangeAt: () => range
       })
     },
@@ -49,14 +52,16 @@ describe('clientToSceneCoords', () => {
 
 describe('selectionToHighlightSkeletons', () => {
   test('maps client rect to scene coords; zoom scales size', () => {
-    mockSelection({
-      left: 100,
-      top: 50,
-      right: 200,
-      bottom: 70,
-      width: 100,
-      height: 20
-    })
+    mockSelection([
+      {
+        left: 100,
+        top: 50,
+        right: 200,
+        bottom: 70,
+        width: 100,
+        height: 20
+      }
+    ])
 
     const at1 = selectionToHighlightSkeletons({
       ...baseAppState,
@@ -85,6 +90,28 @@ describe('selectionToHighlightSkeletons', () => {
     expect(b.height).toBe(10)
     expect(b.locked).toBe(true)
     expect((b.customData as { pdfHighlight?: boolean }).pdfHighlight).toBe(true)
+    expect(typeof (b.customData as { groupId?: string }).groupId).toBe('string')
+  })
+
+  test('multi-line selection stamps the same groupId on every rect', () => {
+    mockSelection(
+      [
+        { left: 10, top: 10, right: 110, bottom: 26, width: 100, height: 16 },
+        { left: 10, top: 30, right: 90, bottom: 46, width: 80, height: 16 }
+      ],
+      'line one\nline two'
+    )
+
+    const skeletons = selectionToHighlightSkeletons({
+      ...baseAppState,
+      zoom: zoom(1)
+    })
+    expect(skeletons).not.toBeNull()
+    expect(skeletons!.length).toBe(2)
+    const g0 = (skeletons![0]!.customData as { groupId: string }).groupId
+    const g1 = (skeletons![1]!.customData as { groupId: string }).groupId
+    expect(g0).toBe(g1)
+    expect(g0.length).toBeGreaterThan(0)
   })
 
   test('returns null for collapsed selection', () => {

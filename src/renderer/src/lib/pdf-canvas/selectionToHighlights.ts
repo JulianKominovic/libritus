@@ -3,7 +3,13 @@ import type { AppState } from '@excalidraw/excalidraw/types'
 import { mergeSameLineRects } from './mergeSameLineRects'
 import type { PdfHighlightData } from './pdfHighlightModel'
 
-export { findPdfHighlightAt, isPdfHighlight, type PdfHighlightData } from './pdfHighlightModel'
+export {
+  findPdfHighlightAt,
+  highlightGroupId,
+  highlightGroupMembers,
+  isPdfHighlight,
+  type PdfHighlightData
+} from './pdfHighlightModel'
 export { mergeSameLineRects } from './mergeSameLineRects'
 
 const MIN_RECT_AREA = 1
@@ -44,6 +50,7 @@ export function selectionToHighlightSkeletons(
 
   const range = selection.getRangeAt(0)
   const lineBoxes = mergeSameLineRects(range.getClientRects())
+  const groupId = crypto.randomUUID()
   const skeletons: ExcalidrawElementSkeleton[] = []
 
   for (const box of lineBoxes) {
@@ -69,7 +76,8 @@ export function selectionToHighlightSkeletons(
       locked: true,
       customData: {
         pdfHighlight: true,
-        text
+        text,
+        groupId
       } satisfies PdfHighlightData
     })
   }

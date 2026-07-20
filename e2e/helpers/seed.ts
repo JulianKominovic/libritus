@@ -237,6 +237,7 @@ export function seedHighlightElement(opts?: {
   x?: number
   y?: number
   text?: string
+  groupId?: string
 }): Record<string, unknown> {
   const id = opts?.id ?? 'seed-hl'
   return {
@@ -268,7 +269,8 @@ export function seedHighlightElement(opts?: {
     locked: true,
     customData: {
       pdfHighlight: true,
-      text: opts?.text ?? 'highlighted'
+      text: opts?.text ?? 'highlighted',
+      ...(opts?.groupId ? { groupId: opts.groupId } : {})
     }
   }
 }

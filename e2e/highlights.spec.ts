@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
 import {
   clickScene,
+  closePdfSidebar,
   leaveToHome,
   tmpAppData,
   waitForSession,
@@ -27,6 +28,7 @@ test('text select creates locked pdfHighlight then exits mode', async () => {
       timeout: 30_000
     })
     await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
 
     const selectBtn = page.getByRole('button', { name: 'Select text' })
     await selectBtn.click()
@@ -75,6 +77,7 @@ test('text select at zoom ≠ 1 creates locked highlight near text', async () =>
       timeout: 30_000
     })
     await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
 
     // Zoom while in text-select (wheel zoom handler is only active in that mode)
     const selectBtn = page.getByRole('button', { name: 'Select text' })
@@ -181,6 +184,145 @@ test('Remove from highlight toolbar deletes highlight on flush', async () => {
   }
 })
 
+test('Remove deletes all rects that share a highlight groupId', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-hl-group-remove-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const groupId = 'hl-group-1'
+  const hlX = 80
+  const hlY = 120
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-g-a',
+        x: hlX,
+        y: hlY,
+        text: 'grouped',
+        groupId
+      }),
+      seedHighlightElement({
+        id: 'hl-g-b',
+        x: hlX,
+        y: hlY + 24,
+        text: 'grouped',
+        groupId
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+
+    await clickScene(page, hlX + 40, hlY + 9)
+    await page.getByRole('button', { name: 'Remove' }).click({ timeout: 10_000 })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const live = (s.elements ?? []).filter(
+          (el) =>
+            el &&
+            typeof el === 'object' &&
+            (el as { isDeleted?: boolean }).isDeleted !== true &&
+            (el as { customData?: { pdfHighlight?: boolean } }).customData?.pdfHighlight === true
+        )
+        return live.length === 0
+      }
+    )
+
+    const liveIds = (snap.elements ?? [])
+      .filter(
+        (el) =>
+          el &&
+          typeof el === 'object' &&
+          (el as { isDeleted?: boolean }).isDeleted !== true &&
+          (el as { customData?: { pdfHighlight?: boolean } }).customData?.pdfHighlight === true
+      )
+      .map((el) => (el as { id?: string }).id)
+    expect(liveIds).toEqual([])
+  } finally {
+    await close()
+  }
+})
+
+test('Add note from grouped highlight uses groupId as sourceHighlightId', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-hl-group-note-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const groupId = 'hl-group-note'
+  const hlX = 80
+  const hlY = 120
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-note-a',
+        x: hlX,
+        y: hlY,
+        text: 'quoted',
+        groupId
+      }),
+      seedHighlightElement({
+        id: 'hl-note-b',
+        x: hlX,
+        y: hlY + 24,
+        text: 'quoted',
+        groupId
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+
+    await clickScene(page, hlX + 40, hlY + 9)
+    await page.getByRole('button', { name: 'Add note' }).click({ timeout: 10_000 })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) =>
+        (s.elements ?? []).some(
+          (el) =>
+            (el as { customData?: { pdfNote?: boolean; sourceHighlightId?: string } }).customData
+              ?.pdfNote === true &&
+            (el as { customData?: { sourceHighlightId?: string } }).customData?.sourceHighlightId ===
+              groupId
+        )
+    )
+
+    const note = (snap.elements ?? []).find(
+      (el) =>
+        (el as { customData?: { pdfNote?: boolean } }).customData?.pdfNote === true
+    ) as { customData?: { sourceHighlightId?: string } }
+
+    expect(note.customData?.sourceHighlightId).toBe(groupId)
+    expect(note.customData?.sourceHighlightId).not.toBe('hl-note-a')
+  } finally {
+    await close()
+  }
+})
+
 test('leave with Unsaved writes session via flush', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-flush-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
@@ -200,6 +342,7 @@ test('leave with Unsaved writes session via flush', async () => {
     })
     await openPdf(page, categoryId, pdfId)
     await expect(page.getByText('before leave')).toBeVisible({ timeout: 30_000 })
+    await closePdfSidebar(page)
 
     await page.getByRole('button', { name: 'Place note' }).click()
     const canvas = await excalidrawCanvas(page)

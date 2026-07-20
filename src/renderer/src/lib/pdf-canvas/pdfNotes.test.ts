@@ -240,6 +240,20 @@ describe('pdfNotes', () => {
     expect(note.boundElements?.some((b) => b.id === arrow.id && b.type === 'arrow')).toBe(true)
   })
 
+  test('createNoteFromHighlight: sourceHighlightId uses groupId', () => {
+    const highlight = fakeHighlight({
+      id: 'rect-a',
+      x: 0,
+      y: 0,
+      width: 80,
+      height: 20,
+      customData: { pdfHighlight: true, text: 'quoted text', groupId: 'group-xyz' }
+    })
+    const { newElements } = createNoteFromHighlight(highlight)
+    const note = newElements.find((el) => isPdfNote(el))!
+    expect(note.customData?.sourceHighlightId).toBe('group-xyz')
+  })
+
   test('createNoteFromHighlight: second note goes left', () => {
     const highlight = fakeHighlight({ id: 'hl-2', x: 100, y: 0, width: 80, height: 20 })
     const { newElements: first } = createNoteFromHighlight(highlight)

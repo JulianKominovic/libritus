@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises'
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { clickScene, expectUnsaved, tmpAppData, waitForSession } from './helpers/canvas'
+import { clickScene, closePdfSidebar, expectUnsaved, tmpAppData, waitForSession } from './helpers/canvas'
 import { openPdf, readSessionFile, seedLibrary } from './helpers/seed'
 
 test('quit with Unsaved flushes session; reopen shows note', async () => {
@@ -14,6 +14,7 @@ test('quit with Unsaved flushes session; reopen shows note', async () => {
       timeout: 30_000
     })
     await openPdf(first.page, categoryId, pdfId)
+    await closePdfSidebar(first.page)
 
     await first.page.getByRole('button', { name: 'Place note' }).click()
     await clickScene(first.page, 400, 350)

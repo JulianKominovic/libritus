@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { leaveToHome, waitForSession, clickScene, tmpAppData } from './helpers/canvas'
+import { leaveToHome, waitForSession, clickScene, closePdfSidebar, tmpAppData } from './helpers/canvas'
 import {
   openPdf,
   readSessionFile,
@@ -29,6 +29,7 @@ test('restores seeded note and flushes place-note on leave', async () => {
     await openPdf(page, categoryId, pdfId)
 
     await expect(page.getByText('seeded note')).toBeVisible({ timeout: 30_000 })
+    await closePdfSidebar(page)
 
     await page.getByRole('button', { name: 'Place note' }).click()
     await clickScene(page, 400, 350)

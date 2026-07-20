@@ -249,3 +249,13 @@ Early-return en `handleExcalidrawChange` + `React.memo(NoteEmbed)` cortan el amp
 #### Corrección
 
 En el host: capture `pointermove` sobre el wrapper de Excalidraw y `stopPropagation` cuando el cursor está en el tercio central de una pdf-note (misma geometría que Excalidraw), sin botones pulsados. Así el canvas no recibe esos moves → no hay hover setState. `pointerdown`/`up` siguen llegando (click-to-edit). Bordes siguen draggable.
+
+### PdfSidebar tapa toolbar: e2e debe cerrar el panel
+
+#### Descripción más detallada
+
+`PdfSidebar` (`z-100`) cubre a propósito la toolbar centrada (`z-10`). Subir z-index de la toolbar o bajar el sidebar rompe ese diseño. Playwright falla al clickear Select text / Place note: “Go to page 1 … intercepts pointer events”.
+
+#### Corrección
+
+En e2e que necesitan la toolbar: cerrar el PDF sidebar (`Toggle PDF sidebar`) antes del click, o `{ force: true }` si el overlay es intencional y el botón sigue en el DOM.

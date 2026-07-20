@@ -6,10 +6,29 @@ import type {
 export type PdfHighlightData = {
   pdfHighlight: true
   text: string
+  /** Shared across all rects from one text selection. Legacy: missing → treat as el.id. */
+  groupId: string
 }
 
 export function isPdfHighlight(el: ExcalidrawElement): el is OrderedExcalidrawElement {
   return el.customData?.pdfHighlight === true
+}
+
+/** Logical highlight group id (legacy singles use element id). */
+export function highlightGroupId(el: ExcalidrawElement): string {
+  const gid = el.customData?.groupId
+  return typeof gid === 'string' && gid.length > 0 ? gid : el.id
+}
+
+/** Non-deleted PDF highlight rects that share a group id. */
+export function highlightGroupMembers(
+  elements: readonly ExcalidrawElement[],
+  groupId: string
+): OrderedExcalidrawElement[] {
+  return elements.filter(
+    (el): el is OrderedExcalidrawElement =>
+      !el.isDeleted && isPdfHighlight(el) && highlightGroupId(el) === groupId
+  )
 }
 
 /** Top-most PDF highlight under scene point (later scene index wins). */

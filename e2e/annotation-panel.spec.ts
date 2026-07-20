@@ -79,3 +79,51 @@ test('annotation panel empty state', async () => {
     await close()
   }
 })
+
+test('annotation panel shows one row per highlight group', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-ann-group-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const groupId = 'panel-group'
+  const text = 'grouped panel highlight'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'panel-g-a',
+        x: 40,
+        y: 100,
+        text,
+        groupId
+      }),
+      seedHighlightElement({
+        id: 'panel-g-b',
+        x: 40,
+        y: 124,
+        text,
+        groupId
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+
+    await expect(
+      page.getByLabel('Document outline, page thumbnails, and annotations')
+    ).toBeVisible()
+    await page.getByRole('tab', { name: 'Annotations' }).click()
+
+    const rows = page.getByRole('button', { name: `Highlight: ${text}` })
+    await expect(rows).toHaveCount(1)
+  } finally {
+    await close()
+  }
+})

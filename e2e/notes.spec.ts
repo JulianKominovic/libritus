@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { clickScene, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas, expectUnsaved } from './helpers/canvas'
+import { clickScene, closePdfSidebar, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas, expectUnsaved } from './helpers/canvas'
 import {
   openPdf,
   readSessionFile,
@@ -44,6 +44,7 @@ test('place note selects without entering edit; Escape leaves edit', async () =>
     })
     await openPdf(page, categoryId, pdfId)
     await expect(page.getByText('editable note')).toBeVisible({ timeout: 30_000 })
+    await closePdfSidebar(page)
 
     // Place note → create → must NOT enter edit (no contenteditable focused)
     await page.getByRole('button', { name: 'Place note' }).click()

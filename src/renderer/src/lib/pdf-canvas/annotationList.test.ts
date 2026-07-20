@@ -89,6 +89,32 @@ describe('annotationList', () => {
     expect(items[2]!.preview).toContain('quoted')
   })
 
+  test('listAnnotations and countCanvasStats dedupe by highlight groupId', () => {
+    const a = baseEl({
+      id: 'r1',
+      x: 10,
+      y: 100,
+      customData: { pdfHighlight: true, text: 'multi', groupId: 'g1' }
+    })
+    const b = baseEl({
+      id: 'r2',
+      x: 10,
+      y: 120,
+      customData: { pdfHighlight: true, text: 'multi', groupId: 'g1' }
+    })
+    const other = baseEl({
+      id: 'r3',
+      x: 10,
+      y: 50,
+      customData: { pdfHighlight: true, text: 'solo', groupId: 'g2' }
+    })
+
+    const items = listAnnotations([a, b, other])
+    expect(items.filter((i) => i.kind === 'highlight')).toHaveLength(2)
+    expect(items.map((i) => i.id)).toEqual(['r3', 'r1'])
+    expect(countCanvasStats([a, b, other])).toEqual({ highlights: 2, notes: 0 })
+  })
+
   test('annotationsSignature stable for same content', () => {
     const a = listAnnotations([
       baseEl({ id: 'h', customData: { pdfHighlight: true, text: 'hi' } })

@@ -49,6 +49,8 @@ import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSea
 import {
   clientToSceneCoords,
   findPdfHighlightAt,
+  highlightGroupId,
+  highlightGroupMembers,
   selectionToHighlightSkeletons
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
@@ -1198,9 +1200,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const highlight = scene.find((el) => el.id === highlightId)
     if (!highlight || highlight.isDeleted) return
 
+    const groupId = highlightGroupId(highlight)
+    const memberIds = new Set(highlightGroupMembers(scene, groupId).map((el) => el.id))
+
     api.updateScene({
       elements: scene.map((el) =>
-        el.id === highlightId ? (newElementWith(el, { isDeleted: true }) as typeof el) : el
+        memberIds.has(el.id) ? (newElementWith(el, { isDeleted: true }) as typeof el) : el
       ),
       captureUpdate: CaptureUpdateAction.IMMEDIATELY
     })

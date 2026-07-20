@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
 import {
   clickScene,
+  closePdfSidebar,
   expectSaved,
   expectUnsaved,
   tmpAppData,
@@ -19,6 +20,7 @@ test('autosave debounce writes session without leave', async () => {
       timeout: 30_000
     })
     await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
 
     await page.getByRole('button', { name: 'Place note' }).click()
     await clickScene(page, 400, 350)
