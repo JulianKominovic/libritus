@@ -54,8 +54,13 @@ import {
   selectionToHighlightSkeletons
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
+  pageWorldScale,
+  scaleSessionScene
+} from '@renderer/lib/pdf-canvas/pageWorldScale'
+import {
   readSession,
   writeSession,
+  SESSION_VERSION,
   type SaveStatus,
   type SessionSnapshot
 } from '@renderer/lib/pdf-canvas/session'
@@ -376,7 +381,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     if (!elements || !readyRef.current) return null
     const cam = cameraRef.current
     return {
-      version: 1,
+      version: SESSION_VERSION,
       docId: pdfId,
       updatedAt: new Date().toISOString(),
       camera: {
@@ -536,9 +541,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           return
         }
 
-        const layout = new PageLayout(doc.pageSizes)
+        const { scale: worldScale, sizes: worldSizes } = pageWorldScale(doc.pageSizes)
+        const layout = new PageLayout(worldSizes, undefined, worldScale)
         const pool = new PagePool(doc)
-        const textPool = new TextLayerPool(doc)
+        const textPool = new TextLayerPool(doc, { scale: worldScale })
         const thumbPool = new ThumbPool(doc)
         const next: RuntimeSession = { doc, layout, pool, textPool, thumbPool }
         sessionRef.current = next
@@ -549,13 +555,20 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           setOutline(nodes)
         })
 
-        const cam = snapshot?.camera
+        // v1 sessions store native PDF coords; v2+ are already world-normalized.
+        const migrated =
+          snapshot != null
+            ? snapshot.version === 1
+              ? scaleSessionScene(snapshot.elements, snapshot.camera, worldScale)
+              : { elements: snapshot.elements, camera: snapshot.camera }
+            : null
+        const cam = migrated?.camera
         const scrollX = cam?.scrollX ?? INITIAL_CAMERA.scrollX
         const scrollY = cam?.scrollY ?? INITIAL_CAMERA.scrollY
         const zoom = (cam?.zoom ?? INITIAL_CAMERA.zoom) as NormalizedZoomValue
         const elements =
-          snapshot?.elements && Array.isArray(snapshot.elements)
-            ? (snapshot.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
+          migrated?.elements && Array.isArray(migrated.elements)
+            ? (migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
                 normalizePdfNote
               )
             : []
@@ -670,7 +683,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           )
         ) as unknown[]
         const snapshot: SessionSnapshot = {
-          version: 1,
+          version: SESSION_VERSION,
           docId: pdfId,
           updatedAt: new Date().toISOString(),
           camera: {

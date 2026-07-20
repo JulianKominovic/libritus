@@ -17,8 +17,14 @@ describe('parseSessionSnapshot', () => {
     expect(parsed!.elements.length).toBe(1)
   })
 
-  test('rejects wrong version', () => {
-    expect(parseSessionSnapshot({ ...valid, version: 2 })).toBeNull()
+  test('accepts version 2', () => {
+    const parsed = parseSessionSnapshot({ ...valid, version: 2 })
+    expect(parsed).not.toBeNull()
+    expect(parsed!.version).toBe(2)
+  })
+
+  test('rejects unknown version', () => {
+    expect(parseSessionSnapshot({ ...valid, version: 3 })).toBeNull()
   })
 
   test('rejects missing camera', () => {

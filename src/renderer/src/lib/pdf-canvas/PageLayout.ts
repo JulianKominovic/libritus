@@ -6,8 +6,10 @@ export class PageLayout {
 	readonly pages: PageRect[];
 	readonly totalHeight: number;
 	readonly maxWidth: number;
+	/** Native PDF pts → world units (1 for Letter-width docs). */
+	readonly scale: number;
 
-	constructor(pageSizes: PageSize[], pageGap = DEFAULT_PAGE_GAP) {
+	constructor(pageSizes: PageSize[], pageGap = DEFAULT_PAGE_GAP, scale = 1) {
 		const pages: PageRect[] = [];
 		let y = 0;
 		let maxWidth = 0;
@@ -28,6 +30,7 @@ export class PageLayout {
 		this.pages = pages;
 		this.totalHeight = pages.length === 0 ? 0 : y - pageGap;
 		this.maxWidth = maxWidth;
+		this.scale = scale;
 
 		// Center pages horizontally around x=0 column using max width
 		for (const page of this.pages) {

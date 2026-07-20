@@ -181,17 +181,20 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 			host.replaceChildren();
 			if (!hit) return;
 
-			const page = layoutRef.current.pages[hit.pageIndex];
+			const layout = layoutRef.current;
+			const page = layout.pages[hit.pageIndex];
 			if (!page) return;
 
+			// Search rects are native PDF page space; layout may be world-scaled.
+			const s = layout.scale;
 			for (const rect of hit.rects) {
 				const el = document.createElement("div");
 				el.dataset.testid = "pdf-search-hit";
 				el.style.position = "absolute";
-				el.style.left = `${page.x + rect.x}px`;
-				el.style.top = `${page.y + rect.y}px`;
-				el.style.width = `${rect.width}px`;
-				el.style.height = `${rect.height}px`;
+				el.style.left = `${page.x + rect.x * s}px`;
+				el.style.top = `${page.y + rect.y * s}px`;
+				el.style.width = `${rect.width * s}px`;
+				el.style.height = `${rect.height * s}px`;
 				el.style.backgroundColor = "rgba(255, 200, 0, 0.45)";
 				el.style.pointerEvents = "none";
 				host.appendChild(el);

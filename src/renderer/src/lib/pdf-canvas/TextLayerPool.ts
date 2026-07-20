@@ -2,8 +2,6 @@ import type { PdfDocument } from './PdfDocument'
 import { TextLayer, setLayerDimensions } from './pdfjs'
 
 const DEFAULT_POOL_SIZE = 12
-/** Text layer is laid out in page CSS units; camera zoom is applied by the parent transform. */
-const TEXT_LAYER_SCALE = 1
 
 export type TextLayerSlot = {
   pageIndex: number
@@ -20,6 +18,8 @@ type ActiveJob = {
 
 export type TextLayerPoolOptions = {
   poolSize?: number
+  /** World scale (native PDF pts → layout CSS). Default 1. */
+  scale?: number
 }
 
 /**
@@ -30,6 +30,7 @@ export class TextLayerPool {
   private readonly slots = new Map<number, TextLayerSlot>()
   private readonly jobs = new Map<number, ActiveJob>()
   private readonly poolSize: number
+  private readonly textScale: number
   private generation = 0
   private clock = 0
   private lastVisibleKey = ''
@@ -41,6 +42,7 @@ export class TextLayerPool {
     options: TextLayerPoolOptions = {}
   ) {
     this.poolSize = options.poolSize ?? DEFAULT_POOL_SIZE
+    this.textScale = options.scale ?? 1
   }
 
   subscribe(listener: () => void): () => void {
@@ -139,7 +141,7 @@ export class TextLayerPool {
     if (!slot) {
       const div = document.createElement('div')
       div.className = 'textLayer'
-      div.style.setProperty('--total-scale-factor', String(TEXT_LAYER_SCALE))
+      div.style.setProperty('--total-scale-factor', String(this.textScale))
       div.style.setProperty('--scale-round-x', '1px')
       div.style.setProperty('--scale-round-y', '1px')
       slot = {
@@ -165,7 +167,8 @@ export class TextLayerPool {
       const page = await this.doc.getPage(pageIndex)
       if (gen !== this.generation || !this.slots.has(pageIndex)) return
 
-      const viewport = page.getViewport({ scale: TEXT_LAYER_SCALE })
+      // Text layer in world CSS units; camera zoom is applied by the parent transform.
+      const viewport = page.getViewport({ scale: this.textScale })
       setLayerDimensions(slot.div, viewport)
 
       const layer = new TextLayer({

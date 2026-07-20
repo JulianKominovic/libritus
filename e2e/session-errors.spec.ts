@@ -28,14 +28,14 @@ test('corrupt session JSON opens PDF with empty scene (no crash)', async () => {
   }
 })
 
-test('session version 2 treated as null — fresh scene', async () => {
-  const appDataDir = await tmpAppData('libritus-e2e-ver2-')
+test('session version 3 treated as null — fresh scene', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-ver3-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
 
   await writeFile(
     path.join(appDataDir, `${pdfId}.session.json`),
     JSON.stringify({
-      version: 2,
+      version: 3,
       docId: pdfId,
       updatedAt: new Date().toISOString(),
       camera: { scrollX: 0, scrollY: 0, zoom: 1 },

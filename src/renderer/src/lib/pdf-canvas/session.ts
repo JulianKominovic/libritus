@@ -7,7 +7,7 @@ import {
 } from './sessionTypes'
 
 export type { SaveStatus, SessionCamera, SessionSnapshot }
-export { parseSessionSnapshot } from './sessionTypes'
+export { parseSessionSnapshot, SESSION_VERSION } from './sessionTypes'
 
 function sessionFilename(pdfId: string): string {
   return `${pdfId}.session.json`

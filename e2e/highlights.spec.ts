@@ -362,7 +362,7 @@ test('leave with Unsaved writes session via flush', async () => {
         return notes.length >= 2
       }
     )
-    expect(snap.version).toBe(1)
+    expect(snap.version).toBe(2)
     expect(snap.docId).toBe(pdfId)
   } finally {
     await close()
