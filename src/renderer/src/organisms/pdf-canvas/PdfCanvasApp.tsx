@@ -64,6 +64,7 @@ import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
+import { HighlighterIcon, Search, StickyNote } from 'lucide-react'
 import type { Value } from 'platejs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
@@ -1387,6 +1388,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           renderEmbeddable={renderEmbeddable}
           UIOptions={{
             canvasActions: {
+              clearCanvas: false,
+              saveToActiveFile: false,
               loadScene: false,
               export: false,
               saveAsImage: false,
@@ -1394,9 +1397,78 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
               changeViewBackgroundColor: false
             }
           }}
-        />
+        ></Excalidraw>
       </div>
-
+      {session && pageCount > 0 ? (
+        <div className="pointer-events-auto absolute left-0 top-12 z-10 grid grid-cols-[1fr_2fr_1fr] gap-8 2xl:grid-cols-3 w-full h-10 items-center 2xl:gap-12">
+          <div
+            role="toolbar"
+            aria-label="PDF tools"
+            className="flex h-full w-fit rounded-xl bg-neutral-100 p-1 shadow-md shadow-morphing-900/10 border border-black/10 py-1 col-[2/3] mx-auto"
+          >
+            <PageNavigator
+              ref={pageNavigatorRef}
+              pageCount={pageCount}
+              initialPage={currentPageRef.current}
+              onGoToPage={goToPage1Based}
+              onPrev={goPrevPage}
+              onNext={goNextPage}
+            />
+            <div className="mx-2 h-full w-px shrink-0 bg-neutral-200" aria-hidden />
+            <button
+              type="button"
+              aria-label="Search"
+              aria-pressed={findOpen}
+              className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
+                findOpen
+                  ? 'bg-neutral-200 text-neutral-900'
+                  : 'text-neutral-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
+              }`}
+              onClick={toggleFind}
+            >
+              <Search className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label="Place note"
+              aria-pressed={placeNoteMode}
+              className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
+                placeNoteMode
+                  ? 'bg-neutral-200 text-neutral-900'
+                  : 'text-neutral-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
+              }`}
+              onClick={togglePlaceNoteMode}
+            >
+              <StickyNote className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label="Select text"
+              aria-pressed={textSelectMode}
+              className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
+                textSelectMode
+                  ? 'bg-neutral-200 text-neutral-900'
+                  : 'text-neutral-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
+              }`}
+              onClick={toggleTextSelectMode}
+            >
+              <HighlighterIcon className="size-4" aria-hidden />
+            </button>
+            {findOpen ? (
+              <>
+                <div className="mx-2 h-full w-px shrink-0 bg-neutral-200" aria-hidden />
+                <PdfFindBar
+                  ref={findBarRef}
+                  onQueryChange={handleFindQueryChange}
+                  onNext={() => goToMatch(matchIndexRef.current + 1)}
+                  onPrev={() => goToMatch(matchIndexRef.current - 1)}
+                  onClose={closeFind}
+                />
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div
         ref={highlightToolbarRef}
         className="pointer-events-auto absolute z-90 hidden -translate-x-1/2 -translate-y-full gap-1"
@@ -1430,88 +1502,22 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         />
       ) : null}
 
-      {session && pageCount > 0 ? (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 z-100 flex -translate-x-1/2 items-center gap-2">
-          <PageNavigator
-            ref={pageNavigatorRef}
-            pageCount={pageCount}
-            initialPage={currentPageRef.current}
-            onGoToPage={goToPage1Based}
-            onPrev={goPrevPage}
-            onNext={goNextPage}
-          />
-          {findOpen ? (
-            <PdfFindBar
-              ref={findBarRef}
-              onQueryChange={handleFindQueryChange}
-              onNext={() => goToMatch(matchIndexRef.current + 1)}
-              onPrev={() => goToMatch(matchIndexRef.current - 1)}
-              onClose={closeFind}
-            />
-          ) : null}
+      {saveStatus !== 'saved' ? (
+        <div className="pointer-events-none absolute left-3 top-3 z-100">
+          <span
+            ref={saveChipRef}
+            className={`min-w-18 rounded-md px-2.5 py-1.5 text-center text-xs shadow-md shadow-morphing-900/10 ring-1 ring-black/10 ${
+              saveStatus === 'error'
+                ? 'bg-red-50 text-red-700'
+                : saveStatus === 'unsaved'
+                  ? 'bg-amber-50 text-amber-800'
+                  : 'bg-white text-morphing-600'
+            }`}
+          >
+            {SAVE_STATUS_LABEL[saveStatus]}
+          </span>
         </div>
       ) : null}
-
-      <div className="pointer-events-none absolute left-3 top-3 z-100">
-        <span
-          ref={saveChipRef}
-          className={`min-w-[4.5rem] rounded-md px-2.5 py-1.5 text-center text-xs shadow-md shadow-morphing-900/10 ring-1 ring-black/10 ${
-            saveStatus === 'error'
-              ? 'bg-red-50 text-red-700'
-              : saveStatus === 'unsaved'
-                ? 'bg-amber-50 text-amber-800'
-                : 'bg-white text-morphing-600'
-          }`}
-        >
-          {SAVE_STATUS_LABEL[saveStatus]}
-        </span>
-      </div>
-
-      <div
-        className={`pointer-events-auto absolute bottom-16 z-100 flex flex-col items-end gap-2 ${
-          showPdfOutline ? 'right-[15.5rem]' : 'right-4'
-        }`}
-      >
-        <button
-          type="button"
-          aria-pressed={findOpen}
-          disabled={!session}
-          className={`min-h-10 rounded-lg px-3 text-sm font-medium shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 ${
-            findOpen
-              ? 'bg-morphing-100 text-morphing-900'
-              : 'bg-white text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
-          }`}
-          onClick={toggleFind}
-        >
-          Search
-        </button>
-        <button
-          type="button"
-          aria-pressed={placeNoteMode}
-          disabled={!session}
-          className={`min-h-10 rounded-lg px-3 text-sm font-medium shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 ${
-            placeNoteMode
-              ? 'bg-morphing-100 text-morphing-900'
-              : 'bg-white text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
-          }`}
-          onClick={togglePlaceNoteMode}
-        >
-          Place note
-        </button>
-        <button
-          type="button"
-          aria-pressed={textSelectMode}
-          disabled={!session}
-          className={`min-h-10 rounded-lg px-3 text-sm font-medium shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:not-disabled:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 ${
-            textSelectMode
-              ? 'bg-morphing-100 text-morphing-900'
-              : 'bg-white text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
-          }`}
-          onClick={toggleTextSelectMode}
-        >
-          Select text
-        </button>
-      </div>
 
       {loadError ? (
         <div className="pointer-events-none absolute inset-0 z-110 flex items-center justify-center bg-morphing-50/80">

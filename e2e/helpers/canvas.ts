@@ -10,7 +10,8 @@ export async function expectUnsaved(page: Page): Promise<void> {
 }
 
 export async function expectSaved(page: Page): Promise<void> {
-  await expect(page.getByText('Saved')).toBeVisible({ timeout: 15_000 })
+  // Save chip is hidden while saved; wait until Unsaved is gone.
+  await expect(page.getByText('Unsaved')).toBeHidden({ timeout: 15_000 })
 }
 
 /** Click Home breadcrumb (triggers flushActiveSession before navigate). */

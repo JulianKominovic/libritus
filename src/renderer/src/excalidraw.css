@@ -103,3 +103,12 @@
 .excalidraw .scroll-back-to-content {
   display: none !important;
 }
+
+/* Idle selection hint ("To move canvas… hand tool") — noise in PDF host */
+.excalidraw .HintViewer {
+  display: none !important;
+}
+
+.excalidraw .FixedSideContainer.FixedSideContainer_side_top {
+  top: 2px;
+}

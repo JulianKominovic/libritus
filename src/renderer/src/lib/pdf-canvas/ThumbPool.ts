@@ -2,7 +2,8 @@ import type { RenderTask } from './pdfjs'
 import type { PdfDocument } from './PdfDocument'
 import { renderPageToCanvas } from './PdfRenderer'
 
-export const THUMB_SCALE = 0.25
+// Sidebar ~220px wide; 0.75 keeps thumbs sharp on retina without PagePool-scale cost.
+export const THUMB_SCALE = 0.75
 const DEFAULT_POOL_SIZE = 16
 
 export type ThumbSlot = {

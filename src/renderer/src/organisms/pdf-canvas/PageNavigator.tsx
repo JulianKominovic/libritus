@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 
 const chromePress = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.96]'
-const chromeHover = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-100'
+const chromeHover = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
 
 export type PageNavigatorHandle = {
   /** Update the live 1-based page without re-rendering the parent. */
@@ -86,12 +86,12 @@ export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>
     }
 
     return (
-      <div className="pointer-events-auto flex h-10 items-center gap-0.5 rounded-lg bg-white px-1 text-sm font-medium text-morphing-900 shadow-md shadow-morphing-900/10 ring-1 ring-black/10">
+      <div className="flex h-full items-center gap-0.5 text-sm font-medium text-neutral-900">
         <button
           ref={prevBtnRef}
           type="button"
           aria-label="Previous page"
-          className={`flex min-h-10 min-w-10 items-center justify-center rounded-sm text-morphing-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
+          className={`flex h-full w-10 items-center justify-center rounded-lg text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
           onClick={onPrev}
         >
           <ChevronLeft className="size-4" aria-hidden />
@@ -102,7 +102,7 @@ export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>
           inputMode="numeric"
           aria-label="Current page"
           defaultValue={String(initialPage)}
-          className="h-8 w-10 rounded-sm bg-morphing-100 px-1 text-center text-sm tabular-nums text-morphing-900 outline-none ring-0 focus:bg-morphing-50"
+          className="h-8 w-10 rounded-lg bg-neutral-200 px-1 text-center text-sm tabular-nums text-neutral-900 outline-none ring-0"
           onFocus={() => {
             editingRef.current = true
           }}
@@ -118,13 +118,13 @@ export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>
             }
           }}
         />
-        <span className="px-0.5 text-morphing-400">/</span>
-        <span className="min-w-[1.5rem] px-0.5 tabular-nums text-morphing-500">{pageCount}</span>
+        <span className="px-0.5 text-neutral-400">/</span>
+        <span className="min-w-6 px-0.5 tabular-nums text-neutral-500">{pageCount}</span>
         <button
           ref={nextBtnRef}
           type="button"
           aria-label="Next page"
-          className={`flex min-h-10 min-w-10 items-center justify-center rounded-sm text-morphing-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
+          className={`flex h-full w-10 items-center justify-center rounded-lg text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
           onClick={onNext}
         >
           <ChevronRight className="size-4" aria-hidden />

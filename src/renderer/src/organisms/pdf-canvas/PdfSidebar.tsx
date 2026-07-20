@@ -1,9 +1,10 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
 import type { AnnotationListItem } from '@renderer/lib/pdf-canvas/annotationList'
 import type { OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import type { ThumbPool, ThumbSlot } from '@renderer/lib/pdf-canvas/ThumbPool'
 import { cn } from '@renderer/lib/utils'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 export type PdfSidebarHandle = {
   setActivePage: (page1Based: number) => void
@@ -19,12 +20,13 @@ export type PdfSidebarProps = {
   onSelectAnnotation: (id: string) => void
 }
 
-const THUMB_ROW_H = 118
-const THUMB_BUFFER = 2
+const THUMB_MAX_H = 200
+/** Padding + gap + page label under the thumb. */
+const THUMB_ROW_CHROME = 36
 
 type Tab = 'outline' | 'pages' | 'annotations'
 
-const pressable = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.96]'
+const pressable = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.99]'
 
 function OutlineTree({
   nodes,
@@ -55,7 +57,7 @@ function OutlineTree({
                 'disabled:cursor-not-allowed disabled:opacity-40',
                 pressable,
                 enabled
-                  ? 'text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-100'
+                  ? 'text-morphing-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
                   : 'text-morphing-400'
               )}
               style={{ paddingLeft: 8 + depth * 12 }}
@@ -93,8 +95,10 @@ function ThumbRow({
     if (!host || !slot?.ready) return
     const canvas = slot.canvas
     canvas.style.display = 'block'
-    canvas.style.width = '100%'
+    canvas.style.width = 'auto'
     canvas.style.height = 'auto'
+    canvas.style.maxWidth = '100%'
+    canvas.style.maxHeight = `${THUMB_MAX_H}px`
     host.replaceChildren(canvas)
     return () => {
       if (canvas.parentElement === host) host.removeChild(canvas)
@@ -107,24 +111,25 @@ function ThumbRow({
       aria-label={`Go to page ${pageIndex0 + 1}`}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'absolute left-0 right-0 flex flex-col items-center gap-1.5 rounded-lg px-2.5 py-1.5',
+        'flex w-full flex-col items-center gap-1.5 rounded-lg px-2.5 py-1.5',
         'transition-[transform,background-color] duration-150 ease-out active:scale-[0.96]',
         active ? 'bg-morphing-100' : '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
       )}
-      style={{ top: pageIndex0 * THUMB_ROW_H, height: THUMB_ROW_H }}
       onClick={() => onGoToPage(pageIndex0)}
     >
       <div
         className={cn(
-          'w-full overflow-hidden rounded-md bg-white outline-solid outline-1 -outline-offset-1',
+          'flex max-h-[200px] max-w-full items-center justify-center overflow-hidden rounded-md bg-white outline-solid outline-1 -outline-offset-1',
           active ? 'outline-black/20 shadow-sm' : 'outline-black/10'
         )}
-        style={{ height: THUMB_ROW_H - 32 }}
       >
         {slot?.ready ? (
-          <div ref={hostRef} className="flex h-full items-start justify-center" />
+          <div
+            ref={hostRef}
+            className="flex max-h-[200px] max-w-full items-center justify-center"
+          />
         ) : (
-          <div className="h-full w-full animate-pulse bg-morphing-100" />
+          <div className="h-[200px] w-[140px] animate-pulse bg-morphing-100" />
         )}
       </div>
       <span className="text-[11px] tabular-nums text-morphing-600">{pageIndex0 + 1}</span>
@@ -138,10 +143,18 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
 ) {
   const [tab, setTab] = useState<Tab>(outline.length > 0 ? 'outline' : 'pages')
   const [tick, setTick] = useState(0)
-  const [range, setRange] = useState({ start: 0, end: Math.min(pageCount, 8) })
   const activePageRef = useRef(initialPage)
   const activeMarkerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: pageCount,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => THUMB_MAX_H + THUMB_ROW_CHROME,
+    overscan: 2,
+    enabled: tab === 'pages'
+  })
+  const virtualItems = virtualizer.getVirtualItems()
 
   // Sidebar often mounts before loadOutline resolves; flip Pages → Outline once nodes arrive.
   useEffect(() => {
@@ -175,47 +188,30 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
     return unsub
   }, [thumbPool])
 
-  const updateVisible = useCallback(() => {
-    const el = listRef.current
-    if (!el || pageCount <= 0) return
-    const scrollTop = el.scrollTop
-    const viewH = el.clientHeight
-    const start = Math.max(0, Math.floor(scrollTop / THUMB_ROW_H) - THUMB_BUFFER)
-    const end = Math.min(pageCount, Math.ceil((scrollTop + viewH) / THUMB_ROW_H) + THUMB_BUFFER)
-    setRange((prev) => (prev.start === start && prev.end === end ? prev : { start, end }))
-    const indices: number[] = []
-    for (let i = start; i < end; i++) indices.push(i)
-    void thumbPool.syncVisible(indices)
-  }, [pageCount, thumbPool])
-
   useEffect(() => {
     if (tab !== 'pages') return
-    updateVisible()
-  }, [tab, updateVisible, pageCount])
+    void thumbPool.syncVisible(virtualItems.map((item) => item.index))
+  }, [tab, thumbPool, virtualItems])
 
-  // Scroll active page into view when switching to Pages tab.
+  // Radix unmounts inactive TabsContent → scrollRect stays 0 until remeasured after layout.
   useEffect(() => {
-    if (tab !== 'pages') return
-    const el = listRef.current
-    if (!el) return
-    const top = (activePageRef.current - 1) * THUMB_ROW_H
-    if (top < el.scrollTop || top > el.scrollTop + el.clientHeight - THUMB_ROW_H) {
-      el.scrollTop = Math.max(0, top - el.clientHeight / 3)
-    }
-    updateVisible()
-  }, [tab, updateVisible])
+    if (tab !== 'pages' || pageCount <= 0) return
+    const id = requestAnimationFrame(() => {
+      virtualizer.measure()
+      virtualizer.scrollToIndex(activePageRef.current - 1, { align: 'center' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [tab, pageCount, virtualizer])
 
   const active = activePageRef.current
-  const visibleIndices: number[] = []
-  for (let i = range.start; i < range.end; i++) visibleIndices.push(i)
   void tick // subscribe-driven re-renders
 
   return (
     <aside
       aria-label="Document outline, page thumbnails, and annotations"
       className={cn(
-        'pointer-events-auto absolute bottom-3 right-3 top-3 z-100 flex w-56 flex-col overflow-hidden',
-        'rounded-xl bg-white text-morphing-900',
+        'pointer-events-auto absolute bottom-3 right-3 top-0.5 z-100 flex max-w-sm w-full flex-col overflow-hidden',
+        'rounded-xl bg-neutral-50 text-neutral-900',
         'shadow-md shadow-morphing-900/10 ring-1 ring-black/10'
       )}
     >
@@ -224,22 +220,11 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
         onValueChange={(v) => setTab(v as Tab)}
         className="flex min-h-0 flex-1 flex-col gap-0"
       >
-        <div className="shrink-0 space-y-2 p-2">
-          <div className="px-1 text-[10px] tabular-nums tracking-wide text-morphing-500">
-            <span ref={activeMarkerRef}>Page {active}</span>
-          </div>
-          <TabsList className="h-10 w-full rounded-md">
-            <TabsTrigger value="outline" className="rounded px-1.5 text-[11px]">
-              Outline
-            </TabsTrigger>
-            <TabsTrigger value="pages" className="rounded px-1.5 text-[11px]">
-              Pages
-            </TabsTrigger>
-            <TabsTrigger value="annotations" className="rounded px-1.5 text-[11px]">
-              Annotations
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="h-10 w-[calc(100%-1rem)] rounded-lg m-2">
+          <TabsTrigger value="outline">Outline</TabsTrigger>
+          <TabsTrigger value="pages">Pages</TabsTrigger>
+          <TabsTrigger value="annotations">Annotations</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="outline" className="mt-0 min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
           {outline.length === 0 ? (
@@ -251,17 +236,25 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
           )}
         </TabsContent>
 
-        <TabsContent value="pages" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <div ref={listRef} className="relative h-full overflow-y-auto" onScroll={updateVisible}>
-            <div className="relative" style={{ height: pageCount * THUMB_ROW_H }}>
-              {visibleIndices.map((pageIndex0) => (
-                <ThumbRow
-                  key={pageIndex0}
-                  pageIndex0={pageIndex0}
-                  active={pageIndex0 + 1 === active}
-                  slot={thumbPool.getSlot(pageIndex0)}
-                  onGoToPage={onGoToPage}
-                />
+        <TabsContent value="pages" className="relative mt-0 min-h-0 flex-1 overflow-hidden">
+          {/* absolute inset-0: h-full is 0 on remount before flex settles; virtualizer then paints nothing */}
+          <div ref={listRef} className="absolute inset-0 overflow-y-auto px-1.5 pb-2">
+            <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+              {virtualItems.map((item) => (
+                <div
+                  key={item.key}
+                  data-index={item.index}
+                  ref={virtualizer.measureElement}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${item.start}px)` }}
+                >
+                  <ThumbRow
+                    pageIndex0={item.index}
+                    active={item.index + 1 === active}
+                    slot={thumbPool.getSlot(item.index)}
+                    onGoToPage={onGoToPage}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -287,7 +280,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
                       className={cn(
                         'min-h-10 w-full rounded-md px-2 py-2 text-left',
                         pressable,
-                        '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-100'
+                        '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50'
                       )}
                       onClick={() => onSelectAnnotation(item.id)}
                     >
