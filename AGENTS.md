@@ -39,6 +39,7 @@ Guiding principle:
 | PDF text search (find bar + jump + hit overlay) | `PdfFindBar`, `pdfSearch`, `PdfLayer.setSearchHit`, `PdfCanvasApp` |
 | Outline + page thumbnails (sidebar) | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp` |
 | Annotation panel (highlights + notes list) | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp` |
+| PDF RAG chat (local MiniLM + OpenRouter BYOK) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
 
 ### Pending / roadmap
 
@@ -106,7 +107,7 @@ src/renderer/src/
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md).
 
 Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`annotation-polish`](docs/features/annotation-polish.md), [`page-space-annotations`](docs/features/page-space-annotations.md), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md).
 
@@ -198,11 +199,12 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 **Canonical fix** (in `createNoteFromHighlight` / `pdfNotes.ts`):
 
-- Start **positioned** on highlight edge, **no** `startBinding`.
-- End bound to the note (`endBinding` + note `boundElements`).
-- Arrow **`elbowed: true`** with `fixedPoint` on the end. Elbows keep the non-dragged end as `"keep"`.
+- Start **positioned** on highlight edge; arrow stores `startX`/`startY` in `customData`.
+- **No** Excalidraw `startBinding` / `endBinding` / note `boundElements` for the connector.
+- Arrow **straight**, **`locked: true`**, `customData.pdfNoteArrow` + `noteId`; host syncs via `syncPdfNoteArrows` on scene change.
+- One-sided Excalidraw bindings (elbow or straight) explode (~1e5px) when the note embeddable moves.
 
-**Do not:** bind start to the locked highlight; or use a straight arrow with only end binding.
+**Do not:** bind either end via Excalidraw; or use elbow routing for highlight→note connectors.
 
 ### Note center not draggable (borders work)
 
@@ -222,7 +224,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `ThumbPool` (hard cap + gen abort), `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList` (plate strip + list + signature). E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `highlights.spec` (text-select + zoom≠1 + Remove + leave flush), `autosave.spec` (debounce 5s), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape), `outline-thumbs.spec` (outline jump + thumb jump), `annotation-panel.spec` (list + jump + empty). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`, `sample-outline.pdf`.
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `ThumbPool` (hard cap + gen abort), `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList` (plate strip + list + signature), `pdfRag` (chunk / cosine / fingerprint), `ragIndexQueue` (serial embed queue). E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `highlights.spec` (text-select + zoom≠1 + Remove + leave flush), `autosave.spec` (debounce 5s), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape), `outline-thumbs.spec` (outline jump + thumb jump), `annotation-panel.spec` (list + jump + empty), `rag-chat.spec` (Chat tab + Settings AI). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`, `sample-outline.pdf`.
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

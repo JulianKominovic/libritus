@@ -5,12 +5,14 @@ import type { ThumbPool, ThumbSlot } from '@renderer/lib/pdf-canvas/ThumbPool'
 import { cn } from '@renderer/lib/utils'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { PdfChatPanel } from './PdfChatPanel'
 
 export type PdfSidebarHandle = {
   setActivePage: (page1Based: number) => void
 }
 
 export type PdfSidebarProps = {
+  pdfId: string
   outline: OutlineNode[]
   pageCount: number
   thumbPool: ThumbPool
@@ -24,7 +26,7 @@ const THUMB_MAX_H = 200
 /** Padding + gap + page label under the thumb. */
 const THUMB_ROW_CHROME = 36
 
-type Tab = 'outline' | 'pages' | 'annotations'
+type Tab = 'outline' | 'pages' | 'annotations' | 'chat'
 
 const pressable = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.99]'
 
@@ -138,7 +140,16 @@ function ThumbRow({
 }
 
 export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function PdfSidebar(
-  { outline, pageCount, thumbPool, annotations, initialPage = 1, onGoToPage, onSelectAnnotation },
+  {
+    pdfId,
+    outline,
+    pageCount,
+    thumbPool,
+    annotations,
+    initialPage = 1,
+    onGoToPage,
+    onSelectAnnotation
+  },
   ref
 ) {
   const [tab, setTab] = useState<Tab>(outline.length > 0 ? 'outline' : 'pages')
@@ -208,7 +219,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
 
   return (
     <aside
-      aria-label="Document outline, page thumbnails, and annotations"
+      aria-label="Document outline, page thumbnails, annotations, and chat"
       className={cn(
         'pointer-events-auto absolute bottom-3 right-3 top-0.5 z-100 flex max-w-sm w-full flex-col overflow-hidden',
         'rounded-xl bg-neutral-50 text-neutral-900',
@@ -220,10 +231,11 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
         onValueChange={(v) => setTab(v as Tab)}
         className="flex min-h-0 flex-1 flex-col gap-0"
       >
-        <TabsList className="h-10 w-[calc(100%-1rem)] rounded-lg m-2">
+        <TabsList className="m-2 h-auto min-h-10 w-[calc(100%-1rem)] flex-wrap rounded-lg">
           <TabsTrigger value="outline">Outline</TabsTrigger>
           <TabsTrigger value="pages">Pages</TabsTrigger>
           <TabsTrigger value="annotations">Annotations</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
         </TabsList>
 
         <TabsContent value="outline" className="mt-0 min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
@@ -296,6 +308,16 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
               })}
             </ul>
           )}
+        </TabsContent>
+
+        <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          {tab === 'chat' ? (
+            <PdfChatPanel
+              pdfId={pdfId}
+              active
+              onGoToPage={onGoToPage}
+            />
+          ) : null}
         </TabsContent>
       </Tabs>
     </aside>

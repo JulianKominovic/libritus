@@ -119,7 +119,7 @@ test('drag note by edge moves it (center click activates embed)', async () => {
   }
 })
 
-test('Add note from highlight writes elbow arrow unbound at start', async () => {
+test('Add note from highlight writes host-managed connector arrow', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-addnote-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
   const hlX = 80
@@ -154,9 +154,13 @@ test('Add note from highlight writes elbow arrow unbound at start', async () => 
     const arrow = (snap.elements ?? []).find(
       (el) => (el as { type?: string }).type === 'arrow'
     ) as {
+      locked?: boolean
       elbowed?: boolean
+      width?: number
+      height?: number
       startBinding?: unknown
-      endBinding?: { elementId?: string }
+      endBinding?: unknown
+      customData?: { pdfNoteArrow?: boolean; noteId?: string }
     }
     const note = (snap.elements ?? []).find(
       (el) =>
@@ -167,9 +171,13 @@ test('Add note from highlight writes elbow arrow unbound at start', async () => 
 
     expect(note.type).toBe('embeddable')
     expect(note.link).toBe('libritus://pdf-note')
-    expect(arrow.elbowed).toBe(true)
+    expect(arrow.locked).toBe(true)
+    expect(arrow.elbowed).toBeFalsy()
     expect(arrow.startBinding).toBeFalsy()
-    expect(arrow.endBinding?.elementId).toBe(note.id)
+    expect(arrow.endBinding).toBeFalsy()
+    expect(arrow.customData?.pdfNoteArrow).toBe(true)
+    expect(arrow.customData?.noteId).toBe(note.id)
+    expect(Math.hypot(arrow.width ?? 0, arrow.height ?? 0)).toBeLessThan(5000)
   } finally {
     await close()
   }

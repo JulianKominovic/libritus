@@ -23,7 +23,7 @@ Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`annotation-polish`](features/annotation-polish.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
 
-Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md).
+Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md).
 
 | Item | Notes |
 |------|--------|
@@ -32,6 +32,7 @@ Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumb
 | Migrate legacy data | Map old `categories.json` highlights/comments into canvas session or canonical store — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md) |
 | Essays HUD | Reintroduce as canvas HUD without lector — [`essays-hud.md`](features/essays-hud.md) |
 | Library polish | Optional `contentHash`, rename, reveal in Finder |
+| PDF RAG chat | Local MiniLM embeddings + OpenRouter BYOK chat — [`pdf-rag-chat.md`](features/pdf-rag-chat.md) |
 
 ---
 

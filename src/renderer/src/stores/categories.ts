@@ -1,6 +1,7 @@
 import { readFile, writeFile } from '@renderer/integrations/fs'
 import { getPdfMetadata } from '@renderer/lib/pdf'
 import type { IconName } from 'lucide-react/dynamic'
+import { cancelRagIndex } from '@renderer/lib/ai/ipc'
 import { create } from 'zustand'
 
 /** Legacy highlight geometry from categories.json (lector-era). */
@@ -230,6 +231,7 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       return cat
     })
     await get().setCategories(categories)
+    void cancelRagIndex(pdfId)
   },
   updateCategory: async (categoryId = 'default', category: Partial<Category>) => {
     const categories = [...get().categories].map((cat) => {

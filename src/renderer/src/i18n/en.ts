@@ -20,5 +20,6 @@ export const en: Record<TranslationsKeys, string> = {
   trash: 'Trash',
   pdf: 'PDF',
   navigation: 'Navigation',
+  ai: 'AI',
   info: 'Info'
 }

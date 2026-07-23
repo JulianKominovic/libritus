@@ -46,7 +46,7 @@ Default highlight appearance stays readable on light pages (light-mode only).
 
 | Feature | Interaction |
 |---------|-------------|
-| **WYSIWYG notes** | Remove-note must respect elbow-arrow / unbound-start rules (do not leave orphan zero-length arrows). |
+| **WYSIWYG notes** | Remove-note must respect host-managed arrow / `pdfNoteArrow` rules (do not leave orphan connectors). |
 | **Annotation panel** | List updates when color/delete changes. |
 | **Sessions** | Color + deletes dirty the session like any scene edit. |
 

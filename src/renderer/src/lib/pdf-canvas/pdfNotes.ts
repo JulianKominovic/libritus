@@ -36,6 +36,144 @@ export const NOTE_STROKE = 'transparent'
 export const NOTE_EMBED_LINK = 'libritus://pdf-note'
 const NOTE_GAP = 48
 
+/** Host-managed highlight→note connector (no Excalidraw bindings). */
+export type PdfNoteArrowData = {
+  pdfNoteArrow: true
+  noteId: string
+  side: 'left' | 'right'
+  startX: number
+  startY: number
+}
+
+export function isPdfNoteArrow(el: ExcalidrawElement): boolean {
+  return el.type === 'arrow' && el.customData?.pdfNoteArrow === true
+}
+
+function arrowGeom(
+  startX: number,
+  startY: number,
+  note: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
+  side: 'left' | 'right'
+): { x: number; y: number; width: number; height: number; points: [number, number][] } {
+  const endX = side === 'right' ? note.x : note.x + note.width
+  const endY = note.y + note.height / 2
+  const width = endX - startX
+  const height = endY - startY
+  return {
+    x: startX,
+    y: startY,
+    width,
+    height,
+    points: [
+      [0, 0],
+      [width, height]
+    ]
+  }
+}
+
+function geomClose(
+  el: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
+  geo: ReturnType<typeof arrowGeom>,
+  eps = 0.5
+): boolean {
+  return (
+    Math.abs(el.x - geo.x) < eps &&
+    Math.abs(el.y - geo.y) < eps &&
+    Math.abs(el.width - geo.width) < eps &&
+    Math.abs(el.height - geo.height) < eps
+  )
+}
+
+/**
+ * Keep highlight→note arrows glued to the note without Excalidraw bindings.
+ * Also migrates legacy endBinding/elbow arrows that explode on note drag.
+ *
+ * ponytail: Excalidraw updateBoundElements (elbow or straight) blows up one-sided
+ * connectors to ~1e5px when the bound embeddable moves. Host owns geometry.
+ */
+export function syncPdfNoteArrows(
+  elements: readonly OrderedExcalidrawElement[]
+): { elements: OrderedExcalidrawElement[]; changed: boolean } {
+  const byId = new Map(elements.map((el) => [el.id, el]))
+  let changed = false
+
+  // Migrate legacy bound arrows → host-managed (once).
+  const migrated = elements.map((el) => {
+    if (el.isDeleted || el.type !== 'arrow' || isPdfNoteArrow(el)) return el
+    const endBinding = (el as { endBinding?: { elementId?: string } | null }).endBinding
+    const noteId = endBinding?.elementId
+    if (!noteId) return el
+    const note = byId.get(noteId)
+    if (!note || !isPdfNote(note) || note.isDeleted) return el
+
+    const side: 'left' | 'right' =
+      note.x + note.width / 2 < el.x + el.width / 2 ? 'left' : 'right'
+    changed = true
+    const geo = arrowGeom(el.x, el.y, note, side)
+    return {
+      ...el,
+      ...geo,
+      locked: true,
+      elbowed: false,
+      startBinding: null,
+      endBinding: null,
+      customData: {
+        pdfNoteArrow: true,
+        noteId,
+        side,
+        startX: el.x,
+        startY: el.y
+      } satisfies PdfNoteArrowData
+    } as OrderedExcalidrawElement
+  })
+
+  if (changed) {
+    // Drop boundElements refs to migrated arrows on notes.
+    const arrowIds = new Set(
+      migrated.filter((el) => isPdfNoteArrow(el) && !el.isDeleted).map((el) => el.id)
+    )
+    const cleared = migrated.map((el) => {
+      if (!isPdfNote(el) || !el.boundElements?.length) return el
+      const boundElements = el.boundElements.filter((b) => !arrowIds.has(b.id))
+      if (boundElements.length === el.boundElements.length) return el
+      return { ...el, boundElements: boundElements.length ? boundElements : null }
+    })
+    // Migration already mutated — always report changed even if geometry is a no-op.
+    const synced = syncPdfNoteArrows(cleared as OrderedExcalidrawElement[])
+    return { elements: synced.elements, changed: true }
+  }
+
+  const next = migrated.map((el) => {
+    if (!isPdfNoteArrow(el) || el.isDeleted) return el
+    const data = el.customData as PdfNoteArrowData
+    const note = byId.get(data.noteId)
+    if (!note || note.isDeleted || !isPdfNote(note)) return el
+    const geo = arrowGeom(data.startX, data.startY, note, data.side)
+    const startBinding = (el as { startBinding?: unknown }).startBinding
+    const endBinding = (el as { endBinding?: unknown }).endBinding
+    if (
+      geomClose(el, geo) &&
+      !(el as { elbowed?: boolean }).elbowed &&
+      !startBinding &&
+      !endBinding &&
+      el.locked
+    ) {
+      return el
+    }
+    changed = true
+    return {
+      ...el,
+      ...geo,
+      locked: true,
+      elbowed: false,
+      startBinding: null,
+      endBinding: null
+    } as OrderedExcalidrawElement
+  })
+
+  return { elements: changed ? (next as OrderedExcalidrawElement[]) : [...elements], changed }
+}
+
 /** Resolved morphing-50 for canvas fill (hit-test). */
 export function resolveNoteFill(): string {
   // bun:test has `document` but no getComputedStyle — treat as headless.
@@ -146,6 +284,15 @@ function remapElementIds(
       next = { ...next, startBinding, endBinding } as OrderedExcalidrawElement
     }
   }
+  if (isPdfNoteArrow(next) && typeof next.customData?.noteId === 'string') {
+    const oldNoteId = next.customData.noteId
+    if (idMap.has(oldNoteId)) {
+      next = {
+        ...next,
+        customData: { ...next.customData, noteId: idMap.get(oldNoteId)! }
+      }
+    }
+  }
   return next
 }
 
@@ -253,9 +400,12 @@ export function createWysiwygNote(opts: {
 }
 
 /**
- * Sticky note + elbow arrow from highlight edge.
- * Start unbound (highlights are locked); end bound to the note.
+ * Sticky note + locked straight arrow from highlight edge.
+ * No Excalidraw bindings — host syncs geometry via syncPdfNoteArrows.
  * Odd notes (1st, 3rd…) go right; even (2nd, 4th…) go left.
+ *
+ * ponytail: one-sided Excalidraw bindings (elbow or straight) explode (~1e5px)
+ * when the note embeddable moves. Bindings are not used.
  */
 export function createNoteFromHighlight(
   highlight: OrderedExcalidrawElement,
@@ -289,20 +439,18 @@ export function createNoteFromHighlight(
     sourceHighlightId: groupId
   } satisfies PdfNoteData
 
-  const endX = side === 'right' ? noteBase.x : noteBase.x + noteBase.width
-  const endY = noteBase.y + noteBase.height / 2
-  const fixedPoint: [number, number] = side === 'right' ? [0, 0.5] : [1, 0.5]
+  const geo = arrowGeom(startX, startY, noteBase, side)
 
   const [arrow] = convertToExcalidrawElements([
     {
       type: 'arrow',
-      x: startX,
-      y: startY,
-      width: endX - startX,
-      height: endY - startY,
+      x: geo.x,
+      y: geo.y,
+      width: geo.width,
+      height: geo.height,
       strokeColor: '#495057',
       roughness: 0,
-      elbowed: true
+      locked: true
     } as ExcalidrawElementSkeleton
   ])
 
@@ -312,26 +460,29 @@ export function createNoteFromHighlight(
     }
   }
 
-  const boundArrow = newElementWith(arrow, {
+  const noteArrowData = {
+    pdfNoteArrow: true as const,
+    noteId: noteBase.id,
+    side,
+    startX,
+    startY
+  } satisfies PdfNoteArrowData
+
+  const connector = newElementWith(arrow, {
+    ...geo,
+    locked: true,
+    elbowed: false,
     startBinding: null,
-    endBinding: {
-      elementId: noteBase.id,
-      focus: 0,
-      gap: 0,
-      fixedPoint
-    }
+    endBinding: null,
+    customData: noteArrowData
   } as Parameters<typeof newElementWith>[1])
 
   const updatedNote = newElementWith(noteBase, {
-    boundElements: [
-      ...(noteBase.boundElements ?? []),
-      { id: boundArrow.id, type: 'arrow' as const }
-    ],
     customData: noteData
   })
 
   return {
-    newElements: [updatedNote, boundArrow] as OrderedExcalidrawElement[]
+    newElements: [updatedNote, connector] as OrderedExcalidrawElement[]
   }
 }
 

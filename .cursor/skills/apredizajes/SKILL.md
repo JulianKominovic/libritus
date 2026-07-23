@@ -259,3 +259,36 @@ En el host: capture `pointermove` sobre el wrapper de Excalidraw y `stopPropagat
 #### Corrección
 
 En e2e que necesitan la toolbar: cerrar el PDF sidebar (`Toggle PDF sidebar`) antes del click, o `{ force: true }` si el overlay es intencional y el botón sigue en el DOM.
+
+### Add note arrow: flecha recta + endBinding sigue explotando
+
+#### Descripción más detallada
+
+La flecha highlight→nota crecía ~1e5px al mover la nota. El primer fix cambió elbow→flecha recta locked con `endBinding` (sin `fixedPoint`), asumiendo que solo el router elbow era el culpable. El síntoma siguió: `updateBoundElements` al arrastrar el embeddable también rompe conectores one-sided.
+
+#### Corrección
+
+Sin bindings de Excalidraw. Flecha `customData.pdfNoteArrow` + `noteId`/`startX`/`startY`, `locked`, host `syncPdfNoteArrows` en `onChange` y al restaurar sesión. Migrar flechas legacy con `endBinding` a ese formato.
+
+### E2E sidebar: `showPdfOutline` leak vía Electron userData
+
+#### Descripción más detallada
+
+`LIBRITUS_APP_DATA_DIR` aísla PDFs/sessions, pero el zustand `settings` vive en `localStorage` del **userData por defecto** de Electron (`~/Library/Application Support/Electron` al lanzar el binario sin empaquetar). Tests que llaman `closePdfSidebar` persisten `showPdfOutline: false`. Suites posteriores (annotation-panel, outline-thumbs, rag-chat) abren el PDF y no encuentran `aria-label` del sidebar → timeout 10s. Parecía un cambio de label; el regex `/Document outline/` también fallaba porque el aside no montaba.
+
+#### Corrección
+
+Con `LIBRITUS_APP_DATA_DIR` set: `app.setPath('userData', …)` **antes** de `ready`, para que cada e2e tenga localStorage fresco (default `showPdfOutline: true`). Selectores e2e: `getByLabel(/Document outline/)` (el label completo incluye chat).
+
+### RAG embeddings: no atar el job al mount del Chat/sidebar
+
+#### Descripción más detallada
+
+`usePdfRagChat` hacía `ensureIndex` al montar Chat y `genRef++` al desmontar. Cerrar sidebar/tab descartaba vectores **antes** de `writeRagIndex` → al reabrir se re-embebia todo. Main seguía trabajando; el renderer tiraba el resultado.
+
+#### Corrección
+
+Cola serial en main (`ragIndexQueue` + `ai:rag-enqueue`). Enqueue al **abrir** el PDF; persist en main; UI solo se suscribe (`ai:rag-queue`). Cerrar Chat/sidebar no cancela. Cancel solo al borrar PDF.
+
+**Follow-up OOM:** no releer `{pdfId}.rag.json` en cada tick de progreso (IPC `read-file` + MiniLM → `ERR_MEMORY_ALLOCATION_FAILED`). Status vía snapshot/`lastFinished` + `{pdfId}.rag.meta.json`; el índice completo solo al Send.
+

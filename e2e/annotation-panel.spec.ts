@@ -41,7 +41,7 @@ test('annotation panel lists items and jump selects note', async () => {
     })
     await openPdf(page, categoryId, pdfId)
 
-    const sidebar = page.getByLabel('Document outline, page thumbnails, and annotations')
+    const sidebar = page.getByLabel(/Document outline/)
     await expect(sidebar).toBeVisible()
 
     await page.getByRole('tab', { name: 'Annotations' }).click()
@@ -70,9 +70,7 @@ test('annotation panel empty state', async () => {
     })
     await openPdf(page, categoryId, pdfId)
 
-    await expect(
-      page.getByLabel('Document outline, page thumbnails, and annotations')
-    ).toBeVisible()
+    await expect(page.getByLabel(/Document outline/)).toBeVisible()
     await page.getByRole('tab', { name: 'Annotations' }).click()
     await expect(page.getByText('No highlights or notes yet.')).toBeVisible()
   } finally {
@@ -116,9 +114,7 @@ test('annotation panel shows one row per highlight group', async () => {
     })
     await openPdf(page, categoryId, pdfId)
 
-    await expect(
-      page.getByLabel('Document outline, page thumbnails, and annotations')
-    ).toBeVisible()
+    await expect(page.getByLabel(/Document outline/)).toBeVisible()
     await page.getByRole('tab', { name: 'Annotations' }).click()
 
     const rows = page.getByRole('button', { name: `Highlight: ${text}` })

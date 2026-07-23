@@ -8,7 +8,7 @@ Rich-text sticky notes on the infinite PDF canvas: Excalidraw **embeddable** + P
 
 ## Product goals
 
-1. Place a note freely (**Place note**) or from a highlight (**Add note** chip → note + elbow arrow).
+1. Place a note freely (**Place note**) or from a highlight (**Add note** chip → note + host-managed arrow).
 2. Notes show formatted content (Plate / same schema as essays) while reading.
 3. **Drag / select / resize** like any Excalidraw shape (grab the **border / edge**, not the center).
 4. **Edit** by **clicking the center** (Excalidraw embed activate); Escape leaves edit mode.
@@ -27,7 +27,7 @@ Out of scope (for now):
 | Action                     | Behavior                                                                                             |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | **Place note**             | Click canvas → create note centered on click; selected, not editing.                                 |
-| **Add note** (highlight)   | Creates note + elbow arrow (start unbound, end bound to note). 1st/3rd/… right of highlight; 2nd/4th/… left. |
+| **Add note** (highlight)   | Creates note + locked host-managed arrow (no Excalidraw bindings). 1st/3rd/… right of highlight; 2nd/4th/… left. |
 | **Remove** (highlight)     | Deletes the locked highlight (`isDeleted`); notes and arrows are left alone.                             |
 | **Edge / border drag**     | Excalidraw selection and move on the embeddable.                                                     |
 | **Click center**           | Activate embed → Plate editable (`activeEmbeddable`).                                                |
@@ -106,9 +106,9 @@ Escape / click outside
 ### Arrow from highlight (same traps as before)
 
 - Highlight stays `locked`.
-- Arrow: **no** `startBinding`; `endBinding` on note; `elbowed: true`.
-- Do not bind the start to the locked highlight.
-- Per highlight, notes alternate sides via `sourceHighlightId` count: 1st/3rd/… right (`fixedPoint [0, 0.5]`), 2nd/4th/… left (`fixedPoint [1, 0.5]`).
+- Arrow: **no** Excalidraw bindings; `customData.pdfNoteArrow` + `noteId` / `startX` / `startY`; **`locked: true`**; host `syncPdfNoteArrows`.
+- Do not use one-sided `endBinding` / elbow (explodes on note drag).
+- Per highlight, notes alternate sides via `sourceHighlightId` count: 1st/3rd/… right, 2nd/4th/… left.
 
 ---
 

@@ -18,3 +18,4 @@ export type TranslationsKeys =
   | 'home_drop_hint'
   | 'pdf'
   | 'navigation'
+  | 'ai'

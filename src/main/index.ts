@@ -9,6 +9,13 @@ export const APP_ID = IS_DEV ? 'dev.jkominovic.libritus-dev' : 'dev.jkominovic.l
 export const APP_DATA_DIR =
   process.env.LIBRITUS_APP_DATA_DIR ?? join(app.getPath('appData'), APP_ID)
 
+// E2E (and any LIBRITUS_APP_DATA_DIR override) must not share Electron's default
+// userData — otherwise zustand `settings` in localStorage leaks across runs
+// (e.g. closePdfSidebar leaves showPdfOutline:false for the next suite).
+if (process.env.LIBRITUS_APP_DATA_DIR) {
+  app.setPath('userData', process.env.LIBRITUS_APP_DATA_DIR)
+}
+
 let allowQuit = false
 let flushingForQuit = false
 let quitRequested = false

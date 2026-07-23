@@ -20,9 +20,7 @@ export async function closePdfSidebar(page: Page): Promise<void> {
   if ((await toggle.getAttribute('aria-pressed')) === 'true') {
     await toggle.click()
   }
-  await expect(
-    page.getByLabel('Document outline, page thumbnails, and annotations')
-  ).toBeHidden({ timeout: 5_000 })
+  await expect(page.getByLabel(/Document outline/)).toBeHidden({ timeout: 5_000 })
 }
 
 /** Click Home breadcrumb (triggers flushActiveSession before navigate). */

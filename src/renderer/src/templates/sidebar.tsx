@@ -25,6 +25,7 @@ import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
 import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { cn } from '@renderer/lib/utils'
 import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
+import { EmbeddingJobsIndicator } from '@renderer/organisms/embeddings/EmbeddingJobsIndicator'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
 import { DynamicIcon } from 'lucide-react/dynamic'
@@ -396,7 +397,8 @@ function Sidebar() {
           </p>
           <TreeView containerRef={containerRef} />
         </div>
-        <footer className="flex items-center gap-4 pb-4 pt-1">
+        <footer className="flex flex-col gap-1 pb-4 pt-1">
+          <EmbeddingJobsIndicator />
           <Link
             to="/settings"
             className={(isActive) =>

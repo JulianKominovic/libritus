@@ -10,6 +10,7 @@ import type {
   ExcalidrawImperativeAPI,
   NormalizedZoomValue
 } from '@excalidraw/excalidraw/types'
+import { enqueueRagIndex } from '@renderer/lib/ai/ipc'
 import { readFile } from '@renderer/integrations/fs'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
@@ -42,8 +43,10 @@ import {
   NOTE_HEIGHT,
   NOTE_WIDTH,
   repairUnvalidatedPdfNotes,
+  syncPdfNoteArrows,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
+import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
 import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import {
@@ -551,10 +554,25 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         sessionRef.current = next
         setSession(next)
 
-        void loadOutline(doc).then((nodes) => {
-          if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
-          setOutline(nodes)
-        })
+        // Start RAG as soon as the doc exists. Leave-PDF does not cancel main queue;
+        // extract may still fail if the doc is destroyed mid-read.
+        void (async () => {
+          try {
+            const nodes = await loadOutline(doc)
+            if (shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
+              setOutline(nodes)
+            }
+            const pageTexts = await extractPageTexts(doc)
+            const { chunks, fingerprint } = buildTextChunks(pageTexts, nodes)
+            const title = usePdfs
+              .getState()
+              .categories.find((c) => c.id === categoryId)
+              ?.pdfs.find((p) => p.id === pdfId)?.name
+            await enqueueRagIndex({ pdfId, fingerprint, chunks, title })
+          } catch (err) {
+            console.error('RAG enqueue failed', err)
+          }
+        })()
 
         // v1 sessions store native PDF coords; v2+ are already world-normalized.
         const migrated =
@@ -569,9 +587,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         const zoom = (cam?.zoom ?? INITIAL_CAMERA.zoom) as NormalizedZoomValue
         const elements =
           migrated?.elements && Array.isArray(migrated.elements)
-            ? (migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
-                normalizePdfNote
-              )
+            ? syncPdfNoteArrows(
+                (migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
+                  normalizePdfNote
+                )
+              ).elements
             : []
 
         const attachmentIds = fileIdsFromElements(elements)
@@ -823,15 +843,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         if (api) {
           const repaired = repairUnvalidatedPdfNotes(api.getSceneElements(), noteIdsRef.current)
           noteIdsRef.current = repaired.knownIds
+          let scene = repaired.changed ? repaired.elements : api.getSceneElements()
           if (repaired.changed) {
             api.updateScene({
-              elements: repaired.elements,
+              elements: scene,
               captureUpdate: CaptureUpdateAction.NEVER
             })
           }
+
+          // Host-owned highlight→note connectors (no Excalidraw bindings).
+          const synced = syncPdfNoteArrows(scene)
+          if (synced.changed) {
+            scene = synced.elements
+            api.updateScene({
+              elements: scene,
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
+          }
+
           // onDuplicate restores link without rematerializing (changed=false).
           // Still strip after validate so the canvas link icon stays hidden.
-          const scene = repaired.changed ? repaired.elements : api.getSceneElements()
           if (scene.some((el) => isPdfNote(el) && !el.isDeleted && el.link)) {
             queueStripPdfNoteLinks()
           }
@@ -1511,6 +1542,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       {session && pageCount > 0 && showPdfOutline ? (
         <PdfSidebar
           ref={pdfSidebarRef}
+          pdfId={pdfId}
           outline={outline}
           pageCount={pageCount}
           thumbPool={session.thumbPool}
