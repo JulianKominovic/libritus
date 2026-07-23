@@ -5,10 +5,16 @@ import { resolve } from 'path'
 import { analyzer } from 'vite-bundle-analyzer'
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      sourcemap: false
+    }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      sourcemap: false
+    }
   },
   renderer: {
     resolve: {
@@ -21,6 +27,7 @@ export default defineConfig({
       cssMinify: 'esbuild',
       target: 'esnext',
       minify: 'esbuild',
+      sourcemap: false,
       ssr: false
     },
     plugins: [react(), tailwindcss(), analyzer({ analyzerMode: 'static' })]

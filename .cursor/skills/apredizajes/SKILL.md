@@ -292,3 +292,17 @@ Cola serial en main (`ragIndexQueue` + `ai:rag-enqueue`). Enqueue al **abrir** e
 
 **Follow-up OOM:** no releer `{pdfId}.rag.json` en cada tick de progreso (IPC `read-file` + MiniLM → `ERR_MEMORY_ALLOCATION_FAILED`). Status vía snapshot/`lastFinished` + `{pdfId}.rag.meta.json`; el índice completo solo al Send.
 
+### Prod cold start: no forzar react-scan ni eager PdfCanvas
+
+#### Descripción más detallada
+
+`App.tsx` importaba estáticamente `PdfPage` → `PdfCanvasApp` (Excalidraw + Plate + pdf.js) aunque Home no los use. Además `react-scan` corría con `dangerouslyForceRunInProduction: true`, y `main.tsx` inicializaba pdf.js en el entry. Main cargaba `@huggingface/transformers` / jsdom al registrar IPC.
+
+#### Corrección
+
+- `React.lazy` para pdf/settings/category + `Suspense`; Home eager.
+- `react-scan` solo si `import.meta.env.DEV`.
+- Worker + `pdf_viewer.css` en `PdfDocument.ts` (límite del módulo PDF).
+- Dynamic `import()` de transformers / jsdom / readability en el primer uso.
+- `build.sourcemap: false` explícito en electron-vite (prod ya no generaba `.map`).
+

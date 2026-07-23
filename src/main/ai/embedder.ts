@@ -1,4 +1,4 @@
-import { env, pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers'
+import type { FeatureExtractionPipeline } from '@huggingface/transformers'
 import path from 'path'
 import { APP_DATA_DIR } from '..'
 
@@ -10,22 +10,19 @@ const BATCH_SIZE = 8
 let extractorPromise: Promise<FeatureExtractionPipeline> | null = null
 let modelReady = false
 
-function configureCache(): void {
-  env.cacheDir = path.join(APP_DATA_DIR, 'models')
-  // Electron main: use local files after first download; allow remote fetch once.
-  env.allowLocalModels = true
-  env.allowRemoteModels = true
-}
-
 async function getExtractor(
   onStatus?: (status: 'downloading' | 'loading' | 'ready') => void
 ): Promise<FeatureExtractionPipeline> {
   if (!extractorPromise) {
-    configureCache()
     onStatus?.('downloading')
-    extractorPromise = pipeline('feature-extraction', EMBEDDING_MODEL, {
-      dtype: 'q8'
-    }).then((p) => {
+    // Defer @huggingface/transformers until first embed — keeps cold start lean.
+    extractorPromise = import('@huggingface/transformers').then(async ({ env, pipeline }) => {
+      env.cacheDir = path.join(APP_DATA_DIR, 'models')
+      env.allowLocalModels = true
+      env.allowRemoteModels = true
+      const p = await pipeline('feature-extraction', EMBEDDING_MODEL, {
+        dtype: 'q8'
+      })
       modelReady = true
       onStatus?.('ready')
       return p as FeatureExtractionPipeline

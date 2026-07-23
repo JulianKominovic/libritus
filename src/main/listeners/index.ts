@@ -1,7 +1,5 @@
-import { Readability } from '@mozilla/readability'
 import { BrowserWindow, ipcMain, shell } from 'electron'
 import fs from 'fs/promises'
-import { JSDOM } from 'jsdom'
 import path from 'path'
 import { APP_DATA_DIR } from '..'
 import { attachAiIpcListeners } from '../ai'
@@ -17,6 +15,11 @@ const attachIPCListeners = (): void => {
     try {
       await win.loadURL(url)
       const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML')
+      // Defer jsdom/readability until article download — keeps cold start lean.
+      const [{ JSDOM }, { Readability }] = await Promise.all([
+        import('jsdom'),
+        import('@mozilla/readability')
+      ])
       const dom = new JSDOM(html)
       const document = dom.window.document
       const article = new Readability(document).parse()
