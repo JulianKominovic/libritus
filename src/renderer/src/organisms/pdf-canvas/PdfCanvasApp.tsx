@@ -53,8 +53,10 @@ import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSea
 import {
   clientToSceneCoords,
   findPdfHighlightAt,
+  HIGHLIGHT_FILL,
   highlightGroupId,
-  selectionToHighlightSkeletons
+  selectionToHighlightSkeletons,
+  setHighlightGroupColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
   pageWorldScale,
@@ -79,6 +81,7 @@ import { HighlighterIcon, Search, StickyNote } from 'lucide-react'
 import type { Value } from 'platejs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
+import { HighlightToolbar } from './HighlightToolbar'
 import { NoteEmbed } from './NoteEmbed'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfFindBar, type PdfFindBarHandle } from './PdfFindBar'
@@ -206,6 +209,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const annotationsSigRef = useRef('')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [activeHighlightColor, setActiveHighlightColor] = useState<string>(HIGHLIGHT_FILL)
 
   const initialData = useMemo(
     () => ({
@@ -272,6 +276,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const showHighlightToolbar = useCallback(
     (highlightId: string) => {
       activeHighlightIdRef.current = highlightId
+      const el = apiRef.current?.getSceneElements().find((e) => e.id === highlightId)
+      if (el) setActiveHighlightColor(el.backgroundColor || HIGHLIGHT_FILL)
       positionHighlightToolbar()
     },
     [positionHighlightToolbar]
@@ -1259,6 +1265,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     markUnsaved()
   }, [hideHighlightToolbar, markUnsaved])
 
+  const recolorActiveHighlight = useCallback(
+    (color: string) => {
+      const api = apiRef.current
+      const highlightId = activeHighlightIdRef.current
+      if (!api || !highlightId) return
+
+      const scene = api.getSceneElements()
+      const highlight = scene.find((el) => el.id === highlightId)
+      if (!highlight || highlight.isDeleted) return
+
+      api.updateScene({
+        elements: setHighlightGroupColor(scene, highlightGroupId(highlight), color),
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      setActiveHighlightColor(color)
+      markUnsaved()
+    },
+    [markUnsaved]
+  )
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -1519,25 +1545,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           </div>
         </div>
       ) : null}
-      <div
+      <HighlightToolbar
         ref={highlightToolbarRef}
-        className="pointer-events-auto absolute z-90 hidden -translate-x-1/2 -translate-y-full gap-1"
-      >
-        <button
-          type="button"
-          className="min-h-10 rounded-md bg-white px-3 text-xs font-medium text-morphing-900 shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-morphing-50"
-          onClick={addNoteToActiveHighlight}
-        >
-          Add note
-        </button>
-        <button
-          type="button"
-          className="min-h-10 rounded-md bg-red-50 px-3 text-xs font-medium text-red-700 shadow-md shadow-morphing-900/10 ring-1 ring-black/10 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-red-100"
-          onClick={removeActiveHighlight}
-        >
-          Remove
-        </button>
-      </div>
+        activeColor={activeHighlightColor}
+        onRecolor={recolorActiveHighlight}
+        onAddNote={addNoteToActiveHighlight}
+        onRemove={removeActiveHighlight}
+      />
 
       {session && pageCount > 0 && showPdfOutline ? (
         <PdfSidebar

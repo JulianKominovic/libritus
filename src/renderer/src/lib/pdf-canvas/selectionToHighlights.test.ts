@@ -1,6 +1,45 @@
 import { describe, expect, test } from 'bun:test'
+import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { NormalizedZoomValue } from '@excalidraw/excalidraw/types'
-import { clientToSceneCoords, selectionToHighlightSkeletons } from './selectionToHighlights'
+import {
+  clientToSceneCoords,
+  HIGHLIGHT_FILL,
+  normalizeHighlightColor,
+  selectionToHighlightSkeletons,
+  setHighlightGroupColor
+} from './selectionToHighlights'
+
+function fakeHighlight(
+  partial: Partial<OrderedExcalidrawElement> & { id: string; x: number; y: number }
+): OrderedExcalidrawElement {
+  return {
+    type: 'rectangle',
+    width: 80,
+    height: 16,
+    angle: 0,
+    strokeColor: 'transparent',
+    backgroundColor: HIGHLIGHT_FILL,
+    fillStyle: 'solid',
+    strokeWidth: 0,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 20,
+    groupIds: [],
+    frameId: null,
+    index: null,
+    roundness: null,
+    seed: 1,
+    version: 1,
+    versionNonce: 1,
+    isDeleted: false,
+    boundElements: null,
+    updated: 1,
+    link: null,
+    locked: true,
+    customData: { pdfHighlight: true, text: 'hi' },
+    ...partial
+  } as OrderedExcalidrawElement
+}
 
 const zoom = (value: number): { value: NormalizedZoomValue } => ({
   value: value as NormalizedZoomValue
@@ -135,5 +174,41 @@ describe('selectionToHighlightSkeletons', () => {
         zoom: zoom(1)
       })
     ).toBeNull()
+  })
+})
+
+describe('normalizeHighlightColor', () => {
+  test('trims and uppercases', () => {
+    expect(normalizeHighlightColor('  #ff00ff ')).toBe('#FF00FF')
+  })
+})
+
+describe('setHighlightGroupColor', () => {
+  test('recolors all group members; leaves others alone', () => {
+    const a = fakeHighlight({
+      id: 'a',
+      x: 0,
+      y: 0,
+      customData: { pdfHighlight: true, text: 't', groupId: 'g' }
+    })
+    const b = fakeHighlight({
+      id: 'b',
+      x: 0,
+      y: 20,
+      customData: { pdfHighlight: true, text: 't', groupId: 'g' }
+    })
+    const other = fakeHighlight({
+      id: 'c',
+      x: 0,
+      y: 40,
+      backgroundColor: '#22D3EE',
+      customData: { pdfHighlight: true, text: 't', groupId: 'other' }
+    })
+
+    const next = setHighlightGroupColor([a, b, other], 'g', '#22C55E')
+    expect(next[0]!.backgroundColor).toBe('#22C55E')
+    expect(next[1]!.backgroundColor).toBe('#22C55E')
+    expect(next[2]!.backgroundColor).toBe('#22D3EE')
+    expect(next[2]).toBe(other)
   })
 })

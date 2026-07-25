@@ -1,7 +1,15 @@
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
+import type {
+  ExcalidrawElement,
+  OrderedExcalidrawElement
+} from '@excalidraw/excalidraw/element/types'
 import type { AppState } from '@excalidraw/excalidraw/types'
 import { mergeSameLineRects } from './mergeSameLineRects'
-import type { PdfHighlightData } from './pdfHighlightModel'
+import {
+  highlightGroupId,
+  isPdfHighlight,
+  type PdfHighlightData
+} from './pdfHighlightModel'
 
 export {
   findPdfHighlightAt,
@@ -13,8 +21,33 @@ export {
 export { mergeSameLineRects } from './mergeSameLineRects'
 
 const MIN_RECT_AREA = 1
-const HIGHLIGHT_FILL = '#FF00FF'
-const HIGHLIGHT_OPACITY = 20
+
+export const HIGHLIGHT_COLORS = [
+  { id: 'cyan', color: '#22D3EE' },
+  { id: 'fuchsia', color: '#FF00FF' },
+  { id: 'green', color: '#22C55E' },
+  { id: 'orange', color: '#F97316' }
+] as const
+
+export const HIGHLIGHT_FILL = HIGHLIGHT_COLORS[1].color
+export const HIGHLIGHT_OPACITY = 20
+
+export function normalizeHighlightColor(color: string): string {
+  return color.trim().toUpperCase()
+}
+
+/** Recolor all live highlight rects in a group. Leaves other elements untouched. */
+export function setHighlightGroupColor(
+  elements: readonly ExcalidrawElement[],
+  groupId: string,
+  color: string
+): OrderedExcalidrawElement[] {
+  return elements.map((el) =>
+    !el.isDeleted && isPdfHighlight(el) && highlightGroupId(el) === groupId
+      ? ({ ...el, backgroundColor: color } as OrderedExcalidrawElement)
+      : (el as OrderedExcalidrawElement)
+  )
+}
 
 type SceneViewport = Pick<AppState, 'zoom' | 'offsetLeft' | 'offsetTop' | 'scrollX' | 'scrollY'>
 
