@@ -1,13 +1,24 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { NormalizedZoomValue } from '@excalidraw/excalidraw/types'
-import {
+
+mock.module('@excalidraw/excalidraw', () => ({
+  newElementWith: (el: OrderedExcalidrawElement, updates: Partial<OrderedExcalidrawElement>) => ({
+    ...el,
+    ...updates,
+    version: el.version + 1,
+    versionNonce: el.versionNonce + 1,
+    updated: el.updated + 1
+  })
+}))
+
+const {
   clientToSceneCoords,
   HIGHLIGHT_FILL,
   normalizeHighlightColor,
   selectionToHighlightSkeletons,
   setHighlightGroupColor
-} from './selectionToHighlights'
+} = await import('./selectionToHighlights')
 
 function fakeHighlight(
   partial: Partial<OrderedExcalidrawElement> & { id: string; x: number; y: number }
@@ -210,5 +221,8 @@ describe('setHighlightGroupColor', () => {
     expect(next[1]!.backgroundColor).toBe('#22C55E')
     expect(next[2]!.backgroundColor).toBe('#22D3EE')
     expect(next[2]).toBe(other)
+    // Undo needs a versionNonce bump — plain spread would leave fuchsia after delete→undo.
+    expect(next[0]!.versionNonce).not.toBe(a.versionNonce)
+    expect(next[1]!.versionNonce).not.toBe(b.versionNonce)
   })
 })

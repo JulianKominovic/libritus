@@ -61,14 +61,19 @@ function NoteEditableBody({
   return (
     <div
       className="flex h-full flex-col overflow-hidden"
+      // Excalidraw document cut/copy skips only isWritableElement (not Plate
+      // contenteditable) → Cmd+X deleted the note. Stop keyboard + clipboard bubble.
       onKeyDown={(event) => {
+        event.stopPropagation()
         if (event.key === 'Escape') {
           event.preventDefault()
           onExitEdit()
-          return
         }
-        event.stopPropagation()
       }}
+      onKeyUp={(event) => event.stopPropagation()}
+      onCut={(event) => event.stopPropagation()}
+      onCopy={(event) => event.stopPropagation()}
+      onPaste={(event) => event.stopPropagation()}
       onPointerDown={(event) => {
         event.stopPropagation()
         // Preserve Slate selection when pressing toolbar controls (Plate uses

@@ -279,6 +279,48 @@ test('note toolbar click keeps edit mode', async () => {
   }
 })
 
+test('Cmd+X while editing cuts text, not the note embed', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-note-cut-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [seedNoteElement({ id: 'cut-note', x: 200, y: 150, text: 'cut seed text' })]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await expect(page.getByText('cut seed text')).toBeVisible({ timeout: 30_000 })
+    await closePdfSidebar(page)
+
+    await activateNoteEmbed(page, 'cut seed text')
+    await page.waitForTimeout(400)
+
+    const editable = page.locator('[contenteditable="true"]').first()
+    await editable.click()
+    await page.keyboard.press('ControlOrMeta+A')
+    // Regression: Excalidraw document `cut` treated Plate as non-writable and
+    // deleted the selected note embed instead of cutting text.
+    await page.keyboard.press('ControlOrMeta+X')
+
+    await expect(page.locator('[data-pdf-note]')).toHaveCount(1, { timeout: 2_000 })
+    await expect(page.locator('[data-pdf-note][data-editing]')).toHaveCount(1)
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(1)
+
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
+  } finally {
+    await close()
+  }
+})
+
 test('duplicate note then undo removes the duplicate', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-dup-undo-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })

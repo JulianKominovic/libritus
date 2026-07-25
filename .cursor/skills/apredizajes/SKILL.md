@@ -302,6 +302,17 @@ Tras Add note, Excalidraw selecciona la nota (`selectedElementIds`). Un segundo 
 
 Para e2e de cascade delete: seedear highlight + note (`sourceHighlightId`) + arrow (`pdfNoteArrow`/`noteId`) en la sesión y solo hacer Remove. Cubrir el path de delete sin el round-trip UI de Add note.
 
+### Highlight recolor + undo delete → color default (fucsia)
+
+#### Descripción más detallada
+
+Recolorear con el toolbar aplicaba bien en pantalla, pero tras Remove + Cmd/Ctrl+Z el highlight volvía en `#FF00FF`. `setHighlightGroupColor` hacía `{ ...el, backgroundColor }` sin bump de `version`/`versionNonce`. El Store de Excalidraw solo calcula deltas / actualiza snapshots cuando cambia `versionNonce`, así que el recolor no entraba al historial; el undo del delete restauraba el snapshot pre-recolor (fill default).
+
+#### Corrección
+
+Usar `newElementWith(el, { backgroundColor })` en `setHighlightGroupColor` (igual que el delete). Assert en unit test de que `versionNonce` cambia.
+
+### Lazy-load rutas / transformers: bundle initial grande
 
 #### Descripción más detallada
 
@@ -314,4 +325,14 @@ Para e2e de cascade delete: seedear highlight + note (`sourceHighlightId`) + arr
 - Worker + `pdf_viewer.css` en `PdfDocument.ts` (límite del módulo PDF).
 - Dynamic `import()` de transformers / jsdom / readability en el primer uso.
 - `build.sourcemap: false` explícito en electron-vite (prod ya no generaba `.map`).
+
+### Note edit Cmd+X: `onKeyDown` stopPropagation no basta
+
+#### Descripción más detallada
+
+Al editar una nota (Plate contenteditable) y tocar Cmd+X, Excalidraw cortaba/eliminaba el embed. `NoteEditableBody` ya hacía `stopPropagation` en React `onKeyDown`, pero Excalidraw registra listeners nativos de `cut`/`copy` en `document`. Solo hace bailout si `isWritableElement(target)` (input/textarea/`data-type="wysiwyg"`) — un contenteditable de Plate **no** califica → `actionCut` borra la nota seleccionada.
+
+#### Corrección
+
+En `NoteEditableBody`: `stopPropagation` también en `onCut` / `onCopy` / `onPaste` / `onKeyUp` (sin `preventDefault` en clipboard — Plate debe cortar texto). Escape sigue saliendo de edit + `stopPropagation`. E2E: `Cmd+X while editing cuts text, not the note embed`. No marcar Plate como `wysiwyg` (convención privada de Excalidraw) ni parchear Excalidraw.
 

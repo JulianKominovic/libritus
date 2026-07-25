@@ -1,3 +1,4 @@
+import { newElementWith } from '@excalidraw/excalidraw'
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
 import type {
   ExcalidrawElement,
@@ -36,7 +37,8 @@ export function normalizeHighlightColor(color: string): string {
   return color.trim().toUpperCase()
 }
 
-/** Recolor all live highlight rects in a group. Leaves other elements untouched. */
+/** Recolor all live highlight rects in a group. Leaves other elements untouched.
+ * Must use newElementWith: Excalidraw undo deltas only fire when versionNonce changes. */
 export function setHighlightGroupColor(
   elements: readonly ExcalidrawElement[],
   groupId: string,
@@ -44,7 +46,7 @@ export function setHighlightGroupColor(
 ): OrderedExcalidrawElement[] {
   return elements.map((el) =>
     !el.isDeleted && isPdfHighlight(el) && highlightGroupId(el) === groupId
-      ? ({ ...el, backgroundColor: color } as OrderedExcalidrawElement)
+      ? (newElementWith(el, { backgroundColor: color }) as OrderedExcalidrawElement)
       : (el as OrderedExcalidrawElement)
   )
 }
