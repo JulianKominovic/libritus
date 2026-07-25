@@ -36,6 +36,7 @@ import {
   findPdfNoteAt,
   fixDuplicatedPdfNotes,
   getNotePlateValue,
+  idsDeletedWithHighlight,
   isPdfNote,
   isPdfNoteCenterHit,
   normalizePdfNote,
@@ -53,7 +54,6 @@ import {
   clientToSceneCoords,
   findPdfHighlightAt,
   highlightGroupId,
-  highlightGroupMembers,
   selectionToHighlightSkeletons
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
@@ -1246,11 +1246,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     if (!highlight || highlight.isDeleted) return
 
     const groupId = highlightGroupId(highlight)
-    const memberIds = new Set(highlightGroupMembers(scene, groupId).map((el) => el.id))
+    const toDelete = idsDeletedWithHighlight(scene, groupId)
 
     api.updateScene({
       elements: scene.map((el) =>
-        memberIds.has(el.id) ? (newElementWith(el, { isDeleted: true }) as typeof el) : el
+        toDelete.has(el.id) ? (newElementWith(el, { isDeleted: true }) as typeof el) : el
       ),
       captureUpdate: CaptureUpdateAction.IMMEDIATELY
     })

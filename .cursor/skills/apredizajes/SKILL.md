@@ -292,7 +292,16 @@ Cola serial en main (`ragIndexQueue` + `ai:rag-enqueue`). Enqueue al **abrir** e
 
 **Follow-up OOM:** no releer `{pdfId}.rag.json` en cada tick de progreso (IPC `read-file` + MiniLM → `ERR_MEMORY_ALLOCATION_FAILED`). Status vía snapshot/`lastFinished` + `{pdfId}.rag.meta.json`; el índice completo solo al Send.
 
-### Prod cold start: no forzar react-scan ni eager PdfCanvas
+### E2E cascade Remove: no Add note → re-click highlight
+
+#### Descripción más detallada
+
+Tras Add note, Excalidraw selecciona la nota (`selectedElementIds`). Un segundo `clickScene` sobre el highlight no abre el toolbar Remove (timeout 10s). Probable: selección/embed/cámara interfiere con el hit del highlight locked.
+
+#### Corrección
+
+Para e2e de cascade delete: seedear highlight + note (`sourceHighlightId`) + arrow (`pdfNoteArrow`/`noteId`) en la sesión y solo hacer Remove. Cubrir el path de delete sin el round-trip UI de Add note.
+
 
 #### Descripción más detallada
 

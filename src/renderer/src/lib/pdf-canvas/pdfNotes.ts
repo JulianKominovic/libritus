@@ -12,7 +12,7 @@ import {
   type PdfNoteData,
   plateValueFromQuote
 } from './pdfNoteModel'
-import { highlightGroupId } from './pdfHighlightModel'
+import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
 
 export {
   emptyPlateValue,
@@ -47,6 +47,34 @@ export type PdfNoteArrowData = {
 
 export function isPdfNoteArrow(el: ExcalidrawElement): boolean {
   return el.type === 'arrow' && el.customData?.pdfNoteArrow === true
+}
+
+/**
+ * Highlight group rects + notes linked via sourceHighlightId + their pdfNoteArrows.
+ * Used by Remove so Add-note notes/arrows don't linger as orphans.
+ */
+export function idsDeletedWithHighlight(
+  elements: readonly ExcalidrawElement[],
+  groupId: string
+): Set<string> {
+  const ids = new Set(highlightGroupMembers(elements, groupId).map((el) => el.id))
+
+  const noteIds = new Set<string>()
+  for (const el of elements) {
+    if (el.isDeleted || !isPdfNote(el)) continue
+    if (el.customData?.sourceHighlightId === groupId) {
+      noteIds.add(el.id)
+      ids.add(el.id)
+    }
+  }
+
+  for (const el of elements) {
+    if (el.isDeleted || !isPdfNoteArrow(el)) continue
+    const noteId = el.customData?.noteId
+    if (typeof noteId === 'string' && noteIds.has(noteId)) ids.add(el.id)
+  }
+
+  return ids
 }
 
 function arrowGeom(

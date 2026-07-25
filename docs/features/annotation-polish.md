@@ -28,7 +28,7 @@ Out of scope (for now):
 | **Highlight color** | Chip or palette on the active highlight toolbar (next to Add note / Remove). Persist color on the element. |
 | **Remove note** | Deletes the note embeddable; if an arrow exists solely for that note (from Add note), delete it too. Do **not** delete the source highlight unless asked. |
 | **Copy text** | With a DOM selection in text-select mode: Cmd/Ctrl+C copies plain text. Optional “Copy” chip. |
-| **Remove highlight** | Existing behavior: highlight only; notes/arrows stay. |
+| **Remove highlight** | Done in v1: cascades notes with `sourceHighlightId` + their arrows (`idsDeletedWithHighlight`). |
 
 Default highlight appearance stays readable on light pages (light-mode only).
 

@@ -1,0 +1,14 @@
+---
+description: Always run Playwright e2e without the Shell sandbox (Electron fails to launch otherwise)
+alwaysApply: true
+---
+
+# E2E tests: no sandbox
+
+Playwright Electron e2e (`bun run test:e2e`, `bunx playwright test -c e2e/playwright.config.ts`, or any `e2e/**/*.spec.ts` run) **always** fails under the Shell sandbox (`Process failed to launch!`).
+
+When running e2e via the Shell tool:
+
+- Pass `required_permissions: ["all"]` so the command runs outside the sandbox.
+- Do not retry the same e2e command in the sandbox hoping it will work.
+- Unit tests (`bun test`) may stay sandboxed; this rule is only for e2e / Electron launch.

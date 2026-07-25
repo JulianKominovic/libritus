@@ -64,6 +64,7 @@ const {
   createNoteFromHighlight,
   createWysiwygNote,
   fixDuplicatedPdfNotes,
+  idsDeletedWithHighlight,
   isPdfNoteArrow,
   normalizePdfNote,
   repairUnvalidatedPdfNotes,
@@ -288,6 +289,99 @@ describe('pdfNotes', () => {
     expect(arrowMeta.endBinding).toBeNull()
     expect(arrowMeta.customData?.noteId).toBe(note.id)
     expect(arrowMeta.customData?.side).toBe('left')
+  })
+
+  test('idsDeletedWithHighlight cascades notes and arrows for groupId', () => {
+    const hlA = fakeHighlight({
+      id: 'rect-a',
+      customData: { pdfHighlight: true, text: 'a', groupId: 'g1' }
+    })
+    const hlB = fakeHighlight({
+      id: 'rect-b',
+      y: 50,
+      customData: { pdfHighlight: true, text: 'a', groupId: 'g1' }
+    })
+    const note1 = {
+      ...createWysiwygNote({ x: 0, y: 0, id: 'note-1' }),
+      customData: {
+        pdfNote: true,
+        plateValue: emptyPlateValue(),
+        sourceHighlightId: 'g1'
+      }
+    } as OrderedExcalidrawElement
+    const note2 = {
+      ...createWysiwygNote({ x: 0, y: 0, id: 'note-2' }),
+      customData: {
+        pdfNote: true,
+        plateValue: emptyPlateValue(),
+        sourceHighlightId: 'g1'
+      }
+    } as OrderedExcalidrawElement
+    const arrow1 = {
+      ...fakeHighlight({ id: 'arr-1' }),
+      type: 'arrow' as const,
+      customData: {
+        pdfNoteArrow: true,
+        noteId: 'note-1',
+        side: 'right',
+        startX: 0,
+        startY: 0
+      }
+    } as unknown as OrderedExcalidrawElement
+    const arrow2 = {
+      ...fakeHighlight({ id: 'arr-2' }),
+      type: 'arrow' as const,
+      customData: {
+        pdfNoteArrow: true,
+        noteId: 'note-2',
+        side: 'left',
+        startX: 0,
+        startY: 0
+      }
+    } as unknown as OrderedExcalidrawElement
+    const placeNote = createWysiwygNote({ x: 0, y: 0, id: 'place-note' })
+    const otherHl = fakeHighlight({ id: 'other-hl', x: 500 })
+    const otherNote = {
+      ...createWysiwygNote({ x: 0, y: 0, id: 'other-note' }),
+      customData: {
+        pdfNote: true,
+        plateValue: emptyPlateValue(),
+        sourceHighlightId: 'other-hl'
+      }
+    } as OrderedExcalidrawElement
+    const otherArrow = {
+      ...fakeHighlight({ id: 'other-arr' }),
+      type: 'arrow' as const,
+      customData: {
+        pdfNoteArrow: true,
+        noteId: 'other-note',
+        side: 'right',
+        startX: 0,
+        startY: 0
+      }
+    } as unknown as OrderedExcalidrawElement
+
+    const scene = [
+      hlA,
+      hlB,
+      note1,
+      note2,
+      arrow1,
+      arrow2,
+      placeNote,
+      otherHl,
+      otherNote,
+      otherArrow
+    ]
+    const toDelete = idsDeletedWithHighlight(scene, 'g1')
+
+    expect([...toDelete].sort()).toEqual(
+      ['arr-1', 'arr-2', 'note-1', 'note-2', 'rect-a', 'rect-b'].sort()
+    )
+    expect(toDelete.has('place-note')).toBe(false)
+    expect(toDelete.has('other-hl')).toBe(false)
+    expect(toDelete.has('other-note')).toBe(false)
+    expect(toDelete.has('other-arr')).toBe(false)
   })
 
   test('syncPdfNoteArrows follows note move without exploding', () => {

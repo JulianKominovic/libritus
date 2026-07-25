@@ -323,6 +323,138 @@ test('Add note from grouped highlight uses groupId as sourceHighlightId', async 
   }
 })
 
+test('Remove highlight also deletes linked notes and arrows', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-hl-cascade-remove-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const hlX = 80
+  const hlY = 120
+  const noteId = 'linked-note'
+  const groupId = 'hl-cascade'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-cascade',
+        x: hlX,
+        y: hlY,
+        text: 'quoted',
+        groupId
+      }),
+      {
+        ...seedNoteElement({ id: noteId, x: hlX + 180, y: hlY - 100, text: 'linked' }),
+        customData: {
+          pdfNote: true,
+          sourceHighlightId: groupId,
+          plateValue: [{ type: 'p', children: [{ text: 'linked' }] }]
+        }
+      },
+      {
+        id: 'linked-arrow',
+        type: 'arrow',
+        x: hlX + 120,
+        y: hlY + 9,
+        width: 60,
+        height: 0,
+        angle: 0,
+        strokeColor: '#495057',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 1,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        frameId: null,
+        index: 'a2',
+        roundness: null,
+        seed: 3,
+        version: 1,
+        versionNonce: 3,
+        isDeleted: false,
+        boundElements: null,
+        updated: 1,
+        link: null,
+        locked: true,
+        startBinding: null,
+        endBinding: null,
+        points: [
+          [0, 0],
+          [60, 0]
+        ],
+        customData: {
+          pdfNoteArrow: true,
+          noteId,
+          side: 'right',
+          startX: hlX + 120,
+          startY: hlY + 9
+        }
+      },
+      seedNoteElement({ id: 'place-keep', x: 400, y: 300, text: 'keep me' })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+
+    await clickScene(page, hlX + 40, hlY + 9)
+    await page.getByRole('button', { name: 'Remove' }).click({ timeout: 10_000 })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const live = (s.elements ?? []).filter(
+          (el) =>
+            el &&
+            typeof el === 'object' &&
+            (el as { isDeleted?: boolean }).isDeleted !== true
+        )
+        const hasHl = live.some(
+          (el) =>
+            (el as { customData?: { pdfHighlight?: boolean } }).customData?.pdfHighlight === true
+        )
+        const hasLinkedNote = live.some((el) => (el as { id?: string }).id === noteId)
+        const hasArrow = live.some(
+          (el) =>
+            (el as { customData?: { pdfNoteArrow?: boolean } }).customData?.pdfNoteArrow === true
+        )
+        return !hasHl && !hasLinkedNote && !hasArrow
+      }
+    )
+
+    const live = (snap.elements ?? []).filter(
+      (el) =>
+        el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
+    )
+    expect(
+      live.some(
+        (el) =>
+          (el as { customData?: { pdfHighlight?: boolean } }).customData?.pdfHighlight === true
+      )
+    ).toBe(false)
+    expect(
+      live.some(
+        (el) =>
+          (el as { customData?: { pdfNoteArrow?: boolean } }).customData?.pdfNoteArrow === true
+      )
+    ).toBe(false)
+    expect(live.some((el) => (el as { id?: string }).id === noteId)).toBe(false)
+    expect(live.some((el) => (el as { id?: string }).id === 'place-keep')).toBe(true)
+  } finally {
+    await close()
+  }
+})
+
 test('leave with Unsaved writes session via flush', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-flush-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
