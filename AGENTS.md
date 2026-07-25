@@ -1,16 +1,18 @@
 # AGENTS.md — Libritus Infinite PDF Canvas
 
-Context for agents working on this repo. Product vision and the optimal architecture live in [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md). This file is the operational ground truth: what ships today, gaps vs the ideal, and conventions.
+Context for agents working on this repo. **Product north** (research canvas): [`docs/features/product-north.md`](docs/features/product-north.md). Architecture: [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md). This file is the operational ground truth: what ships today, gaps vs the ideal, and conventions.
 
 ## Project meta
 
-**Libritus** is an Electron desktop reading app. The PDF viewer is an **infinite canvas**: pages stacked in a column, whiteboard-style pan/zoom, free annotations on top (highlights, notes, arrows, freehand) via Excalidraw + native pdf.js.
+**Libritus** is an Electron **research workspace**. Reading a PDF on an **infinite canvas** is the entry point; the canvas holds the investigation (notes, highlights, diagrams, and — destination — other study artifacts). Stack today: Excalidraw + native pdf.js, whiteboard-style pan/zoom.
 
 Performance goal: PDFs with **3000+ pages** without degrading pan/zoom or render.
 
-Guiding principle:
+Guiding principles:
 
 > Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations in page coordinates**.
+
+> Research belongs on the **canvas**. AI only on **explicit ask** — do **not** build or promote auto-summarize, auto-highlight, or auto-keyword features.
 
 ---
 
@@ -53,6 +55,7 @@ Guiding principle:
 | **v2** | Spatial annotation culling + index | `findPdfHighlightAt` is linear scan |
 | **v2** | LOD / thumbnails | Single `FIXED_RENDER_SCALE = 2` |
 | **v2+** | Hi-res tiles, HTTP range, OPFS | Open loads whole PDF into RAM |
+| **Later** | Remove sidebar AI Chat; Q&A → canvas cards; nav-only sidebar | See [`product-north.md`](docs/features/product-north.md), roadmap |
 
 See [`docs/roadmap.md`](docs/roadmap.md).
 
@@ -186,6 +189,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 11. Minimal scope: no refactors or deps “because optimal asks for them” unless the task requires it.
 12. **Light mode only** — no `dark:` Tailwind prefixes.
 13. **Never patch Excalidraw** — no `node_modules` edits, `patch-package`, postinstall hacks, or local forks for bugs. Mitigate in the host (events, wrappers, public props) or live with it / upstream.
+14. **Product north** — prefer canvas artifacts for lasting research; do not invent auto-summarize / auto-highlight / auto-keyword AI. Sidebar Chat is legacy until removed (do not deepen that silo). Destination: PDF sidebar = nav only.
 
 ---
 

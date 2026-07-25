@@ -4,6 +4,8 @@ Document structure chrome: PDF outline/bookmarks and a page thumbnail strip/side
 
 **Status:** implemented (`PdfSidebar` + `pdfOutline` + `ThumbPool`, wired in `PdfCanvasApp`).
 
+Product north ([`product-north.md`](product-north.md)): **destination** PDF sidebar = **navigation only** (Outline + Pages). Today `PdfSidebar` may also host Annotations and Chat; those are separate features. Outline/thumbs stay the nav core — do not remove them when Chat is retired later.
+
 ---
 
 ## Product goals
@@ -18,6 +20,7 @@ Out of scope (for now):
 - User-created bookmarks stored in session (nice later; start with PDF outline + page index).
 - Generating high-res thumbs for every page on open (use low-res / idle / LRU).
 - Replacing the top-left page navigator ([`pdf-navigation.md`](pdf-navigation.md)).
+- Changing Annotations / Chat tabs in this feature (leave as-is; Chat removal is later roadmap).
 
 ---
 
@@ -58,6 +61,7 @@ In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 | **PDF search** | Complementary: structure vs string match. |
 | **Memory / pools** | Thumbs must not inflate the main page pool buffer. |
 | **Sessions** | No need to persist outline; camera already restores position. |
+| **Product north** | These tabs are the nav destination of the PDF sidebar. |
 
 ---
 
@@ -66,3 +70,4 @@ In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 1. Prefer embedded PDF outline before inventing a custom bookmark store.
 2. Thumbnails are chrome + cache, never Excalidraw images in the session.
 3. Virtualize the thumb list for 3000+ page docs.
+4. Outline + Pages remain when research tabs leave the sidebar later.

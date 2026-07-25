@@ -1,15 +1,20 @@
 # Infinite PDF Canvas — Architecture
 
-Canvas infinito with a central PDF (page under page) rendered with PDF.js, plus free annotations: notes, highlights, arrows, and drawings.
+How the infinite PDF canvas is built and where it should converge for scale. **Product why** (research canvas, canvas owns research, AI subordinate): [`docs/features/product-north.md`](../features/product-north.md).
 
 Performance goal: PDFs with **3000+ pages** without degrading pan/zoom or render.
 
 ## Product vision
 
+Libritus is a **research workspace**: the PDF triggers investigation; the infinite canvas holds the memory of that work (notes, diagrams, Q&A, links, free annotations). Full premises: [`product-north.md`](../features/product-north.md).
+
+Canvas shape (how the workspace is laid out):
+
 - The PDF is the axis of the canvas: pages stacked in a column across infinite space.
 - Continuous reading with free pan/zoom (whiteboard style, not classic PDF scroll).
-- Annotation layer on top: notes, highlights, arrows, freehand.
+- Annotation / research layer on top: notes, highlights, arrows, freehand, and (destination) other study artifacts.
 - Stable coordinates in document/page space — not screen pixels — so zoom, pan, and persistence do not break annotations.
+- **Destination chrome:** PDF sidebar = outline + page thumbs only; lasting research lives on the canvas, not in research sidebars.
 
 ---
 

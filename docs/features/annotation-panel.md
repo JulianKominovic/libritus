@@ -4,6 +4,8 @@ Sidebar/panel listing the user’s highlights and notes for the open PDF, with j
 
 **Status:** implemented (`PdfSidebar` Annotations tab + `annotationList`, wired in `PdfCanvasApp`).
 
+Product north ([`product-north.md`](product-north.md)): lasting research lives on the **canvas**; the destination PDF sidebar is **navigation only**. This panel is a **scene-derived jump index** (not a content store). Hosting it in `PdfSidebar` is fine for now; any relocate off the nav sidebar is **later** roadmap — do not treat a move as required for current work.
+
 ---
 
 ## Product goals
@@ -20,6 +22,7 @@ Out of scope (for now):
 - Editing note content inside the panel (jump + open on canvas / activate embed).
 - Freehand / arbitrary shapes in v1 of the panel (highlights + `pdfNote` only).
 - Delete from the panel (use canvas Remove).
+- Relocating the list off `PdfSidebar` (destination / later only).
 
 ---
 
@@ -66,4 +69,4 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 1. Scene-derived list only (no second DB).
 2. Jump + select; do not auto-activate note edit.
 3. Highlights + notes first; shapes/arrows later if needed.
-4. Third tab on `PdfSidebar` (not a separate panel); toggle via navbar / settings.
+4. Third tab on `PdfSidebar` (not a separate panel); toggle via navbar / settings. Leave as-is until a later nav-only-sidebar pass.

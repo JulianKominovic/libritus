@@ -3,7 +3,7 @@
   Libritus
 </h1>
 <p align="center">
-Modern reading app designed to make reading simple, elegant, and enjoyable. Clean interface for exploring texts, highlighting key parts, and managing your reading experience without distractions. Built for curious minds. AI powered.
+Desktop research workspace: read PDFs on an infinite canvas, and keep the investigation — notes, diagrams, links, free annotations — on that canvas so you can follow your reasoning later. AI answers only when you ask; it does not auto-summarize or underline for you.
 </p>
 
 <img width="1840" height="1191" alt="Screenshot 2025-09-16 at 10 12 20 PM" src="https://github.com/user-attachments/assets/77b35121-e2fd-4d7d-8350-a3fca917dfb0" />
@@ -13,13 +13,14 @@ Modern reading app designed to make reading simple, elegant, and enjoyable. Clea
 
 ![Screenshot 2025-09-16 at 8 42 44 PM](https://github.com/user-attachments/assets/f78e2349-2f89-4647-bba8-ec77fc49bb6e)
 
-## Infinite PDF canvas
+## Research canvas
 
-The PDF viewer is an **infinite canvas** (Excalidraw + native pdf.js): virtualized pages, free pan/zoom, and freeform annotations. Architecture, roadmap, and agent conventions:
+The PDF viewer is an **infinite canvas** (Excalidraw + native pdf.js): virtualized pages, free pan/zoom, and freeform research on top of the document. Product north, architecture, roadmap, and agent conventions:
 
+- [`docs/features/product-north.md`](docs/features/product-north.md) — research canvas premises (canvas owns research; AI subordinate)
 - [`AGENTS.md`](AGENTS.md) — operational ground truth for contributors and agents
 - [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md) — vision and optimal architecture
-- [`docs/roadmap.md`](docs/roadmap.md) — v1 → v2 path and legacy migration debt
+- [`docs/roadmap.md`](docs/roadmap.md) — v1 → v2 path, research-on-canvas debt, legacy migration
 - [`docs/features/persistence-and-sessions.md`](docs/features/persistence-and-sessions.md)
 - [`docs/features/pdf-navigation.md`](docs/features/pdf-navigation.md)
 

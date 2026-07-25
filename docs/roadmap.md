@@ -1,6 +1,6 @@
 # Roadmap — Infinite PDF Canvas
 
-North star for migrating Libritus from the classic lector viewer to a scalable infinite canvas. Architecture detail: [`docs/architecture/infinite-pdf-canvas.md`](architecture/infinite-pdf-canvas.md). Agent conventions: [`AGENTS.md`](../AGENTS.md).
+North star: Libritus as a **research canvas** — PDF as trigger, canvas as memory of the investigation. Product premises: [`docs/features/product-north.md`](features/product-north.md). Architecture detail: [`docs/architecture/infinite-pdf-canvas.md`](architecture/infinite-pdf-canvas.md). Agent conventions: [`AGENTS.md`](../AGENTS.md).
 
 ---
 
@@ -13,7 +13,7 @@ North star for migrating Libritus from the classic lector viewer to a scalable i
 - Session autosave: `{pdfId}.session.json` (elements + camera).
 - Keep existing categories library / upload / Electron FS.
 
-**Explicitly deferred in v1:** reintroducing essays as a canvas HUD (legacy essays UI removed with lector).
+**Explicitly deferred in v1:** reintroducing essays as a canvas research surface (legacy essays UI removed with lector).
 
 Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
@@ -23,16 +23,29 @@ Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`annotation-polish`](features/annotation-polish.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
 
-Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md).
+Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat-in-sidebar = **legacy UX** until canvas Q&A).
 
 | Item | Notes |
 |------|--------|
 | Canonical annotation model | `pageIndex` + page-space geometry; Excalidraw remains paint layer — [`page-space-annotations.md`](features/page-space-annotations.md) |
 | Stable page-anchored highlights | Bridge toward non-Excalidraw renderer |
 | Migrate legacy data | Map old `categories.json` highlights/comments into canvas session or canonical store — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md) |
-| Essays HUD | Reintroduce as canvas HUD without lector — [`essays-hud.md`](features/essays-hud.md) |
+| Essays HUD | Reintroduce as **canvas research surface** (not PdfSidebar tab) — [`essays-hud.md`](features/essays-hud.md) |
 | Library polish | Optional `contentHash`, rename, reveal in Finder |
-| PDF RAG chat | Local MiniLM embeddings + OpenRouter BYOK chat — [`pdf-rag-chat.md`](features/pdf-rag-chat.md) |
+| PDF RAG (today) | Local MiniLM + OpenRouter BYOK; Chat tab in sidebar — [`pdf-rag-chat.md`](features/pdf-rag-chat.md) |
+
+---
+
+## Later — research on canvas (product debt)
+
+Aligned with [`product-north.md`](features/product-north.md). **Do not** ship auto-summaries, auto-highlights, or auto-keywords.
+
+| Item | Notes |
+|------|--------|
+| Remove sidebar AI Chat | Drop Chat from `PdfSidebar`; Q&A must not live as a research transcript silo |
+| AI Q&A → canvas cards | Explicit ask → session artifacts (e.g. `pdfQa`); citations + deletable like other elements |
+| Nav-only PDF sidebar | Destination: Outline + Pages only; decide Annotations / other research chrome then |
+| Canvas research artifacts | Vocabulary, translations, search captures, YouTube / web embeds, cross-PDF links — first-class canvas types over time |
 
 ---
 
@@ -70,8 +83,10 @@ Plan: treat session JSON as the write path for new annotations; one-shot or lazy
 
 ---
 
-## Guiding principle
+## Guiding principles
 
 > Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations in page coordinates**.
+
+> Research lives on the **canvas**; AI only on **explicit ask** — never auto-summarize / auto-highlight / auto-keyword.
 
 Ship v1 on Excalidraw; migrate renderer when page count and annotation volume demand it — without rewriting the document model if page-space was adopted early.

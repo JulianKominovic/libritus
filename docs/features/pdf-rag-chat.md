@@ -1,38 +1,55 @@
 # PDF RAG chat (BYOK)
 
-Chat with the open PDF using local embeddings + OpenRouter for answers.
+Ask questions about the open PDF using local embeddings + OpenRouter for answers.
 
 **Status:** Implemented (open → serial embed queue in main, nav progress indicator, Chat tab, Settings AI key, `{pdfId}.rag.json`).
+
+**UX note:** Chat-in-`PdfSidebar` is **legacy**. Product north ([`product-north.md`](product-north.md)): lasting research (including AI Q&A) belongs on the **canvas**. Removing sidebar Chat and moving explicit ask → canvas cards is **later** roadmap debt — do not deepen the sidebar transcript silo. This doc describes what ships today.
 
 ---
 
 ## Product goals
 
-1. Ask questions about the current PDF and get answers grounded in its text.
+1. Ask questions about the current PDF and get answers grounded in its text — **only on explicit Send / ask**.
 2. Cite pages (`[p.N]` + clickable chips) and jump the camera.
 3. **BYOK** OpenRouter for chat only — key never in `localStorage`.
 4. **Local embeddings** (MiniLM) so indexing has no provider cost and PDF text stays on device.
 
-Out of scope (MVP):
+Aligned with AI principles ([`product-north.md`](product-north.md)):
 
-- Chapter / global summaries (phase 2 — reuse chunks).
+- No auto-summarize, auto-highlight, or auto-keyword features or CTAs.
+- Background indexing is retrieval prep, not generative reading.
+- Do not mount Plate AIKit in chat or canvas notes.
+
+Out of scope:
+
+- Chapter / global auto-summaries (not planned; conflicts with product north).
 - OCR for scanned PDFs.
 - Remote embedding providers.
 - Plate AIKit / note-editor AI.
+- Shipping canvas Q&A cards in this feature’s current implementation (destination only).
 
 ---
 
-## UX
+## UX (today)
 
 | Surface | Behavior |
 |---------|----------|
 | **Settings → AI** | OpenRouter key (save / test / clear via `safeStorage` in main). Chat model select. Copy: embeddings run locally. |
 | **Nav sidebar (above Settings)** | Active embed job + progress; queued PDF titles. Hidden when idle. |
-| **PdfSidebar → Chat** | One-line index status; message list; prompt; citation chips → `onGoToPage`. |
+| **PdfSidebar → Chat** | One-line index status; message list; prompt; citation chips → `onGoToPage`. **Legacy** until removed. |
 | **Without key** | Indexing still runs on PDF open; Send blocked with CTA to Settings. |
 | **Empty PDF text** | “No extractable text”. |
 
 Motion: short fade/slide on messages (~150ms); send `active:scale-[0.96]`; `tabular-nums` on pages/progress.
+
+---
+
+## Destination (later)
+
+- Remove Chat tab from `PdfSidebar`.
+- Explicit ask → canvas research cards (session artifacts, deletable, with citations).
+- Prefer session / canvas as source of truth over `{pdfId}.chat.json` as primary UX.
 
 ---
 
@@ -67,11 +84,12 @@ Embedding model: `Xenova/all-MiniLM-L6-v2` (384-d, q8). Chat model preference in
 | **Outline** | Chapter titles on chunks when TOC exists (wait for outline before enqueue). |
 | **Search** | Shares `getTextContent` / extract path ideas; separate from find bar. |
 | **Notes / AIKit** | Do not mount Plate AI in chat or notes. |
+| **Product north** | Canvas owns research; sidebar Chat is temporary. |
 
 ---
 
-## Phase 2
+## Follow-ups (not summaries)
 
-- Summaries (global / per chapter) via OpenRouter over existing chunks.
 - Stronger multilingual embed model + reindex.
 - UtilityProcess if indexing blocks main on huge PDFs.
+- Canvas Q&A cards when sidebar Chat is removed (roadmap).
