@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { clickScene, closePdfSidebar, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas, expectUnsaved } from './helpers/canvas'
+import { clickScene, closePdfSidebar, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas, expectSaved, expectUnsaved } from './helpers/canvas'
 import {
   openPdf,
   readSessionFile,
@@ -358,6 +358,273 @@ test('duplicate note then undo removes the duplicate', async () => {
 
     await page.keyboard.press('ControlOrMeta+Z')
     await expect(page.locator('[data-pdf-note]')).toHaveCount(1, { timeout: 10_000 })
+  } finally {
+    await close()
+  }
+})
+
+test('deleting note cascades host-managed arrow', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-note-del-arrow-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const hlX = 80
+  const hlY = 120
+  const noteId = 'note-to-delete'
+  const noteX = hlX + 180
+  const noteY = hlY - 100
+  const groupId = 'hl-del-note'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-del-note',
+        x: hlX,
+        y: hlY,
+        text: 'quoted',
+        groupId
+      }),
+      {
+        ...seedNoteElement({ id: noteId, x: noteX, y: noteY, text: 'linked' }),
+        customData: {
+          pdfNote: true,
+          sourceHighlightId: groupId,
+          plateValue: [{ type: 'p', children: [{ text: 'linked' }] }]
+        }
+      },
+      {
+        id: 'arrow-to-cascade',
+        type: 'arrow',
+        x: hlX + 120,
+        y: hlY + 9,
+        width: 60,
+        height: 0,
+        angle: 0,
+        strokeColor: '#495057',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 1,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        frameId: null,
+        index: 'a2',
+        roundness: null,
+        seed: 3,
+        version: 1,
+        versionNonce: 3,
+        isDeleted: false,
+        boundElements: null,
+        updated: 1,
+        link: null,
+        locked: true,
+        startBinding: null,
+        endBinding: null,
+        points: [
+          [0, 0],
+          [60, 0]
+        ],
+        customData: {
+          pdfNoteArrow: true,
+          noteId,
+          side: 'right',
+          startX: hlX + 120,
+          startY: hlY + 9
+        }
+      },
+      seedNoteElement({ id: 'place-keep', x: 500, y: 300, text: 'keep me' })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+    await expect(page.getByText('linked')).toBeVisible({ timeout: 30_000 })
+
+    // Edge click selects without activating the embed (center third).
+    await clickScene(page, noteX + 8, noteY + 100)
+    await page.keyboard.press('Backspace')
+    await expectUnsaved(page)
+    await expect(page.locator('[data-pdf-note]').filter({ hasText: 'linked' })).toHaveCount(0, {
+      timeout: 10_000
+    })
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const live = (s.elements ?? []).filter(
+          (el) =>
+            el &&
+            typeof el === 'object' &&
+            (el as { isDeleted?: boolean }).isDeleted !== true
+        ) as Record<string, unknown>[]
+        const hasLinkedNote = live.some(
+          (el) =>
+            (el.customData as { pdfNote?: boolean })?.pdfNote === true && el.id === noteId
+        )
+        const hasArrow = live.some(
+          (el) => (el.customData as { pdfNoteArrow?: boolean })?.pdfNoteArrow === true
+        )
+        return !hasLinkedNote && !hasArrow
+      }
+    )
+
+    const live = (snap.elements ?? []).filter(
+      (el) =>
+        el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
+    ) as Record<string, unknown>[]
+    expect(live.some((el) => el.id === 'place-keep')).toBe(true)
+    expect(live.some((el) => (el.customData as { pdfHighlight?: boolean })?.pdfHighlight)).toBe(
+      true
+    )
+    expect(
+      live.some(
+        (el) => (el.customData as { pdfNote?: boolean })?.pdfNote === true && el.id === noteId
+      )
+    ).toBe(false)
+    expect(
+      live.some((el) => (el.customData as { pdfNoteArrow?: boolean })?.pdfNoteArrow === true)
+    ).toBe(false)
+  } finally {
+    await close()
+  }
+})
+
+test('undo delete note restores host-managed arrow', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-note-undo-arrow-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const hlX = 80
+  const hlY = 120
+  const noteId = 'note-undo'
+  const noteX = hlX + 180
+  const noteY = hlY - 100
+  const groupId = 'hl-undo-note'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-undo-note',
+        x: hlX,
+        y: hlY,
+        text: 'quoted',
+        groupId
+      }),
+      {
+        ...seedNoteElement({ id: noteId, x: noteX, y: noteY, text: 'linked' }),
+        customData: {
+          pdfNote: true,
+          sourceHighlightId: groupId,
+          plateValue: [{ type: 'p', children: [{ text: 'linked' }] }]
+        }
+      },
+      {
+        id: 'arrow-undo',
+        type: 'arrow',
+        x: hlX + 120,
+        y: hlY + 9,
+        width: 60,
+        height: 0,
+        angle: 0,
+        strokeColor: '#495057',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 1,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        frameId: null,
+        index: 'a2',
+        roundness: null,
+        seed: 3,
+        version: 1,
+        versionNonce: 3,
+        isDeleted: false,
+        boundElements: null,
+        updated: 1,
+        link: null,
+        locked: true,
+        startBinding: null,
+        endBinding: null,
+        points: [
+          [0, 0],
+          [60, 0]
+        ],
+        customData: {
+          pdfNoteArrow: true,
+          noteId,
+          side: 'right',
+          startX: hlX + 120,
+          startY: hlY + 9
+        }
+      }
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+    await expect(page.getByText('linked')).toBeVisible({ timeout: 30_000 })
+
+    await clickScene(page, noteX + 8, noteY + 100)
+    await page.keyboard.press('Backspace')
+    await expect(page.locator('[data-pdf-note]').filter({ hasText: 'linked' })).toHaveCount(0, {
+      timeout: 10_000
+    })
+    await expectUnsaved(page)
+    // Flush deleted scene so undo isn't a no-op against the seed signature.
+    await expectSaved(page)
+
+    await page.keyboard.press('ControlOrMeta+Z')
+    await expect(page.locator('[data-pdf-note]').filter({ hasText: 'linked' })).toHaveCount(1, {
+      timeout: 10_000
+    })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const live = (s.elements ?? []).filter(
+          (el) =>
+            el &&
+            typeof el === 'object' &&
+            (el as { isDeleted?: boolean }).isDeleted !== true
+        ) as Record<string, unknown>[]
+        return (
+          live.some((el) => el.id === noteId) &&
+          live.some((el) => (el.customData as { pdfNoteArrow?: boolean })?.pdfNoteArrow === true)
+        )
+      }
+    )
+
+    const live = (snap.elements ?? []).filter(
+      (el) =>
+        el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
+    ) as Record<string, unknown>[]
+    expect(live.some((el) => el.id === noteId)).toBe(true)
+    const arrow = live.find(
+      (el) => (el.customData as { pdfNoteArrow?: boolean })?.pdfNoteArrow === true
+    )!
+    expect((arrow.customData as { noteId?: string }).noteId).toBe(noteId)
   } finally {
     await close()
   }

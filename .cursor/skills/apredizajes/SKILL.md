@@ -433,3 +433,21 @@ Cold-start movió `GlobalWorkerOptions.workerSrc` de `main.tsx` a `PdfDocument.t
 
 Configurar el worker en `pdfjs.ts` (punto único de `getDocument`). CSS del viewer puede quedarse en `PdfDocument`.
 
+### Host arrows: borrar note/search capture deja flecha; undo no la revive
+
+#### Descripción más detallada
+
+Flechas `pdfNoteArrow` / `pdfSearchArrow` son host-managed (`locked`, sin bindings). Soft-delete via `sync*` + `updateScene(NEVER)` al borrar el embed. Tres tropiezos:
+
+1. Soft-delete sí, pero **sin revive** cuando el target vuelve (Ctrl+Z) — el comentario ponytail lo dejó como “recreate via Buscar/Add note”.
+2. Sync leía `getSceneElements()` → **excluye** `isDeleted`. Tras soft-delete la flecha no está en la lista → el revive nunca la ve; al `updateScene` con solo live se puede perder del store. Persist también usa live-only → sesión sin flecha aunque el embed vuelva.
+3. E2E undo: tras Ctrl+Z la escena ≈ seed → `markUnsaved` limpia dirty (`gate.clear`). `leaveToHome` no flusha (`if (!dirtyRef.current) return`). El assert en sesión leía el seed viejo o el delete autosaved, no el revive.
+
+Early-return de `activeEmbeddable === 'hover'` también saltaba el sync de flechas en el onChange del undo.
+
+#### Corrección
+
+- `syncPdfNoteArrows` / `syncPdfSearchArrows`: soft-delete si el target no vive; **revive** (`isDeleted: false` + geom) si vuelve. Preferir `newElementWith` para el flip de `isDeleted` (versionNonce).
+- En `handleExcalidrawChange`: sync de flechas con `getSceneElementsIncludingDeleted()` **antes** del early-return de hover.
+- E2E undo: tras delete → `expectUnsaved` → `expectSaved` (flush del borrado) → Ctrl+Z → `expectUnsaved` → leave → assert flecha viva.
+

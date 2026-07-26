@@ -5,6 +5,7 @@ import { launchApp } from './helpers/launch'
 import {
   clickScene,
   closePdfSidebar,
+  expectSaved,
   expectUnsaved,
   leaveToHome,
   tmpAppData,
@@ -271,6 +272,168 @@ test('Remove highlight cascades search capture + arrow', async () => {
     expect(live.some((el) => (el.id as string) === 'place-keep')).toBe(true)
     expect(live.some(isSearchCapture)).toBe(false)
     expect(live.some(isSearchArrow)).toBe(false)
+  } finally {
+    await close()
+  }
+})
+
+test('deleting search capture cascades arrow', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-search-del-cap-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const hlX = 80
+  const hlY = 120
+  const groupId = 'hl-del-cap'
+  const captureId = 'cap-to-delete'
+  const capX = 220
+  const capY = 40
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-del-cap',
+        x: hlX,
+        y: hlY,
+        text: 'quoted',
+        groupId
+      }),
+      seedSearchCaptureElement({
+        id: captureId,
+        x: capX,
+        y: capY,
+        query: 'quoted',
+        url: 'https://example.com',
+        sourceHighlightId: groupId
+      }),
+      seedSearchArrowElement({
+        id: 'arrow-to-cascade',
+        captureId,
+        startX: hlX + 120,
+        startY: hlY + 9,
+        side: 'right'
+      }),
+      seedNoteElement({ id: 'place-keep', x: 500, y: 300, text: 'keep me' })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+
+    // Edge click selects without activating the guest browser (center third).
+    await clickScene(page, capX + 4, capY + 4)
+    await page.keyboard.press('Backspace')
+    await expectUnsaved(page)
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(0, { timeout: 10_000 })
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const live = liveElements(s)
+        return !live.some(isSearchCapture) && !live.some(isSearchArrow)
+      }
+    )
+
+    const live = liveElements(snap)
+    expect(live.some((el) => (el.id as string) === 'place-keep')).toBe(true)
+    expect(live.some((el) => (el.customData as { pdfHighlight?: boolean })?.pdfHighlight)).toBe(
+      true
+    )
+    expect(live.some(isSearchCapture)).toBe(false)
+    expect(live.some(isSearchArrow)).toBe(false)
+  } finally {
+    await close()
+  }
+})
+
+test('undo delete search capture restores arrow', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-search-undo-arrow-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const hlX = 80
+  const hlY = 120
+  const groupId = 'hl-undo-cap'
+  const captureId = 'cap-undo'
+  const capX = 220
+  const capY = 40
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedHighlightElement({
+        id: 'hl-undo-cap',
+        x: hlX,
+        y: hlY,
+        text: 'quoted',
+        groupId
+      }),
+      seedSearchCaptureElement({
+        id: captureId,
+        x: capX,
+        y: capY,
+        query: 'quoted',
+        url: 'https://example.com',
+        sourceHighlightId: groupId
+      }),
+      seedSearchArrowElement({
+        id: 'arrow-undo',
+        captureId,
+        startX: hlX + 120,
+        startY: hlY + 9,
+        side: 'right'
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+
+    await clickScene(page, capX + 4, capY + 4)
+    await page.keyboard.press('Backspace')
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(0, { timeout: 10_000 })
+    await expectUnsaved(page)
+    // Flush deleted scene so undo isn't a no-op against the seed signature.
+    await expectSaved(page)
+
+    await page.keyboard.press('ControlOrMeta+Z')
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const live = liveElements(s)
+        return live.some(isSearchCapture) && live.some(isSearchArrow)
+      }
+    )
+
+    const live = liveElements(snap)
+    expect(live.some(isSearchCapture)).toBe(true)
+    expect(live.some(isSearchArrow)).toBe(true)
+    const arrow = live.find(isSearchArrow)!
+    expect((arrow.customData as { captureId?: string }).captureId).toBe(captureId)
   } finally {
     await close()
   }

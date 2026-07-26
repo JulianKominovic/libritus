@@ -427,6 +427,28 @@ describe('pdfNotes', () => {
     expect(arrow.height).toBeCloseTo(movedNote.y + movedNote.height / 2 - 10, 0)
   })
 
+  test('syncPdfNoteArrows soft-deletes orphan arrow when note is gone', () => {
+    const highlight = fakeHighlight({ id: 'hl-orphan', x: 0, y: 0, width: 80, height: 20 })
+    const { newElements } = createNoteFromHighlight(highlight)
+    const arrow = newElements.find((el) => isPdfNoteArrow(el))!
+    const { elements, changed } = syncPdfNoteArrows([arrow])
+    expect(changed).toBe(true)
+    expect(elements[0]!.isDeleted).toBe(true)
+  })
+
+  test('syncPdfNoteArrows revives soft-deleted arrow when note returns', () => {
+    const highlight = fakeHighlight({ id: 'hl-revive', x: 0, y: 0, width: 80, height: 20 })
+    const { newElements } = createNoteFromHighlight(highlight)
+    const note = newElements.find((el) => isPdfNote(el))!
+    const arrow = newElements.find((el) => isPdfNoteArrow(el))!
+    const deletedArrow = { ...arrow, isDeleted: true } as OrderedExcalidrawElement
+    const { elements, changed } = syncPdfNoteArrows([note, deletedArrow])
+    expect(changed).toBe(true)
+    const revived = elements.find((el) => isPdfNoteArrow(el))!
+    expect(revived.isDeleted).toBe(false)
+    expect(revived.locked).toBe(true)
+  })
+
   test('syncPdfNoteArrows migrates legacy endBinding arrows', () => {
     const note = createWysiwygNote({ x: 200, y: 100, id: 'legacy-note' })
     const legacyArrow = {

@@ -175,14 +175,23 @@ export function syncPdfNoteArrows(
   }
 
   const next = migrated.map((el) => {
-    if (!isPdfNoteArrow(el) || el.isDeleted) return el
+    if (!isPdfNoteArrow(el)) return el
     const data = el.customData as PdfNoteArrowData
     const note = byId.get(data.noteId)
-    if (!note || note.isDeleted || !isPdfNote(note)) return el
+    const noteAlive = !!note && !note.isDeleted && isPdfNote(note)
+    // Soft-delete when note gone; revive on undo (NEVER sync isn't on undo stack).
+    if (!noteAlive) {
+      if (el.isDeleted) return el
+      changed = true
+      return newElementWith(el, { isDeleted: true } as Parameters<
+        typeof newElementWith
+      >[1]) as OrderedExcalidrawElement
+    }
     const geo = arrowGeom(data.startX, data.startY, note, data.side)
     const startBinding = (el as { startBinding?: unknown }).startBinding
     const endBinding = (el as { endBinding?: unknown }).endBinding
     if (
+      !el.isDeleted &&
       geomClose(el, geo) &&
       !(el as { elbowed?: boolean }).elbowed &&
       !startBinding &&
@@ -192,14 +201,14 @@ export function syncPdfNoteArrows(
       return el
     }
     changed = true
-    return {
-      ...el,
+    return newElementWith(el, {
       ...geo,
+      isDeleted: false,
       locked: true,
       elbowed: false,
       startBinding: null,
       endBinding: null
-    } as OrderedExcalidrawElement
+    } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
   })
 
   return { elements: changed ? (next as OrderedExcalidrawElement[]) : [...elements], changed }

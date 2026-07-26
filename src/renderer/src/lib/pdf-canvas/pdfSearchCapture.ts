@@ -149,18 +149,26 @@ export function syncPdfSearchArrows(
   let changed = false
 
   const next = elements.map((el) => {
-    if (!isPdfSearchArrow(el) || el.isDeleted) return el
+    if (!isPdfSearchArrow(el)) return el
     const data = el.customData as PdfSearchArrowData
     const capture = byId.get(data.captureId)
-    if (!capture || capture.isDeleted || !isPdfSearchCapture(capture)) return el
+    const captureAlive = !!capture && !capture.isDeleted && isPdfSearchCapture(capture)
+    // Soft-delete when capture gone; revive on undo (NEVER sync isn't on undo stack).
+    if (!captureAlive) {
+      if (el.isDeleted) return el
+      changed = true
+      return newElementWith(el, { isDeleted: true } as Parameters<
+        typeof newElementWith
+      >[1]) as OrderedExcalidrawElement
+    }
     const geo = arrowGeom(data.startX, data.startY, capture, data.side)
-    if (geomClose(el, geo) && el.locked) return el
+    if (!el.isDeleted && geomClose(el, geo) && el.locked) return el
     changed = true
-    return {
-      ...el,
+    return newElementWith(el, {
       ...geo,
+      isDeleted: false,
       locked: true
-    } as OrderedExcalidrawElement
+    } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
   })
 
   return { elements: changed ? (next as OrderedExcalidrawElement[]) : [...elements], changed }

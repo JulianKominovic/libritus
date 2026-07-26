@@ -896,24 +896,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (files && Object.keys(files).length > 0) {
         void persistNewBinaryFiles(files, persistedAttachmentIdsRef.current)
       }
-      // Excalidraw setStates activeEmbeddable "hover" on every pointermove over the
-      // note center third (no equality guard) → onChange spam. Skip host work.
-      if (appState.activeEmbeddable?.state === 'hover') return
 
       if (!restoringRef.current) {
         const api = apiRef.current
         if (api) {
-          const repairedNotes = repairUnvalidatedPdfNotes(api.getSceneElements(), noteIdsRef.current)
-          noteIdsRef.current = repairedNotes.knownIds
-          let scene = repairedNotes.changed ? repairedNotes.elements : api.getSceneElements()
-          if (repairedNotes.changed) {
-            api.updateScene({
-              elements: scene,
-              captureUpdate: CaptureUpdateAction.NEVER
-            })
-          }
-
-          // Host-owned highlight→note connectors (no Excalidraw bindings).
+          // Host arrows always — delete cascade + undo revive must not skip on embed hover spam.
+          // IncludingDeleted: soft-deleted arrows stay in the store for revive after Ctrl+Z.
+          let scene = api.getSceneElementsIncludingDeleted()
           const syncedNotes = syncPdfNoteArrows(scene)
           if (syncedNotes.changed) {
             scene = syncedNotes.elements
@@ -922,10 +911,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
               captureUpdate: CaptureUpdateAction.NEVER
             })
           }
-
           const syncedCaptures = syncPdfSearchArrows(scene)
           if (syncedCaptures.changed) {
             scene = syncedCaptures.elements
+            api.updateScene({
+              elements: scene,
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
+          }
+
+          // Excalidraw setStates activeEmbeddable "hover" on every pointermove over the
+          // note center third (no equality guard) → onChange spam. Skip the rest.
+          if (appState.activeEmbeddable?.state === 'hover') {
+            if (syncedNotes.changed || syncedCaptures.changed) markUnsaved()
+            return
+          }
+
+          const repairedNotes = repairUnvalidatedPdfNotes(scene, noteIdsRef.current)
+          noteIdsRef.current = repairedNotes.knownIds
+          if (repairedNotes.changed) {
+            scene = repairedNotes.elements
             api.updateScene({
               elements: scene,
               captureUpdate: CaptureUpdateAction.NEVER

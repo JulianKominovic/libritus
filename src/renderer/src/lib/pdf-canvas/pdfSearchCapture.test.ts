@@ -342,13 +342,26 @@ describe('syncPdfSearchArrows', () => {
     expect(changed).toBe(false)
   })
 
-  test('orphan arrow when capture deleted is left alone', () => {
+  test('soft-deletes orphan arrow when capture is gone', () => {
     const highlight = fakeHighlight({ id: 'hl-1' })
     const { newElements } = createSearchCaptureFromHighlight(highlight)
     const arrow = newElements.find(isPdfSearchArrow)!
     const { elements, changed } = syncPdfSearchArrows([arrow])
-    expect(changed).toBe(false)
-    expect(elements[0]).toBe(arrow)
+    expect(changed).toBe(true)
+    expect(elements[0]!.isDeleted).toBe(true)
+  })
+
+  test('revives soft-deleted arrow when capture returns', () => {
+    const highlight = fakeHighlight({ id: 'hl-1' })
+    const { newElements } = createSearchCaptureFromHighlight(highlight)
+    const capture = newElements.find(isPdfSearchCapture)!
+    const arrow = newElements.find(isPdfSearchArrow)!
+    const deletedArrow = { ...arrow, isDeleted: true } as OrderedExcalidrawElement
+    const { elements, changed } = syncPdfSearchArrows([capture, deletedArrow])
+    expect(changed).toBe(true)
+    const revived = elements.find(isPdfSearchArrow)!
+    expect(revived.isDeleted).toBe(false)
+    expect(revived.locked).toBe(true)
   })
 })
 
