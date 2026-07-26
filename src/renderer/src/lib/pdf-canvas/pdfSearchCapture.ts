@@ -4,7 +4,8 @@ import type {
   ExcalidrawElement,
   OrderedExcalidrawElement
 } from '@excalidraw/excalidraw/element/types'
-import { highlightGroupId } from './pdfHighlightModel'
+import { arrowBetweenRects, unionRect } from './arrowBetweenRects'
+import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
 
 export type PdfSearchCaptureData = {
   pdfSearchCapture: true
@@ -103,31 +104,9 @@ export function googleSearchUrl(query: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(q || 'search')}`
 }
 
-function arrowGeom(
-  startX: number,
-  startY: number,
-  target: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
-  side: 'left' | 'right'
-): { x: number; y: number; width: number; height: number; points: [number, number][] } {
-  const endX = side === 'right' ? target.x : target.x + target.width
-  const endY = target.y + target.height / 2
-  const width = endX - startX
-  const height = endY - startY
-  return {
-    x: startX,
-    y: startY,
-    width,
-    height,
-    points: [
-      [0, 0],
-      [width, height]
-    ]
-  }
-}
-
 function geomClose(
   el: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
-  geo: ReturnType<typeof arrowGeom>,
+  geo: Pick<ReturnType<typeof arrowBetweenRects>, 'x' | 'y' | 'width' | 'height'>,
   eps = 0.5
 ): boolean {
   return (
@@ -138,8 +117,23 @@ function geomClose(
   )
 }
 
+/** Highlight group union, or 1×1 at stored start when group missing. */
+function searchArrowAnchor(
+  elements: readonly ExcalidrawElement[],
+  capture: ExcalidrawElement,
+  fallback: { startX: number; startY: number }
+) {
+  const gid = capture.customData?.sourceHighlightId
+  if (typeof gid === 'string') {
+    const u = unionRect(highlightGroupMembers(elements, gid))
+    if (u) return u
+  }
+  return { x: fallback.startX, y: fallback.startY, width: 1, height: 1 }
+}
+
 /**
  * Keep highlight→capture arrows glued without Excalidraw bindings.
+ * Recomputes both ends via shortest AABB segment on each sync.
  * ponytail: one-sided bindings explode (~1e5px) when the embeddable moves.
  */
 export function syncPdfSearchArrows(
@@ -161,13 +155,26 @@ export function syncPdfSearchArrows(
         typeof newElementWith
       >[1]) as OrderedExcalidrawElement
     }
-    const geo = arrowGeom(data.startX, data.startY, capture, data.side)
-    if (!el.isDeleted && geomClose(el, geo) && el.locked) return el
+    const hl = searchArrowAnchor(elements, capture, {
+      startX: data.startX,
+      startY: data.startY
+    })
+    const geo = arrowBetweenRects(hl, capture)
+    const metaOk =
+      data.startX === geo.startX && data.startY === geo.startY && data.side === geo.side
+    if (!el.isDeleted && geomClose(el, geo) && metaOk && el.locked) return el
     changed = true
     return newElementWith(el, {
       ...geo,
       isDeleted: false,
-      locked: true
+      locked: true,
+      customData: {
+        pdfSearchArrow: true,
+        captureId: data.captureId,
+        side: geo.side,
+        startX: geo.startX,
+        startY: geo.startY
+      } satisfies PdfSearchArrowData
     } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
   })
 
@@ -322,8 +329,9 @@ export function createSearchCapture(opts: {
 
 /**
  * Search capture card + locked straight arrow from highlight edge.
- * Odd anchored artifacts go right; even go left.
+ * Odd anchored artifacts go right; even go left (initial placement only).
  * Counts notes + search captures for the same highlight.
+ * Arrow ends use shortest AABB segment; sync recomputes both ends on move.
  */
 export function createSearchCaptureFromHighlight(
   highlight: OrderedExcalidrawElement,
@@ -339,13 +347,13 @@ export function createSearchCaptureFromHighlight(
       el.customData?.sourceHighlightId === groupId &&
       (el.customData?.pdfNote === true || el.customData?.pdfSearchCapture === true)
   ).length
-  const side = prior % 2 === 0 ? 'right' : 'left'
+  const placeSide = prior % 2 === 0 ? 'right' : 'left'
 
-  const startY = highlight.y + highlight.height / 2
-  const startX = side === 'right' ? highlight.x + highlight.width : highlight.x
+  const midY = highlight.y + highlight.height / 2
+  const edgeX = placeSide === 'right' ? highlight.x + highlight.width : highlight.x
   const captureX =
-    side === 'right' ? startX + SEARCH_GAP : startX - SEARCH_GAP - SEARCH_CAPTURE_WIDTH
-  const captureY = startY - SEARCH_CAPTURE_HEIGHT / 2
+    placeSide === 'right' ? edgeX + SEARCH_GAP : edgeX - SEARCH_GAP - SEARCH_CAPTURE_WIDTH
+  const captureY = midY - SEARCH_CAPTURE_HEIGHT / 2
 
   const captureBase = createSearchCapture({
     x: captureX,
@@ -355,7 +363,7 @@ export function createSearchCaptureFromHighlight(
     sourceHighlightId: groupId
   })
 
-  const geo = arrowGeom(startX, startY, captureBase, side)
+  const geo = arrowBetweenRects(highlight, captureBase)
 
   const [arrow] = convertToExcalidrawElements([
     {
@@ -377,9 +385,9 @@ export function createSearchCaptureFromHighlight(
   const arrowData = {
     pdfSearchArrow: true as const,
     captureId: captureBase.id,
-    side,
-    startX,
-    startY
+    side: geo.side,
+    startX: geo.startX,
+    startY: geo.startY
   } satisfies PdfSearchArrowData
 
   const connector = newElementWith(arrow, {

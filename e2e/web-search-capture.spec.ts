@@ -663,3 +663,88 @@ test('center-click re-activates browse on native image capture', async () => {
     await close()
   }
 })
+
+test('Excalidraw style panel click does not activate search capture underneath', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-style-panel-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  // Capture sits under the left SelectedShapeActions panel in scene space.
+  const capX = 0
+  const capY = 40
+  const capW = 300
+  const capH = 420
+  const rectX = 520
+  const rectY = 180
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedSearchCaptureElement({
+        id: 'cap-under-panel',
+        x: capX,
+        y: capY,
+        width: capW,
+        height: capH,
+        query: 'under-panel',
+        url: 'https://example.com'
+      }),
+      {
+        id: 'decoy-rect',
+        type: 'rectangle',
+        x: rectX,
+        y: rectY,
+        width: 140,
+        height: 90,
+        angle: 0,
+        strokeColor: '#1971c2',
+        backgroundColor: '#a5d8ff',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        frameId: null,
+        index: 'a9',
+        roundness: null,
+        seed: 9,
+        version: 1,
+        versionNonce: 9,
+        isDeleted: false,
+        boundElements: null,
+        updated: 1,
+        link: null,
+        locked: false,
+        customData: null
+      }
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
+
+    // Select free rectangle → left style panel opens over the capture.
+    await clickScene(page, rectX + 70, rectY + 45)
+    const panel = page.locator('.App-menu__left')
+    await expect(panel).toBeVisible({ timeout: 10_000 })
+
+    const swatch = panel.locator('[data-testid^="color-top-pick-"]').first()
+    await expect(swatch).toBeVisible({ timeout: 5_000 })
+    await swatch.click()
+
+    // Regression: host scene hit-test must ignore .layer-ui__wrapper.
+    await page.waitForTimeout(600)
+    await expectBrowserChromeHidden(page)
+  } finally {
+    await close()
+  }
+})

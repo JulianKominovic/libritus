@@ -27,7 +27,7 @@ Out of scope (for now):
 | Action                     | Behavior                                                                                             |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- |
 | **Place note**             | Click canvas → create note centered on click; selected, not editing.                                 |
-| **Add note** (highlight)   | Creates note + locked host-managed arrow (no Excalidraw bindings). 1st/3rd/… right of highlight; 2nd/4th/… left. |
+| **Add note** (highlight)   | Creates note + locked host-managed arrow (no Excalidraw bindings). Initial placement: 1st/3rd/… right of highlight; 2nd/4th/… left. On drag, arrow re-anchors to the shortest highlight↔note AABB segment. |
 | **Remove** (highlight)     | Soft-deletes the highlight group + notes with matching `sourceHighlightId` + their `pdfNoteArrow`s + linked search captures / `pdfSearchArrow`s (see [`web-search-capture.md`](web-search-capture.md)). Place-note / Place-browser cards (no link) stay. |
 | **Edge / border drag**     | Excalidraw selection and move on the embeddable.                                                     |
 | **Click center**           | Activate embed → Plate editable (`activeEmbeddable`).                                                |
@@ -74,6 +74,7 @@ Identity helper: `isPdfNote(el)` → `customData.pdfNote === true`.
 
 | Path                                               | Role                                                                                     |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `lib/pdf-canvas/arrowBetweenRects.ts`              | O(1) shortest AABB connector (shared by note + search arrows)                            |
 | `lib/pdf-canvas/pdfNoteModel.ts`                   | `isPdfNote`, `getNotePlateValue`, `queryVisibleNotes`, `findPdfNoteAt`                   |
 | `lib/pdf-canvas/pdfNotes.ts`                       | `createWysiwygNote`, `createNoteFromHighlight`, `normalizePdfNote`, `withNotePlateValue` |
 | `lib/pdf-canvas/pdfNotes.test.ts`                  | Unit tests for note create / normalize / highlight→arrow invariants                      |
@@ -106,9 +107,9 @@ Escape / click outside
 ### Arrow from highlight (same traps as before)
 
 - Highlight stays `locked`.
-- Arrow: **no** Excalidraw bindings; `customData.pdfNoteArrow` + `noteId` / `startX` / `startY`; **`locked: true`**; host `syncPdfNoteArrows`.
+- Arrow: **no** Excalidraw bindings; `customData.pdfNoteArrow` + `noteId` / `startX` / `startY`; **`locked: true`**; host `syncPdfNoteArrows` recomputes both ends (shortest AABB segment).
 - Do not use one-sided `endBinding` / elbow (explodes on note drag).
-- Per highlight, notes alternate sides via `sourceHighlightId` count: 1st/3rd/… right, 2nd/4th/… left.
+- Per highlight, **initial** placement alternates sides via `sourceHighlightId` count: 1st/3rd/… right, 2nd/4th/… left. After that, origin follows the card.
 
 ---
 

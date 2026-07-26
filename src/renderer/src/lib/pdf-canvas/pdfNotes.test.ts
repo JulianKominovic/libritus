@@ -421,20 +421,47 @@ describe('pdfNotes', () => {
     const { newElements } = createNoteFromHighlight(highlight)
     const note = newElements.find((el) => isPdfNote(el))!
     const movedNote = { ...note, x: note.x + 400, y: note.y + 300 }
-    const { elements, changed } = syncPdfNoteArrows([movedNote, newElements[1]!])
+    const { elements, changed } = syncPdfNoteArrows([
+      highlight,
+      movedNote,
+      newElements[1]!
+    ])
     expect(changed).toBe(true)
     const arrow = elements.find((el) => el.type === 'arrow') as {
       width: number
       height: number
       x: number
       y: number
+      customData?: { side?: string; startX?: number; startY?: number }
     }
     expect(Math.hypot(arrow.width, arrow.height)).toBeLessThan(5000)
+    expect(arrow.customData?.side).toBe('right')
+    // Start stays on highlight right edge (shortest AABB).
     expect(arrow.x).toBe(80)
-    expect(arrow.y).toBe(10)
-    // End tracks note left edge mid.
+    expect(arrow.customData?.startX).toBe(80)
+    // End tracks note left edge (x); y is overlap/gap closed-form.
     expect(arrow.width).toBeCloseTo(movedNote.x - 80, 0)
-    expect(arrow.height).toBeCloseTo(movedNote.y + movedNote.height / 2 - 10, 0)
+  })
+
+  test('syncPdfNoteArrows flips to left when note crosses highlight', () => {
+    const highlight = fakeHighlight({ id: 'hl-flip', x: 200, y: 0, width: 80, height: 20 })
+    const { newElements } = createNoteFromHighlight(highlight)
+    const note = newElements.find((el) => isPdfNote(el))!
+    const arrow0 = newElements.find((el) => isPdfNoteArrow(el))!
+    // Place note fully left of highlight.
+    const movedNote = {
+      ...note,
+      x: 0,
+      y: 0
+    } as OrderedExcalidrawElement
+    const { elements, changed } = syncPdfNoteArrows([highlight, movedNote, arrow0])
+    expect(changed).toBe(true)
+    const arrow = elements.find((el) => isPdfNoteArrow(el))!
+    expect(arrow.customData?.side).toBe('left')
+    expect(arrow.customData?.startX).toBe(200)
+    expect(arrow.x).toBe(200)
+    // End on note right edge.
+    expect(arrow.x + arrow.width).toBeCloseTo(movedNote.x + movedNote.width, 0)
   })
 
   test('syncPdfNoteArrows soft-deletes orphan arrow when note is gone', () => {

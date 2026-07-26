@@ -89,6 +89,7 @@ import {
 } from '@renderer/lib/pdf-canvas/session'
 import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
 import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
+import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
@@ -1615,6 +1616,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const onPointerMoveCapture = (event: PointerEvent) => {
       if (event.buttons !== 0) return
       if (event.altKey || event.shiftKey || event.metaKey || event.ctrlKey) return
+      // Style panel / toolbars sit over the scene — don't steal their hover.
+      if (isExcalidrawUiPointerTarget(event.target)) return
       const api = apiRef.current
       if (!api) return
       const appState = api.getAppState()

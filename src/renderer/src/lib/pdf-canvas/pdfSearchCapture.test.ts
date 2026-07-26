@@ -171,7 +171,7 @@ describe('createSearchCaptureFromHighlight', () => {
       height: 200,
       isDeleted: false,
       customData: { pdfNote: true, sourceHighlightId: 'hl-1' }
-    } as OrderedExcalidrawElement
+    } as unknown as OrderedExcalidrawElement
     const { newElements } = createSearchCaptureFromHighlight(highlight, [priorNote])
     const capture = newElements.find(isPdfSearchCapture)!
     const arrow = newElements.find(isPdfSearchArrow)!
@@ -342,22 +342,44 @@ describe('normalizePdfSearchCapture', () => {
 
 describe('syncPdfSearchArrows', () => {
   test('moves arrow end when capture moves', () => {
-    const highlight = fakeHighlight({ id: 'hl-1' })
+    const highlight = fakeHighlight({ id: 'hl-1', x: 0, y: 0, width: 80, height: 20 })
     const { newElements } = createSearchCaptureFromHighlight(highlight)
     const capture = newElements.find(isPdfSearchCapture)!
     const moved = { ...capture, x: capture.x + 80, y: capture.y + 40 } as OrderedExcalidrawElement
-    const scene = newElements.map((el) => (el.id === capture.id ? moved : el))
+    const scene = [highlight, ...newElements.map((el) => (el.id === capture.id ? moved : el))]
     const { elements, changed } = syncPdfSearchArrows(scene)
     expect(changed).toBe(true)
     const arrow = elements.find(isPdfSearchArrow)!
     expect(arrow.x).toBe(arrow.customData?.startX)
+    expect(arrow.customData?.side).toBe('right')
+    expect(arrow.customData?.startX).toBe(80)
     expect(arrow.width).not.toBe(0)
+  })
+
+  test('flips to left when capture crosses highlight', () => {
+    const highlight = fakeHighlight({ id: 'hl-flip', x: 400, y: 0, width: 80, height: 20 })
+    const { newElements } = createSearchCaptureFromHighlight(highlight)
+    const capture = newElements.find(isPdfSearchCapture)!
+    const arrow0 = newElements.find(isPdfSearchArrow)!
+    const moved = {
+      ...capture,
+      x: 0,
+      y: 0,
+      width: SEARCH_CAPTURE_WIDTH,
+      height: 100
+    } as OrderedExcalidrawElement
+    const { elements, changed } = syncPdfSearchArrows([highlight, moved, arrow0])
+    expect(changed).toBe(true)
+    const arrow = elements.find(isPdfSearchArrow)!
+    expect(arrow.customData?.side).toBe('left')
+    expect(arrow.customData?.startX).toBe(400)
+    expect(arrow.x + arrow.width).toBeCloseTo(moved.x + moved.width, 0)
   })
 
   test('no-op when geomClose', () => {
     const highlight = fakeHighlight({ id: 'hl-1' })
     const { newElements } = createSearchCaptureFromHighlight(highlight)
-    const { changed } = syncPdfSearchArrows(newElements)
+    const { changed } = syncPdfSearchArrows([highlight, ...newElements])
     expect(changed).toBe(false)
   })
 
@@ -376,7 +398,7 @@ describe('syncPdfSearchArrows', () => {
     const capture = newElements.find(isPdfSearchCapture)!
     const arrow = newElements.find(isPdfSearchArrow)!
     const deletedArrow = { ...arrow, isDeleted: true } as OrderedExcalidrawElement
-    const { elements, changed } = syncPdfSearchArrows([capture, deletedArrow])
+    const { elements, changed } = syncPdfSearchArrows([highlight, capture, deletedArrow])
     expect(changed).toBe(true)
     const revived = elements.find(isPdfSearchArrow)!
     expect(revived.isDeleted).toBe(false)

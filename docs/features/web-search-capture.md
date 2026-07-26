@@ -30,11 +30,12 @@ Out of scope (for now):
 
 | Step | Behavior |
 |------|----------|
-| **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight. Selects the card; does **not** auto-activate. Google search URL from highlight text. |
+| **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight (initial L/R parity; sync re-anchors to shortest AABB segment on drag). Selects the card; does **not** auto-activate. Google search URL from highlight text. |
 | **Place browser** | Toolbar toggle (like Place note). Next canvas click places the same embeddable at the pointer, **no** arrow / no `sourceHighlightId`. Initial URL `https://www.google.com`. Selects only — does not auto-activate. |
 | **Activate** | Center click (same as notes) → one frameless guest `BrowserWindow` aligned to the shape in screen space (default page zoom 0.8, `alwaysOnTop` while open). Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± zooms the guest. |
 | **Exit** | Escape or click outside → `capturePage` PNG under `attachments/` → native Excalidraw `image` with 16px rounded corners. |
 | **Resize / drag** | Excalidraw owns geometry (like notes). Arrows sync via host (no Excalidraw bindings). |
+| **Style panel** | Host activate/deactivate ignores Excalidraw `.layer-ui__wrapper` (and menus) so clicks on stroke/fill chrome do not open a capture sitting under the panel in scene space. |
 | **Catalog stats** | Live `pdfSearchCapture` count writebacked as `canvasStats.searches` (category / home card globe pill). |
 
 ---
@@ -66,7 +67,7 @@ Buscar / Place browser → create embeddable (libritus://pdf-search-capture) [+ 
 | `customData.fileId` | Attachment id when a PNG exists |
 | `customData.capturedAt` | ISO timestamp |
 
-Arrow (Buscar only): `customData.pdfSearchArrow` + `captureId` / `startX` / `startY` / `side`, locked, no bindings — same pattern as notes. Place browser cards have no arrow.
+Arrow (Buscar only): `customData.pdfSearchArrow` + `captureId` / `startX` / `startY` / `side`, locked, no bindings — same pattern as notes. `syncPdfSearchArrows` recomputes both ends to the shortest highlight↔card AABB segment. Place browser cards have no arrow.
 
 ### Security (guest)
 
@@ -95,7 +96,7 @@ Arrow (Buscar only): `customData.pdfSearchArrow` + `captureId` / `startX` / `sta
 |------|--------|
 | Main | [`src/main/web-browser.ts`](../../src/main/web-browser.ts) |
 | Renderer IPC | [`src/renderer/src/integrations/webBrowser.ts`](../../src/renderer/src/integrations/webBrowser.ts) |
-| Model | [`pdfSearchCapture.ts`](../../src/renderer/src/lib/pdf-canvas/pdfSearchCapture.ts) |
+| Model | [`pdfSearchCapture.ts`](../../src/renderer/src/lib/pdf-canvas/pdfSearchCapture.ts), [`excalidrawUiTarget.ts`](../../src/renderer/src/lib/pdf-canvas/excalidrawUiTarget.ts) (ignore style-panel hit-tests) |
 | Embed | [`SearchCaptureEmbed.tsx`](../../src/renderer/src/organisms/pdf-canvas/SearchCaptureEmbed.tsx) |
 | Host | [`PdfCanvasApp.tsx`](../../src/renderer/src/organisms/pdf-canvas/PdfCanvasApp.tsx), [`BrowserChrome.tsx`](../../src/renderer/src/organisms/pdf-canvas/BrowserChrome.tsx), [`useSearchCaptureBrowser.ts`](../../src/renderer/src/organisms/pdf-canvas/useSearchCaptureBrowser.ts), [`HighlightToolbar.tsx`](../../src/renderer/src/organisms/pdf-canvas/HighlightToolbar.tsx) |
 

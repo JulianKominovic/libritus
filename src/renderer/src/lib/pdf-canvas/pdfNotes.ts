@@ -12,6 +12,7 @@ import {
   type PdfNoteData,
   plateValueFromQuote
 } from './pdfNoteModel'
+import { arrowBetweenRects, unionRect } from './arrowBetweenRects'
 import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
 import { searchCaptureIdsForHighlight } from './pdfSearchCapture'
 
@@ -80,31 +81,9 @@ export function idsDeletedWithHighlight(
   return ids
 }
 
-function arrowGeom(
-  startX: number,
-  startY: number,
-  note: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
-  side: 'left' | 'right'
-): { x: number; y: number; width: number; height: number; points: [number, number][] } {
-  const endX = side === 'right' ? note.x : note.x + note.width
-  const endY = note.y + note.height / 2
-  const width = endX - startX
-  const height = endY - startY
-  return {
-    x: startX,
-    y: startY,
-    width,
-    height,
-    points: [
-      [0, 0],
-      [width, height]
-    ]
-  }
-}
-
 function geomClose(
   el: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
-  geo: ReturnType<typeof arrowGeom>,
+  geo: Pick<ReturnType<typeof arrowBetweenRects>, 'x' | 'y' | 'width' | 'height'>,
   eps = 0.5
 ): boolean {
   return (
@@ -113,6 +92,20 @@ function geomClose(
     Math.abs(el.width - geo.width) < eps &&
     Math.abs(el.height - geo.height) < eps
   )
+}
+
+/** Highlight group union, or 1×1 at stored start when group missing. */
+function noteArrowAnchor(
+  elements: readonly ExcalidrawElement[],
+  note: ExcalidrawElement,
+  fallback: { startX: number; startY: number }
+) {
+  const gid = note.customData?.sourceHighlightId
+  if (typeof gid === 'string') {
+    const u = unionRect(highlightGroupMembers(elements, gid))
+    if (u) return u
+  }
+  return { x: fallback.startX, y: fallback.startY, width: 1, height: 1 }
 }
 
 /**
@@ -137,10 +130,9 @@ export function syncPdfNoteArrows(
     const note = byId.get(noteId)
     if (!note || !isPdfNote(note) || note.isDeleted) return el
 
-    const side: 'left' | 'right' =
-      note.x + note.width / 2 < el.x + el.width / 2 ? 'left' : 'right'
     changed = true
-    const geo = arrowGeom(el.x, el.y, note, side)
+    const hl = noteArrowAnchor(elements, note, { startX: el.x, startY: el.y })
+    const geo = arrowBetweenRects(hl, note)
     return {
       ...el,
       ...geo,
@@ -151,9 +143,9 @@ export function syncPdfNoteArrows(
       customData: {
         pdfNoteArrow: true,
         noteId,
-        side,
-        startX: el.x,
-        startY: el.y
+        side: geo.side,
+        startX: geo.startX,
+        startY: geo.startY
       } satisfies PdfNoteArrowData
     } as OrderedExcalidrawElement
   })
@@ -187,12 +179,19 @@ export function syncPdfNoteArrows(
         typeof newElementWith
       >[1]) as OrderedExcalidrawElement
     }
-    const geo = arrowGeom(data.startX, data.startY, note, data.side)
+    const hl = noteArrowAnchor(migrated, note, {
+      startX: data.startX,
+      startY: data.startY
+    })
+    const geo = arrowBetweenRects(hl, note)
+    const metaOk =
+      data.startX === geo.startX && data.startY === geo.startY && data.side === geo.side
     const startBinding = (el as { startBinding?: unknown }).startBinding
     const endBinding = (el as { endBinding?: unknown }).endBinding
     if (
       !el.isDeleted &&
       geomClose(el, geo) &&
+      metaOk &&
       !(el as { elbowed?: boolean }).elbowed &&
       !startBinding &&
       !endBinding &&
@@ -207,7 +206,14 @@ export function syncPdfNoteArrows(
       locked: true,
       elbowed: false,
       startBinding: null,
-      endBinding: null
+      endBinding: null,
+      customData: {
+        pdfNoteArrow: true,
+        noteId: data.noteId,
+        side: geo.side,
+        startX: geo.startX,
+        startY: geo.startY
+      } satisfies PdfNoteArrowData
     } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
   })
 
@@ -442,8 +448,9 @@ export function createWysiwygNote(opts: {
 /**
  * Sticky note + locked straight arrow from highlight edge.
  * No Excalidraw bindings — host syncs geometry via syncPdfNoteArrows.
- * Odd anchored artifacts (1st, 3rd…) go right; even go left.
+ * Odd anchored artifacts (1st, 3rd…) go right; even go left (initial placement only).
  * Counts notes + search captures for the same highlight.
+ * Arrow ends use shortest AABB segment; sync recomputes both ends on move.
  *
  * ponytail: one-sided Excalidraw bindings (elbow or straight) explode (~1e5px)
  * when the note embeddable moves. Bindings are not used.
@@ -464,12 +471,12 @@ export function createNoteFromHighlight(
       el.customData?.sourceHighlightId === groupId &&
       (el.customData?.pdfNote === true || el.customData?.pdfSearchCapture === true)
   ).length
-  const side = prior % 2 === 0 ? 'right' : 'left'
+  const placeSide = prior % 2 === 0 ? 'right' : 'left'
 
-  const startY = highlight.y + highlight.height / 2
-  const startX = side === 'right' ? highlight.x + highlight.width : highlight.x
-  const noteX = side === 'right' ? startX + NOTE_GAP : startX - NOTE_GAP - NOTE_WIDTH
-  const noteY = startY - NOTE_HEIGHT / 2
+  const midY = highlight.y + highlight.height / 2
+  const edgeX = placeSide === 'right' ? highlight.x + highlight.width : highlight.x
+  const noteX = placeSide === 'right' ? edgeX + NOTE_GAP : edgeX - NOTE_GAP - NOTE_WIDTH
+  const noteY = midY - NOTE_HEIGHT / 2
 
   const noteBase = createWysiwygNote({
     x: noteX,
@@ -483,7 +490,7 @@ export function createNoteFromHighlight(
     sourceHighlightId: groupId
   } satisfies PdfNoteData
 
-  const geo = arrowGeom(startX, startY, noteBase, side)
+  const geo = arrowBetweenRects(highlight, noteBase)
 
   const [arrow] = convertToExcalidrawElements([
     {
@@ -507,9 +514,9 @@ export function createNoteFromHighlight(
   const noteArrowData = {
     pdfNoteArrow: true as const,
     noteId: noteBase.id,
-    side,
-    startX,
-    startY
+    side: geo.side,
+    startX: geo.startX,
+    startY: geo.startY
   } satisfies PdfNoteArrowData
 
   const connector = newElementWith(arrow, {

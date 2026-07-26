@@ -24,6 +24,7 @@ import {
   isPdfSearchCaptureCenterHit
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
 import { clientToSceneCoords } from '@renderer/lib/pdf-canvas/selectionToHighlights'
+import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
 import type { SaveStatus } from '@renderer/lib/pdf-canvas/session'
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 
@@ -290,6 +291,8 @@ export function useSearchCaptureBrowser({
 
   // Center-click opens the guest; click outside closes it.
   // Host-owned so native `image` captures (post-screenshot) activate too.
+  // Ignore Excalidraw chrome: scene hit-test would otherwise activate embeds
+  // sitting under the left style panel / toolbars.
   useEffect(() => {
     const host = excalidrawHostRef.current
     if (!host) return
@@ -297,8 +300,7 @@ export function useSearchCaptureBrowser({
     const onPointerDownCapture = (event: PointerEvent) => {
       captureActivateDownRef.current = null
       if (event.button !== 0) return
-      const target = event.target
-      if (target instanceof Element && target.closest('[data-browser-chrome]')) return
+      if (isExcalidrawUiPointerTarget(event.target)) return
 
       const api = apiRef.current
       if (!api) return
@@ -331,6 +333,7 @@ export function useSearchCaptureBrowser({
       const down = captureActivateDownRef.current
       captureActivateDownRef.current = null
       if (!down || event.button !== 0) return
+      if (isExcalidrawUiPointerTarget(event.target)) return
       if (activeBrowserCaptureIdRef.current) return
       const dx = event.clientX - down.clientX
       const dy = event.clientY - down.clientY

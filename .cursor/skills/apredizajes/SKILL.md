@@ -451,3 +451,13 @@ Early-return de `activeEmbeddable === 'hover'` también saltaba el sync de flech
 - En `handleExcalidrawChange`: sync de flechas con `getSceneElementsIncludingDeleted()` **antes** del early-return de hover.
 - E2E undo: tras delete → `expectUnsaved` → `expectSaved` (flush del borrado) → Ctrl+Z → `expectUnsaved` → leave → assert flecha viva.
 
+### Web search: panel de estilos Excalidraw activa capture detrás
+
+#### Descripción más detallada
+
+El activate del guest es host-owned: `pointerdown`/`pointerup` en capture sobre `excalidrawHostRef` convierte `clientX/Y` → scene y hace hit-test del capture. El panel izquierdo de stroke/fill (`.layer-ui__wrapper`) no estaba excluido; un click en un estilo cuya proyección en escena cae sobre un webembed abría el browse sin querer.
+
+#### Corrección
+
+Ignorar targets en `[data-browser-chrome], .layer-ui__wrapper, .context-menu, .excalidraw-toast-container` en activate/deactivate. Mismo filtro en el `pointermove` que frena hover de embeds, para no robar hover del UI.
+
