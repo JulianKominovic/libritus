@@ -322,7 +322,7 @@ Usar `newElementWith(el, { backgroundColor })` en `setHighlightGroupColor` (igua
 
 - `React.lazy` para pdf/settings/category + `Suspense`; Home eager.
 - `react-scan` solo si `import.meta.env.DEV`.
-- Worker + `pdf_viewer.css` en `PdfDocument.ts` (límite del módulo PDF).
+- Worker en `pdfjs.ts` (upload de thumbs también usa `getDocument`); `pdf_viewer.css` en `PdfDocument.ts`.
 - Dynamic `import()` de transformers / jsdom / readability en el primer uso.
 - `build.sourcemap: false` explícito en electron-vite (prod ya no generaba `.map`).
 
@@ -335,4 +335,101 @@ Al editar una nota (Plate contenteditable) y tocar Cmd+X, Excalidraw cortaba/eli
 #### Corrección
 
 En `NoteEditableBody`: `stopPropagation` también en `onCut` / `onCopy` / `onPaste` / `onKeyUp` (sin `preventDefault` en clipboard — Plate debe cortar texto). Escape sigue saliendo de edit + `stopPropagation`. E2E: `Cmd+X while editing cuts text, not the note embed`. No marcar Plate como `wysiwyg` (convención privada de Excalidraw) ni parchear Excalidraw.
+
+### Web search: no `<webview>` dentro del embeddable de Excalidraw
+
+#### Descripción más detallada
+
+La UX pedía un embed “como las notas” con browser vivo en modo edición y screenshot en lectura. Meter `<webview>` (o iframe) en `renderEmbeddable` choca con el `transform` de pan/zoom de Excalidraw (hit-test / nitidez / bounds) y Electron desaconseja el tag. El doc de feature ya lo marcaba out of scope.
+
+#### Corrección
+
+Híbrido: embeddable en canvas (placeholder / PNG) + un solo `WebContentsView` en main alineado en screen-space a la bbox del shape. Al desactivar: `capturePage` → `attachments/` → lectura = imagen. No GC de PNGs huérfanos.
+
+### Web search: `ERR_FAILED` al abrir Google (activeEmbeddable race)
+
+#### Descripción más detallada
+
+Al activar el capture, `openSearchBrowser` hacía `loadURL` y el `WebContentsView` robaba el foco. Excalidraw limpiaba `activeEmbeddable` → el host interpretaba “salida de edit” y llamaba `browser:deactivate` (detach) a mitad del load → `Error: ERR_FAILED (-2) loading 'https://www.google.com/...'`.
+
+#### Corrección
+
+La sesión del guest la posee `activeBrowserCaptureIdRef`, no `activeEmbeddable`. Abrir al activar un capture; cerrar solo con Escape, click fuera del shape (pointerdown en el host Excalidraw), o al activar una nota. No desactivar solo porque `activeEmbeddable` pasó a null.
+
+### Web search: WebContentsView → child BrowserWindow
+
+#### Descripción más detallada
+
+Aun sin el race de `activeEmbeddable`, `WebContentsView` + `removeChildView` / foco seguía abortando `loadURL` con `ERR_FAILED` dentro de Libritus (en un script mínimo example.com/Google sí cargaban). El catch de `getURL` sobre `webContents` undefined empeoraba el síntoma.
+
+#### Corrección
+
+Guest = `BrowserWindow` hijo (`frame: false`, `parent`, partition `persist:web-browser`), bounds en screen DIP desde `getContentBounds()` + coords del renderer. Mismo IPC. Hide on deactivate (capturePage); destroy on close. Grace 800ms al abrir para no cerrar con el click de activación.
+
+### Web search: chrome HUD `setState` → Maximum update depth
+
+#### Descripción más detallada
+
+Al activar un search capture, `handleExcalidrawChange` llamaba `syncActiveBrowserBounds` → `setBrowserChrome({ left, top, width })` en **cada** `onChange`. Objeto nuevo siempre → re-render del padre → Excalidraw `setState` → otro `onChange` → `Maximum update depth exceeded` (stack en `forceStoreRerender` / Excalidraw store).
+
+Es el mismo antipatrón que el HUD de notas: geometría de overlay ligada a `onChange` vía React state. El highlight toolbar ya evitaba esto con DOM imperativo.
+
+#### Corrección
+
+Chrome siempre montado (`hidden` por default) + `browserChromeRef`; posición/visibilidad con `style.left/top/width/display` (como `highlightToolbarRef`). Sin `useState` para bounds.
+
+### Sidebar DnD: no usar `NativeTypes.HTML` para cards PDF
+
+#### Descripción más detallada
+
+Las PDF cards de categoría usaban `useDrag({ type: NativeTypes.HTML })`. `HTML5Backend.isDraggingNativeItem()` trata ese type como drag nativo: un `dragleave` “final” llama `endDragNativeItem` en el próximo tick y puede matar el drag antes del `drop`. El e2e veía `.sidebar-drop-target` (hover) pero el PDF no se movía (`1 pdfs` sticky).
+
+#### Corrección
+
+Tipo custom `libritus/pdf-card` en card + `extraAcceptTypes` del Tree. `movePdf` solo si el item es un PDF card / nodo P. E2E reintenta hasta ver `0 pdfs`.
+
+### Web search: deactivate sin PNG en el canvas
+
+#### Descripción más detallada
+
+Al salir del guest, PNGs válidos aparecían en `attachments/` y `customData.fileId` llegaba a la session, pero la card seguía en rectángulo gris.
+
+Causa raíz: Excalidraw `embedsValidationStatus` se setea **una sola vez**. Si la primera validación falla (p.ej. link stripped) queda sticky-false → `renderEmbeddables()` filtra el elemento → `SearchCaptureEmbed` **nunca monta**. `publishCaptureFileId` / fresh-id no bastaron de forma fiable en la práctica.
+
+#### Corrección
+
+- Tras `capturePage`: `loadBinaryFiles` + `addFiles` y promover el shape a Excalidraw **`image`** nativo (`applySearchCaptureScreenshot`). El canvas siempre pinta images; no pasa por `embedsValidationStatus`.
+- Placeholder sin screenshot sigue siendo embeddable.
+- Activar browse: center-click en el host (sirve para embeddable e image); ya no depende de `activeEmbeddable`.
+- `normalizePdfSearchCapture`: si hay `fileId`, asegura `type: 'image'` (migra sessions viejas embeddable+fileId).
+
+### Web search: click en chrome entierra el guest
+
+#### Descripción más detallada
+
+Al hacer click en −/+ (u otros botones) de la barra chrome del host, el guest `BrowserWindow` (frameless, sin `parent:`) perdía el z-order: el host pasaba al frente y tapaba la webview. Parecía que se “cerraba” el browse.
+
+#### Corrección
+
+Mientras el guest está visible: `setAlwaysOnTop(true, 'floating')` en `browser:open`; quitarlo en deactivate/close. El chrome queda fuera de los bounds del guest (arriba), así que sigue clickeable. Zoom % en el chrome vía DOM imperativo (no `useState`) para no re-renderizar Excalidraw.
+
+### Web search: PNG con franja blanca arriba
+
+#### Descripción más detallada
+
+`Page.captureScreenshot` con `clip` desde `getContentSize()` + `setZoomFactor` dejaba a veces una banda blanca arriba (DIP ≠ viewport CSS). El debugger CDP no aportaba vs `webContents.capturePage()`.
+
+#### Corrección
+
+Usar solo `wc.capturePage().toPNG()` — captura exactamente lo visible en el guest.
+
+### Upload PDF: thumbnails rotos tras defer del worker
+
+#### Descripción más detallada
+
+Cold-start movió `GlobalWorkerOptions.workerSrc` de `main.tsx` a `PdfDocument.ts` (lazy con el canvas). `getPdfMetadata` (`lib/pdf.ts`) sigue usando `getDocument` al subir un PDF desde categoría/home **sin** haber cargado `PdfDocument` → workerSrc vacío → thumbnail vacío/roto.
+
+#### Corrección
+
+Configurar el worker en `pdfjs.ts` (punto único de `getDocument`). CSS del viewer puede quedarse en `PdfDocument`.
 

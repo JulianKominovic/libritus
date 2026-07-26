@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, net, protocol, shell } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import attachIPCListeners from './listeners'
+import { prepareWebBrowserCookies } from './web-browser'
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const APP_ID = IS_DEV ? 'dev.jkominovic.libritus-dev' : 'dev.jkominovic.libritus'
@@ -15,6 +16,9 @@ export const APP_DATA_DIR =
 if (process.env.LIBRITUS_APP_DATA_DIR) {
   app.setPath('userData', process.env.LIBRITUS_APP_DATA_DIR)
 }
+
+// Guest web browser: allow 3P cookies (must be before ready).
+prepareWebBrowserCookies()
 
 let allowQuit = false
 let flushingForQuit = false

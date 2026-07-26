@@ -21,6 +21,7 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
   }, 300)
   const highlightsNumber = pdf.canvasStats?.highlights
   const notesNumber = pdf.canvasStats?.notes
+  const searchesNumber = pdf.canvasStats?.searches
   return (
     <ContextMenuContent className="w-3xs">
       <Input
@@ -31,7 +32,7 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
         }}
       />
 
-      {Boolean(highlightsNumber || notesNumber) && (
+      {Boolean(highlightsNumber || notesNumber || searchesNumber) && (
         <div className="flex items-center gap-2 px-2 mb-2">
           {Boolean(highlightsNumber && highlightsNumber > 0) && (
             <>
@@ -43,6 +44,12 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
             <>
               <DynamicIcon name="message-circle" className="size-4" />
               <span className="text-sm text-morphing-700">{notesNumber}</span>
+            </>
+          )}
+          {Boolean(searchesNumber && searchesNumber > 0) && (
+            <>
+              <DynamicIcon name="globe" className="size-4" />
+              <span className="text-sm text-morphing-700">{searchesNumber}</span>
             </>
           )}
         </div>

@@ -59,6 +59,7 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 |---------|----------|
 | **WYSIWYG notes** | Rows for `pdfNote`; click selects, does not auto-enter edit. |
 | **Highlights** | One row per `groupId` (multi-line selection = one unit); snippet from `customData.text`. |
+| **Web search capture** | Not listed here (canvas image / embed artifact). Catalog count is `canvasStats.searches` — see [`web-search-capture.md`](web-search-capture.md). |
 | **Sessions** | No separate file — scene already persists. |
 | **Essays HUD** | Essays are a different surface; do not mix into this list until essays exist. |
 

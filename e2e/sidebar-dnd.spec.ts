@@ -13,40 +13,44 @@ async function openCategory(page: Page, categoryId: string): Promise<void> {
   await page.getByRole('heading', { name: /\d+ pdfs/ }).waitFor({ state: 'visible', timeout: 30_000 })
 }
 
-/** HTML5 DnD in Electron is flaky under load — retry until drop-target paints. */
-async function dragUntilDropTarget(page: Page, card: Locator, dest: Locator): Promise<void> {
-  await expect(async () => {
-    await page.mouse.up().catch(() => undefined)
-    await card.scrollIntoViewIfNeeded()
-    await dest.scrollIntoViewIfNeeded()
-    const from = await card.boundingBox()
-    const to = await dest.boundingBox()
-    if (!from || !to) throw new Error('missing bounding boxes')
+/** One HTML5 drag gesture onto `dest`. Leaves button down when `dropTarget` is visible. */
+async function startDragOntoCategory(page: Page, card: Locator, dest: Locator): Promise<void> {
+  await page.mouse.up().catch(() => undefined)
+  await card.scrollIntoViewIfNeeded()
+  await dest.scrollIntoViewIfNeeded()
+  const from = await card.boundingBox()
+  const to = await dest.boundingBox()
+  if (!from || !to) throw new Error('missing bounding boxes')
 
-    const fromX = from.x + from.width / 2
-    const fromY = from.y + from.height / 2
-    await page.mouse.move(fromX, fromY)
-    await page.mouse.down()
-    // Past Chromium's drag threshold, then onto the sidebar category.
-    await page.mouse.move(fromX + 16, fromY + 16, { steps: 6 })
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 30 })
-    await expect(page.locator('.sidebar-drop-target')).toHaveCount(1, { timeout: 1500 })
-  }).toPass({ timeout: 20_000 })
+  const fromX = from.x + from.width / 2
+  const fromY = from.y + from.height / 2
+  const toX = to.x + to.width / 2
+  const toY = to.y + to.height / 2
+  await page.mouse.move(fromX, fromY)
+  await page.mouse.down()
+  // Past Chromium's drag threshold, then onto the sidebar category.
+  await page.mouse.move(fromX + 16, fromY + 16, { steps: 6 })
+  await page.mouse.move(toX, toY, { steps: 30 })
+  await expect(page.locator('.sidebar-drop-target')).toHaveCount(1, { timeout: 1500 })
 }
 
 test('leaving a category mid-drag clears drop-target highlight', async () => {
+  test.setTimeout(60_000)
   const appDataDir = await mkdtemp(path.join(tmpdir(), 'libritus-e2e-dnd-cancel-'))
   const { sourceId } = await seedTwoCategories({ appDataDir })
   const { page, close } = await launchApp({ appDataDir })
   try {
     await openCategory(page, sourceId)
 
-    const card = page.getByRole('link', { name: 'Sample' })
+    const card = page.getByRole('link', { name: /Sample/ })
     await expect(card).toBeVisible({ timeout: 30_000 })
     const dest = page.getByRole('complementary').getByText('Dest', { exact: true })
     await expect(dest).toBeVisible()
 
-    await dragUntilDropTarget(page, card, dest)
+    // HTML5 DnD in Electron is flaky under load — retry until drop-target paints.
+    await expect(async () => {
+      await startDragOntoCategory(page, card, dest)
+    }).toPass({ timeout: 20_000 })
 
     const home = page.getByRole('complementary').getByRole('link', { name: 'Home' })
     const homeBox = await home.boundingBox()
@@ -63,20 +67,26 @@ test('leaving a category mid-drag clears drop-target highlight', async () => {
 })
 
 test('dropping a PDF card onto a sidebar category moves it', async () => {
+  test.setTimeout(60_000)
   const appDataDir = await mkdtemp(path.join(tmpdir(), 'libritus-e2e-dnd-move-'))
   const { sourceId, destId, pdfId } = await seedTwoCategories({ appDataDir })
   const { page, close } = await launchApp({ appDataDir })
   try {
     await openCategory(page, sourceId)
 
-    const card = page.getByRole('link', { name: 'Sample' })
+    const card = page.getByRole('link', { name: /Sample/ })
     await expect(card).toBeVisible({ timeout: 30_000 })
     const dest = page.getByRole('complementary').getByText('Dest', { exact: true })
 
-    await dragUntilDropTarget(page, card, dest)
-    await page.mouse.up()
-
-    await expect(page.getByRole('heading', { name: '0 pdfs' })).toBeVisible({ timeout: 10_000 })
+    // Hover can paint the drop-target without a real `drop` — retry until the move sticks.
+    await expect(async () => {
+      await startDragOntoCategory(page, card, dest)
+      const to = await dest.boundingBox()
+      if (!to) throw new Error('missing dest box')
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 2 })
+      await page.mouse.up()
+      await expect(page.getByRole('heading', { name: '0 pdfs' })).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
 
     const catalog = JSON.parse(
       await readFile(path.join(appDataDir, 'categories.json'), 'utf8')

@@ -12,7 +12,7 @@ Canvas shape (how the workspace is laid out):
 
 - The PDF is the axis of the canvas: pages stacked in a column across infinite space.
 - Continuous reading with free pan/zoom (whiteboard style, not classic PDF scroll).
-- Annotation / research layer on top: notes, highlights, arrows, freehand, and (destination) other study artifacts.
+- Annotation / research layer on top: notes, highlights, arrows, freehand, web search captures, and (destination) other study artifacts.
 - Stable coordinates in document/page space — not screen pixels — so zoom, pan, and persistence do not break annotations.
 - **Destination chrome:** PDF sidebar = outline + page thumbs only; lasting research lives on the canvas, not in research sidebars.
 

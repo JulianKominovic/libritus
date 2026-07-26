@@ -23,7 +23,7 @@ Feature write-up: [`docs/features/wysiwyg-notes.md`](features/wysiwyg-notes.md).
 
 Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`annotation-polish`](features/annotation-polish.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
 
-Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat-in-sidebar = **legacy UX** until canvas Q&A).
+Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat-in-sidebar = **legacy UX** until canvas Q&A), [`web-search-capture`](features/web-search-capture.md).
 
 | Item | Notes |
 |------|--------|
@@ -45,7 +45,7 @@ Aligned with [`product-north.md`](features/product-north.md). **Do not** ship au
 | Remove sidebar AI Chat | Drop Chat from `PdfSidebar`; Q&A must not live as a research transcript silo |
 | AI Q&A → canvas cards | Explicit ask → session artifacts (e.g. `pdfQa`); citations + deletable like other elements |
 | Nav-only PDF sidebar | Destination: Outline + Pages only; decide Annotations / other research chrome then |
-| Canvas research artifacts | Vocabulary, translations, search captures, YouTube / web embeds, cross-PDF links — first-class canvas types over time |
+| Canvas research artifacts | Vocabulary, translations, YouTube / web embeds, cross-PDF links — first-class canvas types over time (search captures: done — [`web-search-capture.md`](features/web-search-capture.md)) |
 
 ---
 

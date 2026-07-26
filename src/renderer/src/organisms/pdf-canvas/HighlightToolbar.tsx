@@ -9,11 +9,12 @@ type HighlightToolbarProps = {
   activeColor: string
   onRecolor: (color: string) => void
   onAddNote: () => void
+  onSearch: () => void
   onRemove: () => void
 }
 
 export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps>(
-  function HighlightToolbar({ activeColor, onRecolor, onAddNote, onRemove }, ref) {
+  function HighlightToolbar({ activeColor, onRecolor, onAddNote, onSearch, onRemove }, ref) {
     return (
       <div
         ref={ref}
@@ -43,8 +44,8 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
         </button>
         <button
           type="button"
-          disabled
-          className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
+          onClick={onSearch}
         >
           Buscar
         </button>

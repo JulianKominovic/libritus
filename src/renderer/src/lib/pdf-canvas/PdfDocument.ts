@@ -1,21 +1,11 @@
-import {
-  getDocument,
-  GlobalWorkerOptions,
-  type PDFDocumentProxy,
-  type PDFPageProxy
-} from './pdfjs'
+import { getDocument, type PDFDocumentProxy, type PDFPageProxy } from './pdfjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import type { PageSize } from './types'
 
-// Worker + viewer CSS live here so Home does not pay for pdf.js on cold start.
-GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString()
-
 /**
- * pdf.js document wrapper. Worker is configured once at module load
- * (GlobalWorkerOptions.workerSrc → legacy worker). Public pageIndex is 0-based.
+ * pdf.js document wrapper. Worker is configured in pdfjs.ts.
+ * Viewer CSS stays here so Home does not pay for it on cold start.
+ * Public pageIndex is 0-based.
  */
 export class PdfDocument {
   private alive = true

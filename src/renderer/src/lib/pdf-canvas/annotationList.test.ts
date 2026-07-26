@@ -112,7 +112,7 @@ describe('annotationList', () => {
     const items = listAnnotations([a, b, other])
     expect(items.filter((i) => i.kind === 'highlight')).toHaveLength(2)
     expect(items.map((i) => i.id)).toEqual(['r3', 'r1'])
-    expect(countCanvasStats([a, b, other])).toEqual({ highlights: 2, notes: 0 })
+    expect(countCanvasStats([a, b, other])).toEqual({ highlights: 2, notes: 0, searches: 0 })
   })
 
   test('annotationsSignature stable for same content', () => {
@@ -136,20 +136,38 @@ describe('annotationList', () => {
         baseEl({ id: 'h2', isDeleted: true, customData: { pdfHighlight: true } }),
         baseEl({ id: 'n1', customData: { pdfNote: true } }),
         baseEl({ id: 'n2', customData: { pdfNote: true } }),
+        baseEl({ id: 's1', customData: { pdfSearchCapture: true } }),
+        baseEl({ id: 's2', isDeleted: true, customData: { pdfSearchCapture: true } }),
         baseEl({ id: 'shape' })
       ])
-    ).toEqual({ highlights: 1, notes: 2 })
-    expect(countCanvasStats([])).toEqual({ highlights: 0, notes: 0 })
+    ).toEqual({ highlights: 1, notes: 2, searches: 1 })
+    expect(countCanvasStats([])).toEqual({ highlights: 0, notes: 0, searches: 0 })
   })
 
   test('canvasStatsNeedWriteback treats undefined as zeros', () => {
-    expect(canvasStatsNeedWriteback(undefined, { highlights: 0, notes: 0 })).toBe(false)
-    expect(canvasStatsNeedWriteback(undefined, { highlights: 1, notes: 0 })).toBe(true)
-    expect(canvasStatsNeedWriteback({ highlights: 1, notes: 2 }, { highlights: 1, notes: 2 })).toBe(
-      false
-    )
-    expect(canvasStatsNeedWriteback({ highlights: 1, notes: 0 }, { highlights: 0, notes: 0 })).toBe(
-      true
-    )
+    expect(
+      canvasStatsNeedWriteback(undefined, { highlights: 0, notes: 0, searches: 0 })
+    ).toBe(false)
+    expect(
+      canvasStatsNeedWriteback(undefined, { highlights: 1, notes: 0, searches: 0 })
+    ).toBe(true)
+    expect(
+      canvasStatsNeedWriteback(
+        { highlights: 1, notes: 2, searches: 0 },
+        { highlights: 1, notes: 2, searches: 0 }
+      )
+    ).toBe(false)
+    expect(
+      canvasStatsNeedWriteback(
+        { highlights: 1, notes: 0, searches: 0 },
+        { highlights: 0, notes: 0, searches: 0 }
+      )
+    ).toBe(true)
+    expect(
+      canvasStatsNeedWriteback(
+        { highlights: 0, notes: 0, searches: 1 },
+        { highlights: 0, notes: 0, searches: 2 }
+      )
+    ).toBe(true)
   })
 })

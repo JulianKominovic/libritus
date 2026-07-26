@@ -3,11 +3,13 @@ import fs from 'fs/promises'
 import path from 'path'
 import { APP_DATA_DIR } from '..'
 import { attachAiIpcListeners } from '../ai'
+import { attachWebBrowserIpc } from '../web-browser'
 //@ts-expect-error - this is a raw file
 import PROSE_CSS_INJECTABLE from '../assets/prose-injectable.css?raw'
 
 const attachIPCListeners = (): void => {
   attachAiIpcListeners()
+  attachWebBrowserIpc()
   ipcMain.handle('download-url-as-pdf', async (_, { url }) => {
     // Load the URL in a new window
     const win = new BrowserWindow({ show: false, width: 1920, height: 1080 })

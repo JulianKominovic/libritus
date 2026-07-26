@@ -8,6 +8,7 @@ import {
   seedHighlightElement,
   seedLibrary,
   seedNoteElement,
+  seedSearchCaptureElement,
   seedSession
 } from './helpers/seed'
 
@@ -22,7 +23,7 @@ async function openCategory(page: Page, categoryId: string): Promise<void> {
 async function waitForCanvasStats(
   appDataDir: string,
   pdfId: string,
-  expected: { highlights: number; notes: number },
+  expected: { highlights: number; notes: number; searches: number },
   timeoutMs = 15_000
 ): Promise<void> {
   const catPath = path.join(appDataDir, 'categories.json')
@@ -30,12 +31,16 @@ async function waitForCanvasStats(
   while (Date.now() - start < timeoutMs) {
     try {
       const categories = JSON.parse(await readFile(catPath, 'utf8')) as Array<{
-        pdfs: Array<{ id: string; canvasStats?: { highlights: number; notes: number } }>
+        pdfs: Array<{
+          id: string
+          canvasStats?: { highlights: number; notes: number; searches?: number }
+        }>
       }>
       const pdf = categories.flatMap((c) => c.pdfs).find((p) => p.id === pdfId)
       if (
         pdf?.canvasStats?.highlights === expected.highlights &&
-        pdf.canvasStats.notes === expected.notes
+        pdf.canvasStats.notes === expected.notes &&
+        (pdf.canvasStats.searches ?? 0) === expected.searches
       ) {
         return
       }
@@ -61,7 +66,8 @@ test('opening annotated session writebacks canvasStats to category card', async 
     elements: [
       seedHighlightElement({ id: 'stats-hl-1', text: 'one' }),
       seedHighlightElement({ id: 'stats-hl-2', x: 40, y: 130, text: 'two' }),
-      seedNoteElement({ id: 'stats-note', text: 'a note' })
+      seedNoteElement({ id: 'stats-note', text: 'a note' }),
+      seedSearchCaptureElement({ id: 'stats-search', query: 'web' })
     ]
   })
 
@@ -73,13 +79,13 @@ test('opening annotated session writebacks canvasStats to category card', async 
     await openPdf(page, categoryId, pdfId)
     await expectSaved(page)
 
-    await waitForCanvasStats(appDataDir, pdfId, { highlights: 2, notes: 1 })
+    await waitForCanvasStats(appDataDir, pdfId, { highlights: 2, notes: 1, searches: 1 })
 
     await openCategory(page, categoryId)
     const card = page.getByRole('link', { name: 'Sample' })
     await expect(card).toBeVisible({ timeout: 30_000 })
     await expect(card.getByText('2', { exact: true })).toBeVisible()
-    await expect(card.getByText('1', { exact: true })).toBeVisible()
+    await expect(card.getByText('1', { exact: true })).toHaveCount(2) // note + search
   } finally {
     await close()
   }

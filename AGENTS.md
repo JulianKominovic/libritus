@@ -34,9 +34,10 @@ Guiding principles:
 | “Select text” mode (pointer-events + manual wheel) | `PdfCanvasApp`, CSS |
 | Selection → locked Excalidraw highlights | `selectionToHighlights` |
 | Same-line rect dedupe | `mergeSameLineRects` |
-| Click highlight → “Add note” / “Remove” chips (+ note arrow from Add note) | `PdfCanvasApp`, `pdfNotes` |
-| Remove highlight cascades linked notes + arrows (`sourceHighlightId` / `pdfNoteArrow`) | `idsDeletedWithHighlight`, `PdfCanvasApp` |
+| Click highlight → “Add note” / “Buscar” / “Remove” chips (+ note/search arrows) | `PdfCanvasApp`, `pdfNotes`, `pdfSearchCapture` |
+| Remove highlight cascades linked notes + search captures + arrows | `idsDeletedWithHighlight`, `PdfCanvasApp` |
 | WYSIWYG notes (Plate + `pdfNote` embeddable) | `NoteEmbed`, `pdfNotes`, `pdfNoteModel` |
+| Web search capture (Buscar / Place browser → guest BrowserWindow → PNG as native image) | `SearchCaptureEmbed`, `pdfSearchCapture`, `src/main/web-browser.ts` |
 | Freehand / shapes / undo | Excalidraw built-in |
 | Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |
 | PDF text search (find bar + jump + hit overlay) | `PdfFindBar`, `pdfSearch`, `PdfLayer.setSearchHit`, `PdfCanvasApp` |
@@ -85,11 +86,16 @@ Electron + React. Excalidraw = camera + annotation tools. PDF = virtualized DOM 
 
 ```
 src/main/                     # Electron main + IPC (read/write appData)
+  web-browser.ts              # guest BrowserWindow (search capture)
+  web-browser-url.ts          # http(s) allowlist for guest nav
 src/renderer/src/
   pages/pdf.tsx               # Route: mounts PdfCanvasApp
   organisms/pdf-canvas/
-    PdfCanvasApp.tsx          # open, session, autosave, text-select, notes, Excalidraw
+    PdfCanvasApp.tsx          # open, session, autosave, text-select, notes, search capture, Excalidraw
     NoteEmbed.tsx             # Plate inside Excalidraw renderEmbeddable
+    SearchCaptureEmbed.tsx    # placeholder chrome for pdf-search-capture embeddable
+    BrowserChrome.tsx         # back/forward/zoom/orientation over guest
+    useSearchCaptureBrowser.ts # open/bounds/deactivate + promote PNG → image
     PdfLayer.tsx              # sync pools ↔ camera; CSS transform
     PageNavigator.tsx         # current / total, prev/next, jump
     PdfSidebar.tsx            # outline + virtualized page thumbs + annotations list
@@ -102,16 +108,18 @@ src/renderer/src/
     TextLayerPool.ts          # text layer slots
     PdfRenderer.ts            # fixed-scale render
     pdfOutline.ts             # embedded TOC → pageIndex tree
-    annotationList.ts         # scene → highlight/note list + plate plain text
+    annotationList.ts         # scene → highlight/note list + plate plain text + canvasStats
     selectionToHighlights.ts  # DOM selection → Excalidraw highlights
     pdfNotes.ts / pdfNoteModel.ts  # WYSIWYG notes (embeddable + plateValue)
+    pdfSearchCapture.ts       # search capture model + arrow sync + promote-to-image
     session.ts                # SessionSnapshot + read/write helpers
     types.ts
     textLayer.css
+  integrations/webBrowser.ts  # renderer IPC for guest browser
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md), [`web-search-capture`](docs/features/web-search-capture.md).
 
 Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`annotation-polish`](docs/features/annotation-polish.md), [`page-space-annotations`](docs/features/page-space-annotations.md), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md).
 
@@ -124,6 +132,7 @@ Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md
 5. Zoom: same texture; only `translate * zoom` + `scale(zoom)`.
 6. Highlights: Excalidraw rects with `customData.pdfHighlight`, `locked: true` — **still scene space**.
 7. Notes: Excalidraw **embeddables** with `customData.pdfNote` + `plateValue` (solid fill); Plate via `renderEmbeddable` / `NoteEmbed` (see wysiwyg-notes doc).
+8. Search captures: placeholder embeddable → guest `BrowserWindow` on activate → PNG in `attachments/` → native Excalidraw `image` (see web-search-capture doc).
 
 ### Conscious gaps vs optimal
 
@@ -229,7 +238,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `ThumbPool` (hard cap + gen abort), `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList` (plate strip + list + signature), `pdfRag` (chunk / cosine / fingerprint), `ragIndexQueue` (serial embed queue). E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `highlights.spec` (text-select + zoom≠1 + Remove + cascade notes/arrows + leave flush), `autosave.spec` (debounce 5s), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape), `outline-thumbs.spec` (outline jump + thumb jump), `annotation-panel.spec` (list + jump + empty), `rag-chat.spec` (Chat tab + Settings AI). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`, `sample-outline.pdf`.
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `pdfSearchCapture` (create / normalize / promote-to-image / arrow sync / cascade ids / Google URL), `web-browser-url` (http allowlist), `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `ThumbPool` (hard cap + gen abort), `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList` (plate strip + list + signature + canvasStats searches), `pdfRag` (chunk / cosine / fingerprint), `ragIndexQueue` (serial embed queue). E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `web-search-capture.spec` (Buscar → capture + arrow; Place browser → unanchored google.com; cascade Remove; activate → PNG as image; open grace; restore image; re-activate), `highlights.spec` (text-select + zoom≠1 + Remove + cascade notes/arrows + leave flush), `autosave.spec` (debounce 5s), `canvas-stats.spec` (highlights/notes/searches writeback), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape), `outline-thumbs.spec` (outline jump + thumb jump), `annotation-panel.spec` (list + jump + empty), `rag-chat.spec` (Chat tab + Settings AI). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`, `sample-outline.pdf`.
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

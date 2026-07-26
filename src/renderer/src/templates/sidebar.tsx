@@ -35,6 +35,9 @@ import { useDragDropManager } from 'react-dnd'
 import { NativeTypes } from 'react-dnd-html5-backend'
 import { Link, useLocation, useRoute } from 'wouter'
 
+/** Must match `PDF_CARD_DRAG_TYPE` in category.tsx (not NativeTypes.HTML — see comment there). */
+const PDF_CARD_DRAG_TYPE = 'libritus/pdf-card'
+
 type PdfTreeItem = Pdf & { type: 'P' }
 type CategoryTreeItem = Category & { type: 'C' }
 function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
@@ -148,7 +151,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
   return (
     <Tree
       tree={treeData}
-      extraAcceptTypes={[NativeTypes.FILE, NativeTypes.HTML, NativeTypes.URL]}
+      extraAcceptTypes={[NativeTypes.FILE, NativeTypes.URL, PDF_CARD_DRAG_TYPE]}
       canDrag={(node) => {
         return node?.data?.type === 'P'
       }}
@@ -161,9 +164,14 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
       onDrop={async (_, { monitor, dropTargetId: ogDropTargetId, dragSource }) => {
         const itemType = monitor.getItemType()
         let dropTargetId = `${ogDropTargetId}`
-        let dragSourceId = `${dragSource?.id}`
-        const files: File[] = monitor.getItem().files || []
-        const urls: string[] = monitor.getItem().urls || []
+        const item = monitor.getItem() as {
+          id?: string
+          type?: string
+          files?: File[]
+          urls?: string[]
+        } | null
+        const files: File[] = item?.files || []
+        const urls: string[] = item?.urls || []
 
         if (dropTargetId === 'add-category') {
           const createdCategory = await createCategory()
@@ -189,6 +197,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               )
             }
           }
+          return
         }
         if (itemType === NativeTypes.FILE) {
           for (const file of files) {
@@ -196,14 +205,17 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               await uploadPdf(dropTargetId as string, file)
             }
           }
+          return
         }
-        if (itemType === NativeTypes.HTML) {
-          const item = monitor.getItem()
-          if (item.type === 'P') {
-            dragSourceId = item.id
-          }
+        const dragSourceId =
+          itemType === PDF_CARD_DRAG_TYPE && item?.type === 'P'
+            ? item.id
+            : dragSource?.data?.type === 'P'
+              ? `${dragSource.id}`
+              : undefined
+        if (dragSourceId) {
+          await movePdf(dragSourceId, dropTargetId)
         }
-        movePdf(dragSourceId as string, dropTargetId as string)
       }}
       initialOpen={initialOpen}
       render={(node, { depth, isOpen, onToggle, isDragging }) => {

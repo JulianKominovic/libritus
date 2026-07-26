@@ -13,6 +13,7 @@ import {
   plateValueFromQuote
 } from './pdfNoteModel'
 import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
+import { searchCaptureIdsForHighlight } from './pdfSearchCapture'
 
 export {
   emptyPlateValue,
@@ -73,6 +74,8 @@ export function idsDeletedWithHighlight(
     const noteId = el.customData?.noteId
     if (typeof noteId === 'string' && noteIds.has(noteId)) ids.add(el.id)
   }
+
+  for (const id of searchCaptureIdsForHighlight(elements, groupId)) ids.add(id)
 
   return ids
 }

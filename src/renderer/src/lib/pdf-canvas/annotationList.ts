@@ -81,18 +81,21 @@ export function annotationsSignature(items: readonly AnnotationListItem[]): stri
   return items.map((i) => `${i.id}|${i.kind}|${i.preview}`).join('\n')
 }
 
-export type CanvasStats = { highlights: number; notes: number }
+export type CanvasStats = { highlights: number; notes: number; searches: number }
 
 /** Counts for catalog writeback (category card pills). */
 export function countCanvasStats(elements: readonly ExcalidrawElement[]): CanvasStats {
   const highlightGroups = new Set<string>()
   let notes = 0
+  let searches = 0
   for (const el of elements) {
     if (el.isDeleted) continue
     if (isPdfHighlight(el)) highlightGroups.add(highlightGroupId(el))
     else if (isPdfNote(el)) notes++
+    // Inline flag — avoid importing pdfSearchCapture (pulls Excalidraw into bun:test).
+    else if (el.customData?.pdfSearchCapture === true) searches++
   }
-  return { highlights: highlightGroups.size, notes }
+  return { highlights: highlightGroups.size, notes, searches }
 }
 
 /** Undefined catalog stats treated as zeros (skip write on empty open). */
@@ -100,5 +103,9 @@ export function canvasStatsNeedWriteback(
   current: CanvasStats | undefined,
   next: CanvasStats
 ): boolean {
-  return (current?.highlights ?? 0) !== next.highlights || (current?.notes ?? 0) !== next.notes
+  return (
+    (current?.highlights ?? 0) !== next.highlights ||
+    (current?.notes ?? 0) !== next.notes ||
+    (current?.searches ?? 0) !== next.searches
+  )
 }

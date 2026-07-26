@@ -24,7 +24,7 @@ Everything whose trigger was the PDF should live as a **canvas artifact** (scene
 
 Research does **not** belong in another app, and the destination is not a research sidebar: the canvas is the store of work.
 
-**Today:** notes, highlights, arrows, and freehand already live on the canvas. Sidebar Chat and related chrome are **legacy UX** until research (including AI Q&A) moves onto canvas artifacts — see roadmap.
+**Today:** notes, highlights, arrows, freehand, and **web search captures** (Buscar / Place browser → screenshot on canvas) already live on the canvas — see [`web-search-capture.md`](web-search-capture.md). Sidebar Chat and related chrome are **legacy UX** until research (including AI Q&A) moves onto canvas artifacts — see roadmap.
 
 **Destination:** PDF sidebar = **navigation only** (outline + page thumbs). Find bar / page navigator stay canvas chrome. Settings and embed-queue stay app chrome.
 

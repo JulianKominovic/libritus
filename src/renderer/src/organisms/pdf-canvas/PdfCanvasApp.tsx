@@ -47,6 +47,23 @@ import {
   syncPdfNoteArrows,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
+import {
+  attachmentFileIdsFromSearchCaptures,
+  createSearchCapture,
+  createSearchCaptureFromHighlight,
+  findPdfSearchCaptureAt,
+  fixDuplicatedPdfSearchCaptures,
+  getSearchCaptureQuery,
+  isPdfSearchCapture,
+  isPdfSearchCaptureCenterHit,
+  normalizePdfSearchCapture,
+  SEARCH_CAPTURE_EMBED_LINK,
+  SEARCH_CAPTURE_HEIGHT,
+  SEARCH_CAPTURE_LANDSCAPE,
+  SEARCH_CAPTURE_PORTRAIT,
+  SEARCH_CAPTURE_WIDTH,
+  syncPdfSearchArrows
+} from '@renderer/lib/pdf-canvas/pdfSearchCapture'
 import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
 import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import { PdfTextSearch, type SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
@@ -77,16 +94,19 @@ import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
-import { HighlighterIcon, Search, StickyNote } from 'lucide-react'
+import { Globe, HighlighterIcon, Search, StickyNote } from 'lucide-react'
 import type { Value } from 'platejs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
+import { BrowserChrome } from './BrowserChrome'
 import { HighlightToolbar } from './HighlightToolbar'
 import { NoteEmbed } from './NoteEmbed'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfFindBar, type PdfFindBarHandle } from './PdfFindBar'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 import { PdfSidebar, type PdfSidebarHandle } from './PdfSidebar'
+import { SearchCaptureEmbed } from './SearchCaptureEmbed'
+import { useSearchCaptureBrowser } from './useSearchCaptureBrowser'
 
 import '@excalidraw/excalidraw/index.css'
 import '@renderer/excalidraw.css'
@@ -182,6 +202,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const highlightToolbarRef = useRef<HTMLDivElement>(null)
   const activeHighlightIdRef = useRef<string | null>(null)
   const placeNoteModeRef = useRef(false)
+  const placeBrowserModeRef = useRef(false)
   const currentPageRef = useRef(1)
   const saveStatusRef = useRef<SaveStatus>('saved')
   const saveChipRef = useRef<HTMLSpanElement>(null)
@@ -203,6 +224,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [session, setSession] = useState<RuntimeSession | null>(null)
   const [textSelectMode, setTextSelectMode] = useState(false)
   const [placeNoteMode, setPlaceNoteMode] = useState(false)
+  const [placeBrowserMode, setPlaceBrowserMode] = useState(false)
   const [findOpen, setFindOpen] = useState(false)
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [annotations, setAnnotations] = useState<AnnotationListItem[]>([])
@@ -245,6 +267,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       appState: { activeEmbeddable: null }
     })
   }, [])
+
+  const {
+    browserChromeRef,
+    zoomPercentRef,
+    zoomIn,
+    zoomOut,
+    resizeActiveBrowser,
+    isBrowsing,
+    syncActiveBrowserBounds,
+    deactivateSearchBrowser,
+    disposeBrowser
+  } = useSearchCaptureBrowser({
+    apiRef,
+    containerRef,
+    excalidrawHostRef,
+    persistedAttachmentIdsRef,
+    dirtyRef,
+    syncSaveChip,
+    clearActiveEmbeddable
+  })
 
   const positionHighlightToolbar = useCallback(() => {
     const toolbar = highlightToolbarRef.current
@@ -303,8 +345,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (activeHighlightIdRef.current) {
         positionHighlightToolbar()
       }
+      if (isBrowsing()) {
+        syncActiveBrowserBounds()
+      }
     },
-    [positionHighlightToolbar]
+    [positionHighlightToolbar, isBrowsing, syncActiveBrowserBounds]
   )
 
   /** List identity/preview only — skip setState when signature unchanged. */
@@ -323,7 +368,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     }
   }, [])
 
-  /** Persist notes with link restored (UI may have stripped it after embed validate). */
+  /** Persist notes/captures with link restored (UI may have stripped it after embed validate). */
   const sceneElementsForPersist = useCallback(() => {
     const api = apiRef.current
     if (!api) return null
@@ -332,7 +377,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       .getSceneElements()
       .filter((el) => !el.isDeleted)
       .map((el) => {
-        const normalized = normalizePdfNote(el)
+        let normalized = normalizePdfNote(el)
+        normalized = normalizePdfSearchCapture(normalized)
         const plate = pending.get(el.id)
         // ponytail: merge unsynced Plate edits so autosave/flush see live text
         return plate !== undefined ? withNotePlateValue(normalized, plate) : normalized
@@ -340,9 +386,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [])
 
   /**
-   * After Excalidraw validates embeddables (needs link once), clear note links so
+   * After Excalidraw validates note embeds (needs link once), clear note links so
    * the canvas link icon / open-in-new-tab hit-test disappear. Capture NEVER —
-   * normalizePdfNote on persist restores the link for the next open.
+   * normalize on persist restores the link for the next open.
+   *
+   * Search captures with a screenshot are native `image` elements (no embed link).
+   * Placeholders keep their link; do not strip them here.
    */
   const stripPdfNoteLinksAfterValidate = useCallback(() => {
     const api = apiRef.current
@@ -475,6 +524,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const destroyRuntimeSession = useCallback(async () => {
     const prev = sessionRef.current
     if (!prev) return
+    disposeBrowser()
     // Drop React/session refs before tearing down the worker so a stale PdfLayer
     // syncVisible cannot call getPage on a destroyed transport.
     sessionRef.current = null
@@ -484,7 +534,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     prev.textPool.destroy()
     prev.thumbPool.destroy()
     await prev.doc.destroy()
-  }, [])
+  }, [disposeBrowser])
 
   const clearScene = useCallback(() => {
     apiRef.current?.updateScene({
@@ -593,14 +643,19 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         const zoom = (cam?.zoom ?? INITIAL_CAMERA.zoom) as NormalizedZoomValue
         const elements =
           migrated?.elements && Array.isArray(migrated.elements)
-            ? syncPdfNoteArrows(
-                (migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
-                  normalizePdfNote
-                )
+            ? syncPdfSearchArrows(
+                syncPdfNoteArrows(
+                  (migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
+                    (el) => normalizePdfSearchCapture(normalizePdfNote(el))
+                  )
+                ).elements
               ).elements
             : []
 
-        const attachmentIds = fileIdsFromElements(elements)
+        const attachmentIds = [
+          ...fileIdsFromElements(elements),
+          ...attachmentFileIdsFromSearchCaptures(elements)
+        ]
         const binaryFiles = await loadBinaryFiles(attachmentIds)
         if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
         for (const f of binaryFiles) persistedAttachmentIdsRef.current.add(f.id)
@@ -650,7 +705,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         })
         if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
 
-        // Seed before strip so paste-repair won't rematerialize restored notes.
+        // Seed before strip so paste-repair won't rematerialize restored embeds.
         noteIdsRef.current = new Set(
           elements.filter((el) => isPdfNote(el) && !el.isDeleted).map((el) => el.id)
         )
@@ -706,9 +761,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             api
               .getSceneElements()
               .filter((el) => !el.isDeleted)
-              .map(normalizePdfNote)
+              .map((el) => normalizePdfSearchCapture(normalizePdfNote(el)))
           )
         ) as unknown[]
+        disposeBrowser()
         const snapshot: SessionSnapshot = {
           version: SESSION_VERSION,
           docId: pdfId,
@@ -733,7 +789,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       current.thumbPool.destroy()
       void current.doc.destroy()
     }
-  }, [categoryId, clearSaveTimer, pdfId])
+  }, [categoryId, clearSaveTimer, disposeBrowser, pdfId])
 
   useEffect(() => {
     if (!session) {
@@ -847,10 +903,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (!restoringRef.current) {
         const api = apiRef.current
         if (api) {
-          const repaired = repairUnvalidatedPdfNotes(api.getSceneElements(), noteIdsRef.current)
-          noteIdsRef.current = repaired.knownIds
-          let scene = repaired.changed ? repaired.elements : api.getSceneElements()
-          if (repaired.changed) {
+          const repairedNotes = repairUnvalidatedPdfNotes(api.getSceneElements(), noteIdsRef.current)
+          noteIdsRef.current = repairedNotes.knownIds
+          let scene = repairedNotes.changed ? repairedNotes.elements : api.getSceneElements()
+          if (repairedNotes.changed) {
             api.updateScene({
               elements: scene,
               captureUpdate: CaptureUpdateAction.NEVER
@@ -858,9 +914,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           }
 
           // Host-owned highlight→note connectors (no Excalidraw bindings).
-          const synced = syncPdfNoteArrows(scene)
-          if (synced.changed) {
-            scene = synced.elements
+          const syncedNotes = syncPdfNoteArrows(scene)
+          if (syncedNotes.changed) {
+            scene = syncedNotes.elements
+            api.updateScene({
+              elements: scene,
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
+          }
+
+          const syncedCaptures = syncPdfSearchArrows(scene)
+          if (syncedCaptures.changed) {
+            scene = syncedCaptures.elements
             api.updateScene({
               elements: scene,
               captureUpdate: CaptureUpdateAction.NEVER
@@ -868,8 +933,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           }
 
           // onDuplicate restores link without rematerializing (changed=false).
-          // Still strip after validate so the canvas link icon stays hidden.
-          if (scene.some((el) => isPdfNote(el) && !el.isDeleted && el.link)) {
+          // Still strip note links after validate so the canvas link icon stays hidden.
+          // Search captures keep their link (sticky embedsValidationStatus).
+          if (scene.some((el) => !el.isDeleted && el.link && isPdfNote(el))) {
             queueStripPdfNoteLinks()
           }
           // Skip list sync while typing — pending plate lives in a ref, not the scene.
@@ -877,6 +943,16 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           const active = api.getAppState().activeEmbeddable
           const editingNote =
             active?.state === 'active' && active.element != null && isPdfNote(active.element)
+
+          // Browser lifetime is host-owned (center-click / Escape / outside).
+          if (editingNote && isBrowsing()) {
+            void deactivateSearchBrowser()
+          }
+
+          if (isBrowsing()) {
+            syncActiveBrowserBounds()
+          }
+
           if (!editingNote) {
             const pending = pendingPlateByNoteIdRef.current
             if (pending.size > 0) {
@@ -898,7 +974,14 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       }
       markUnsaved()
     },
-    [markUnsaved, queueStripPdfNoteLinks, syncAnnotations]
+    [
+      deactivateSearchBrowser,
+      isBrowsing,
+      markUnsaved,
+      queueStripPdfNoteLinks,
+      syncActiveBrowserBounds,
+      syncAnnotations
+    ]
   )
 
   const toggleTextSelectMode = useCallback(() => {
@@ -908,6 +991,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         hideHighlightToolbar()
         setPlaceNoteMode(false)
         placeNoteModeRef.current = false
+        setPlaceBrowserMode(false)
+        placeBrowserModeRef.current = false
         clearActiveEmbeddable()
       } else {
         window.getSelection()?.removeAllRanges()
@@ -922,6 +1007,44 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       placeNoteModeRef.current = next
       if (next) {
         setTextSelectMode(false)
+        setPlaceBrowserMode(false)
+        placeBrowserModeRef.current = false
+        hideHighlightToolbar()
+        clearActiveEmbeddable()
+        apiRef.current?.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: true,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+      } else {
+        apiRef.current?.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: false,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+      }
+      return next
+    })
+  }, [clearActiveEmbeddable, hideHighlightToolbar])
+
+  const togglePlaceBrowserMode = useCallback(() => {
+    setPlaceBrowserMode((prev) => {
+      const next = !prev
+      placeBrowserModeRef.current = next
+      if (next) {
+        setTextSelectMode(false)
+        setPlaceNoteMode(false)
+        placeNoteModeRef.current = false
         hideHighlightToolbar()
         clearActiveEmbeddable()
         apiRef.current?.updateScene({
@@ -973,10 +1096,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       element: Parameters<typeof getNotePlateValue>[0],
       appState: { activeEmbeddable?: { element?: { id: string } | null; state: string } | null }
     ) => {
-      if (!isPdfNote(element)) return null
       const editing =
         appState.activeEmbeddable?.element?.id === element.id &&
         appState.activeEmbeddable?.state === 'active'
+
+      if (isPdfSearchCapture(element)) {
+        return <SearchCaptureEmbed captureId={element.id} query={getSearchCaptureQuery(element)} />
+      }
+
+      if (!isPdfNote(element)) return null
       return (
         <NoteEmbed
           noteId={element.id}
@@ -1205,6 +1333,38 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         return
       }
 
+      if (placeBrowserModeRef.current) {
+        const capture = createSearchCapture({
+          x: sceneX - SEARCH_CAPTURE_WIDTH / 2,
+          y: sceneY - SEARCH_CAPTURE_HEIGHT / 2,
+          query: '',
+          url: 'https://www.google.com'
+        })
+        api.updateScene({
+          elements: [...api.getSceneElements(), capture],
+          appState: {
+            selectedElementIds: { [capture.id]: true }
+          },
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY
+        })
+        placeBrowserModeRef.current = false
+        setPlaceBrowserMode(false)
+        hideHighlightToolbar()
+        api.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: false,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+        queueStripPdfNoteLinks()
+        markUnsaved()
+        return
+      }
+
       const hit = findPdfHighlightAt(api.getSceneElements(), sceneX, sceneY)
       if (hit) {
         showHighlightToolbar(hit.id)
@@ -1238,6 +1398,33 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
     // Select only — edit via embed activate (same as free place).
     hideHighlightToolbar()
+    queueStripPdfNoteLinks()
+    markUnsaved()
+  }, [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks])
+
+  const addSearchCaptureToActiveHighlight = useCallback(() => {
+    const api = apiRef.current
+    const highlightId = activeHighlightIdRef.current
+    if (!api || !highlightId) return
+
+    const highlight = api.getSceneElements().find((el) => el.id === highlightId)
+    if (!highlight) return
+
+    const scene = api.getSceneElements()
+    const { newElements } = createSearchCaptureFromHighlight(highlight, scene)
+
+    api.updateScene({
+      elements: [...scene, ...newElements],
+      appState: {
+        selectedElementIds: Object.fromEntries(
+          newElements.filter((el) => isPdfSearchCapture(el)).map((el) => [el.id, true])
+        )
+      },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY
+    })
+
+    hideHighlightToolbar()
+    // Keep capture link for embedsValidationStatus; notes still get stripped.
     queueStripPdfNoteLinks()
     markUnsaved()
   }, [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks])
@@ -1291,6 +1478,22 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (placeNoteModeRef.current) {
         placeNoteModeRef.current = false
         setPlaceNoteMode(false)
+        apiRef.current?.updateScene({
+          appState: {
+            activeTool: {
+              type: 'selection',
+              locked: false,
+              lastActiveTool: null,
+              customType: null
+            }
+          }
+        })
+        event.preventDefault()
+        return
+      }
+      if (placeBrowserModeRef.current) {
+        placeBrowserModeRef.current = false
+        setPlaceBrowserMode(false)
         apiRef.current?.updateScene({
           appState: {
             activeTool: {
@@ -1413,8 +1616,12 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (appState.activeEmbeddable?.state === 'active') return
       const { x, y } = clientToSceneCoords(event.clientX, event.clientY, appState)
       const note = findPdfNoteAt(api.getSceneElements(), x, y)
-      if (!note || note.locked) return
-      if (isPdfNoteCenterHit(note, x, y)) {
+      if (note && !note.locked && isPdfNoteCenterHit(note, x, y)) {
+        event.stopPropagation()
+        return
+      }
+      const capture = findPdfSearchCaptureAt(api.getSceneElements(), x, y)
+      if (capture && !capture.locked && isPdfSearchCaptureCenterHit(capture, x, y)) {
         event.stopPropagation()
       }
     }
@@ -1453,13 +1660,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           onChange={handleExcalidrawChange}
           onScrollChange={handleScrollChange}
           onPointerDown={handlePointerDown}
-          onDuplicate={(nextElements) => fixDuplicatedPdfNotes(nextElements)}
+          onDuplicate={(nextElements) =>
+            fixDuplicatedPdfSearchCaptures(fixDuplicatedPdfNotes(nextElements))
+          }
           onLinkOpen={(_element, event) => {
             event.preventDefault()
           }}
           theme="light"
           validateEmbeddable={(link) =>
-            typeof link === 'string' && link.startsWith(NOTE_EMBED_LINK) ? true : false
+            typeof link === 'string' &&
+            (link.startsWith(NOTE_EMBED_LINK) || link.startsWith(SEARCH_CAPTURE_EMBED_LINK))
+              ? true
+              : false
           }
           renderEmbeddable={renderEmbeddable}
           UIOptions={{
@@ -1519,6 +1731,19 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             </button>
             <button
               type="button"
+              aria-label="Place browser"
+              aria-pressed={placeBrowserMode}
+              className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
+                placeBrowserMode
+                  ? 'bg-neutral-200 text-neutral-900'
+                  : 'text-neutral-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
+              }`}
+              onClick={togglePlaceBrowserMode}
+            >
+              <Globe className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
               aria-label="Select text"
               aria-pressed={textSelectMode}
               className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
@@ -1550,7 +1775,21 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         activeColor={activeHighlightColor}
         onRecolor={recolorActiveHighlight}
         onAddNote={addNoteToActiveHighlight}
+        onSearch={addSearchCaptureToActiveHighlight}
         onRemove={removeActiveHighlight}
+      />
+
+      <BrowserChrome
+        ref={browserChromeRef}
+        zoomPercentRef={zoomPercentRef}
+        onZoomIn={() => void zoomIn()}
+        onZoomOut={() => void zoomOut()}
+        onResizePortrait={() =>
+          resizeActiveBrowser(SEARCH_CAPTURE_PORTRAIT.width, SEARCH_CAPTURE_PORTRAIT.height)
+        }
+        onResizeLandscape={() =>
+          resizeActiveBrowser(SEARCH_CAPTURE_LANDSCAPE.width, SEARCH_CAPTURE_LANDSCAPE.height)
+        }
       />
 
       {session && pageCount > 0 && showPdfOutline ? (

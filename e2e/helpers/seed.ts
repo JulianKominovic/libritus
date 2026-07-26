@@ -274,3 +274,151 @@ export function seedHighlightElement(opts?: {
     }
   }
 }
+
+/** Search capture card for session seeding (embeddable placeholder or image + fileId). */
+export function seedSearchCaptureElement(opts?: {
+  id?: string
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  query?: string
+  url?: string
+  sourceHighlightId?: string
+  fileId?: string
+  capturedAt?: string
+}): Record<string, unknown> {
+  const id = opts?.id ?? 'seed-search-capture'
+  const query = opts?.query ?? 'seeded query'
+  const url = opts?.url ?? `https://www.google.com/search?q=${encodeURIComponent(query)}`
+  const fileId = opts?.fileId
+  const customData: Record<string, unknown> = {
+    pdfSearchCapture: true,
+    query,
+    url,
+    ...(opts?.sourceHighlightId ? { sourceHighlightId: opts.sourceHighlightId } : {}),
+    ...(fileId
+      ? { fileId, capturedAt: opts?.capturedAt ?? new Date().toISOString() }
+      : {})
+  }
+
+  if (fileId) {
+    return {
+      id,
+      type: 'image',
+      x: opts?.x ?? 200,
+      y: opts?.y ?? 40,
+      width: opts?.width ?? 300,
+      height: opts?.height ?? 300,
+      angle: 0,
+      strokeColor: 'transparent',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: null,
+      index: 'a3',
+      roundness: null,
+      seed: 4,
+      version: 1,
+      versionNonce: 4,
+      isDeleted: false,
+      boundElements: null,
+      updated: 1,
+      link: null,
+      locked: false,
+      fileId,
+      status: 'saved',
+      scale: [1, 1],
+      crop: null,
+      customData
+    }
+  }
+
+  return {
+    id,
+    type: 'embeddable',
+    x: opts?.x ?? 200,
+    y: opts?.y ?? 40,
+    width: opts?.width ?? 300,
+    height: opts?.height ?? 300,
+    angle: 0,
+    strokeColor: 'transparent',
+    backgroundColor: '#e9ecef',
+    fillStyle: 'solid',
+    strokeWidth: 0,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: null,
+    index: 'a3',
+    roundness: null,
+    seed: 4,
+    version: 1,
+    versionNonce: 4,
+    isDeleted: false,
+    boundElements: null,
+    updated: 1,
+    link: 'libritus://pdf-search-capture',
+    locked: false,
+    customData
+  }
+}
+
+export function seedSearchArrowElement(opts: {
+  id?: string
+  captureId: string
+  startX: number
+  startY: number
+  side?: 'left' | 'right'
+  width?: number
+  height?: number
+}): Record<string, unknown> {
+  const width = opts.width ?? 60
+  const height = opts.height ?? 0
+  return {
+    id: opts.id ?? 'seed-search-arrow',
+    type: 'arrow',
+    x: opts.startX,
+    y: opts.startY,
+    width,
+    height,
+    angle: 0,
+    strokeColor: '#495057',
+    backgroundColor: 'transparent',
+    fillStyle: 'solid',
+    strokeWidth: 1,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: null,
+    index: 'a4',
+    roundness: null,
+    seed: 5,
+    version: 1,
+    versionNonce: 5,
+    isDeleted: false,
+    boundElements: null,
+    updated: 1,
+    link: null,
+    locked: true,
+    startBinding: null,
+    endBinding: null,
+    points: [
+      [0, 0],
+      [width, height]
+    ],
+    customData: {
+      pdfSearchArrow: true,
+      captureId: opts.captureId,
+      side: opts.side ?? 'right',
+      startX: opts.startX,
+      startY: opts.startY
+    }
+  }
+}

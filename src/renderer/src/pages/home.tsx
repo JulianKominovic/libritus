@@ -36,6 +36,7 @@ function HomePdfCard({
 }) {
   const highlightsNumber = pdf.canvasStats?.highlights
   const notesNumber = pdf.canvasStats?.notes
+  const searchesNumber = pdf.canvasStats?.searches
   const essaysNumber = pdf.essays?.length
   return (
     <div className="flex flex-col w-56">
@@ -61,6 +62,12 @@ function HomePdfCard({
                 <p className={pdfStatPillClassName}>
                   <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
                   {notesNumber}
+                </p>
+              ) : null}
+              {searchesNumber && searchesNumber > 0 ? (
+                <p className={pdfStatPillClassName}>
+                  <DynamicIcon name="globe" className="size-4 text-morphing-700" />
+                  {searchesNumber}
                 </p>
               ) : null}
               {highlightsNumber && highlightsNumber > 0 ? (

@@ -73,6 +73,8 @@ const {
   withNotePlateValue
 } = await import('./pdfNotes')
 const { emptyPlateValue, isPdfNote, plateValueFromQuote } = await import('./pdfNoteModel')
+const { createSearchCaptureFromHighlight, isPdfSearchArrow, isPdfSearchCapture } =
+  await import('./pdfSearchCapture')
 
 const NOTE_GAP = 48
 
@@ -361,6 +363,15 @@ describe('pdfNotes', () => {
       }
     } as unknown as OrderedExcalidrawElement
 
+    const searchEls = createSearchCaptureFromHighlight(
+      fakeHighlight({
+        id: 'g1',
+        customData: { pdfHighlight: true, text: 'a', groupId: 'g1' }
+      })
+    ).newElements
+    const searchCapture = searchEls.find(isPdfSearchCapture)!
+    const searchArrow = searchEls.find(isPdfSearchArrow)!
+
     const scene = [
       hlA,
       hlB,
@@ -371,12 +382,23 @@ describe('pdfNotes', () => {
       placeNote,
       otherHl,
       otherNote,
-      otherArrow
+      otherArrow,
+      searchCapture,
+      searchArrow
     ]
     const toDelete = idsDeletedWithHighlight(scene, 'g1')
 
     expect([...toDelete].sort()).toEqual(
-      ['arr-1', 'arr-2', 'note-1', 'note-2', 'rect-a', 'rect-b'].sort()
+      [
+        'arr-1',
+        'arr-2',
+        'note-1',
+        'note-2',
+        'rect-a',
+        'rect-b',
+        searchCapture.id,
+        searchArrow.id
+      ].sort()
     )
     expect(toDelete.has('place-note')).toBe(false)
     expect(toDelete.has('other-hl')).toBe(false)

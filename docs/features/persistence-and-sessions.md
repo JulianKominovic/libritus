@@ -58,7 +58,7 @@ type SessionSnapshot = {
     zoom: number
   }
   /**
-   * Serialized Excalidraw elements (highlights, notes, arrows, freehand…).
+   * Serialized Excalidraw elements (highlights, notes, search captures, arrows, freehand…).
    * Never PDF pages or “document” shapes.
    */
   elements: unknown[]
@@ -70,6 +70,8 @@ type SessionSnapshot = {
 
 WYSIWYG notes store Plate `plateValue` in `customData` on the note rectangle (`pdfNote: true`). No separate notes file — see [`wysiwyg-notes.md`](wysiwyg-notes.md).
 
+Web search captures ([`web-search-capture.md`](web-search-capture.md)): placeholder `embeddable` until screenshot; after capture / restore with `fileId`, native Excalidraw `image` whose PNG lives under `attachments/` (same path as other canvas images).
+
 **Camera:** persist `scrollX`, `scrollY`, `zoom` from the same channel that feeds `CameraState` (`onScrollChange`). On restore: load attachment bytes → `addFiles` → `updateScene({ elements, appState: { scrollX, scrollY, zoom } })` + sync camera refs.
 
 ### Relation to `categories.json`
@@ -77,6 +79,7 @@ WYSIWYG notes store Plate `plateValue` in `customData` on the note rectangle (`p
 | Concern | Source of truth |
 |---------|-----------------|
 | Title, category, thumbnail, legacy highlights/essays | `categories.json` |
+| Live canvas counts (`canvasStats.highlights` / `notes` / `searches`) | Writebacked from session into `categories.json` (card pills) |
 | Canvas annotations + reading camera | `{pdfId}.session.json` |
 
 Legacy highlight/comment fields on `Pdf` are **not** written by the canvas MVP. Migration is a later task (see [`docs/roadmap.md`](../roadmap.md)).

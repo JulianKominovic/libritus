@@ -10,28 +10,31 @@ import chroma from 'chroma-js'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useLayoutEffect } from 'react'
 import { useDrag } from 'react-dnd'
-import { NativeTypes } from 'react-dnd-html5-backend'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Link, Redirect, useParams } from 'wouter'
 
 const SLOW_DEBOUNCE_TIME = 350
 const FAST_DEBOUNCE_TIME = 50
 
+/** Custom type — NativeTypes.HTML makes HTML5Backend treat the card as a native drag (dragleave can end it mid-flight). */
+const PDF_CARD_DRAG_TYPE = 'libritus/pdf-card'
+
 const pdfStatPillClassName =
   'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1 tabular-nums'
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
   const [, drag, preview] = useDrag(() => ({
-    type: NativeTypes.HTML,
+    type: PDF_CARD_DRAG_TYPE,
     previewOptions: {
       offsetX: -1,
       offsetY: 320
     },
     options: { dropEffect: 'move' },
-    item: { id: pdf.id, type: 'P' }
+    item: { id: pdf.id, type: 'P' as const }
   }))
   const highlightsNumber = pdf.canvasStats?.highlights
   const notesNumber = pdf.canvasStats?.notes
+  const searchesNumber = pdf.canvasStats?.searches
   const essaysNumber = pdf.essays?.length
   return (
     <ContextMenu key={pdf.id}>
@@ -59,6 +62,12 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
               <p className={pdfStatPillClassName}>
                 <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
                 {notesNumber}
+              </p>
+            ) : null}
+            {searchesNumber && searchesNumber > 0 ? (
+              <p className={pdfStatPillClassName}>
+                <DynamicIcon name="globe" className="size-4 text-morphing-700" />
+                {searchesNumber}
               </p>
             ) : null}
             {highlightsNumber && highlightsNumber > 0 ? (
