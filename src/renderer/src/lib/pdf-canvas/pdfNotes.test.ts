@@ -293,6 +293,16 @@ describe('pdfNotes', () => {
     expect(arrowMeta.customData?.side).toBe('left')
   })
 
+  test('createNoteFromHighlight: note after search capture goes left', () => {
+    const highlight = fakeHighlight({ id: 'hl-cross', x: 100, y: 0, width: 80, height: 20 })
+    const prior = createSearchCaptureFromHighlight(highlight).newElements
+    const { newElements } = createNoteFromHighlight(highlight, prior)
+    const note = newElements.find((el) => isPdfNote(el))!
+    const arrow = newElements.find((el) => isPdfNoteArrow(el))!
+    expect(note.x).toBe(100 - NOTE_GAP - NOTE_WIDTH)
+    expect(arrow.customData?.side).toBe('left')
+  })
+
   test('idsDeletedWithHighlight cascades notes and arrows for groupId', () => {
     const hlA = fakeHighlight({
       id: 'rect-a',

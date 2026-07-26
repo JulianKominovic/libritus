@@ -322,7 +322,8 @@ export function createSearchCapture(opts: {
 
 /**
  * Search capture card + locked straight arrow from highlight edge.
- * Odd captures go right; even go left (counts prior captures for same highlight).
+ * Odd anchored artifacts go right; even go left.
+ * Counts notes + search captures for the same highlight.
  */
 export function createSearchCaptureFromHighlight(
   highlight: OrderedExcalidrawElement,
@@ -332,8 +333,11 @@ export function createSearchCaptureFromHighlight(
     typeof highlight.customData?.text === 'string' ? highlight.customData.text.trim() : ''
   const url = googleSearchUrl(query)
   const groupId = highlightGroupId(highlight)
+  // ponytail: same filter as createNoteFromHighlight (no shared helper — avoid cycle)
   const prior = existingElements.filter(
-    (el) => isPdfSearchCapture(el) && el.customData?.sourceHighlightId === groupId
+    (el) =>
+      el.customData?.sourceHighlightId === groupId &&
+      (el.customData?.pdfNote === true || el.customData?.pdfSearchCapture === true)
   ).length
   const side = prior % 2 === 0 ? 'right' : 'left'
 

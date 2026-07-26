@@ -159,6 +159,25 @@ describe('createSearchCaptureFromHighlight', () => {
     const arrow = second.find(isPdfSearchArrow)!
     expect(arrow.customData?.side).toBe('left')
   })
+
+  test('capture after note for same highlight goes left', () => {
+    const highlight = fakeHighlight({ id: 'hl-1' })
+    const priorNote = {
+      id: 'prior-note',
+      type: 'embeddable',
+      x: 0,
+      y: 0,
+      width: 280,
+      height: 200,
+      isDeleted: false,
+      customData: { pdfNote: true, sourceHighlightId: 'hl-1' }
+    } as OrderedExcalidrawElement
+    const { newElements } = createSearchCaptureFromHighlight(highlight, [priorNote])
+    const capture = newElements.find(isPdfSearchCapture)!
+    const arrow = newElements.find(isPdfSearchArrow)!
+    expect(arrow.customData?.side).toBe('left')
+    expect(capture.x).toBe(highlight.x - SEARCH_GAP - SEARCH_CAPTURE_WIDTH)
+  })
 })
 
 describe('search capture model', () => {

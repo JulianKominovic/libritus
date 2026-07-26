@@ -442,7 +442,8 @@ export function createWysiwygNote(opts: {
 /**
  * Sticky note + locked straight arrow from highlight edge.
  * No Excalidraw bindings — host syncs geometry via syncPdfNoteArrows.
- * Odd notes (1st, 3rd…) go right; even (2nd, 4th…) go left.
+ * Odd anchored artifacts (1st, 3rd…) go right; even go left.
+ * Counts notes + search captures for the same highlight.
  *
  * ponytail: one-sided Excalidraw bindings (elbow or straight) explode (~1e5px)
  * when the note embeddable moves. Bindings are not used.
@@ -457,8 +458,11 @@ export function createNoteFromHighlight(
     typeof highlight.customData?.text === 'string' ? highlight.customData.text.trim() : ''
 
   const groupId = highlightGroupId(highlight)
+  // ponytail: same filter as createSearchCaptureFromHighlight (no shared helper — avoid cycle)
   const prior = existingElements.filter(
-    (el) => isPdfNote(el) && el.customData?.sourceHighlightId === groupId
+    (el) =>
+      el.customData?.sourceHighlightId === groupId &&
+      (el.customData?.pdfNote === true || el.customData?.pdfSearchCapture === true)
   ).length
   const side = prior % 2 === 0 ? 'right' : 'left'
 
