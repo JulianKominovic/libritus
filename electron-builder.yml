@@ -3,13 +3,20 @@ productName: Libritus
 directories:
   buildResources: build
 files:
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!node_modules/*'
-  - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,bun.lock}'
-  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,LICENSE,app-icon.png,.gitignore,components.json}'
+  - out/**
+  - package.json
+  - resources/**
+  - '!**/.cursor/**'
+  - '!**/e2e/**'
+  - '!**/docs/**'
+  - '!**/test-results/**'
+  - '!**/AGENTS.md'
+  - '!**/skills-lock.json'
+  - '!**/out/renderer/stats.html'
+  - '!**/node_modules/onnxruntime-web/**'
+  - '!**/node_modules/**/{README,CHANGELOG,LICENSE}*'
+  - '!**/node_modules/**/*.{md,map,ts,tsx}'
+compression: maximum
 asarUnpack:
   - resources/**
 win:

@@ -1,19 +1,32 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import { resolve } from 'path'
 import { analyzer } from 'vite-bundle-analyzer'
+
+const analyze = process.env.ANALYZE === '1'
+
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
     build: {
-      sourcemap: false
+      sourcemap: false,
+      // Bundle pure JS; leave electron + native (via transformers) external.
+      externalizeDeps: {
+        exclude: [
+          '@electron-toolkit/utils',
+          '@openrouter/sdk',
+          'jsdom',
+          '@mozilla/readability'
+        ]
+      }
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     build: {
-      sourcemap: false
+      sourcemap: false,
+      externalizeDeps: {
+        exclude: ['@electron-toolkit/preload']
+      }
     }
   },
   renderer: {
@@ -30,6 +43,10 @@ export default defineConfig({
       sourcemap: false,
       ssr: false
     },
-    plugins: [react(), tailwindcss(), analyzer({ analyzerMode: 'static' })]
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(analyze ? [analyzer({ analyzerMode: 'static' })] : [])
+    ]
   }
 })

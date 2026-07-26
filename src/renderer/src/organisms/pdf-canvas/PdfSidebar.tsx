@@ -4,8 +4,20 @@ import type { OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 import type { ThumbPool, ThumbSlot } from '@renderer/lib/pdf-canvas/ThumbPool'
 import { cn } from '@renderer/lib/utils'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { PdfChatPanel } from './PdfChatPanel'
+import {
+  forwardRef,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState
+} from 'react'
+
+const PdfChatPanel = lazy(() =>
+  import('./PdfChatPanel').then((m) => ({ default: m.PdfChatPanel }))
+)
 
 export type PdfSidebarHandle = {
   setActivePage: (page1Based: number) => void
@@ -312,11 +324,9 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
 
         <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
           {tab === 'chat' ? (
-            <PdfChatPanel
-              pdfId={pdfId}
-              active
-              onGoToPage={onGoToPage}
-            />
+            <Suspense fallback={null}>
+              <PdfChatPanel pdfId={pdfId} active onGoToPage={onGoToPage} />
+            </Suspense>
           ) : null}
         </TabsContent>
       </Tabs>
