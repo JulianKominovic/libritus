@@ -2,13 +2,25 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
 import { highlightGroupId, isPdfHighlight } from './pdfHighlightModel'
 import { getNotePlateValue, isPdfNote } from './pdfNoteModel'
+import { getSearchCaptureFileId, getSearchCaptureQuery, isPdfSearchCapture } from './pdfSearchCapture'
 
-export type AnnotationKind = 'highlight' | 'note'
+export type AnnotationKind = 'highlight' | 'note' | 'search'
 
 export type AnnotationListItem = {
   id: string
   kind: AnnotationKind
+  createdAt: string
   preview: string
+  /** 0-based page for highlights when layout is available. */
+  pageIndex?: number
+  plateValue?: Value
+  fileDataURL?: string | null
+  query?: string
+}
+
+export type ListAnnotationsOpts = {
+  pageIndexAt?: (x: number, y: number) => number | null
+  fileDataURL?: (fileId: string) => string | null
 }
 
 const PREVIEW_MAX = 80
@@ -47,11 +59,25 @@ function notePreview(el: ExcalidrawElement): string {
   return plain ? truncate(plain) : 'Note'
 }
 
-/** Scene-derived annotation rows (highlights + notes). Sort by y then x. */
+function searchPreview(el: ExcalidrawElement): string {
+  const query = getSearchCaptureQuery(el).trim()
+  return query ? truncate(query) : 'Search'
+}
+
+/** Sort/display timestamp. Legacy: createdAt → capturedAt → el.updated. */
+export function annotationCreatedAt(el: ExcalidrawElement): string {
+  const cd = el.customData
+  if (typeof cd?.createdAt === 'string' && cd.createdAt) return cd.createdAt
+  if (typeof cd?.capturedAt === 'string' && cd.capturedAt) return cd.capturedAt
+  return new Date(el.updated).toISOString()
+}
+
+/** Scene-derived annotation rows. Newest createdAt first. */
 export function listAnnotations(
-  elements: readonly ExcalidrawElement[]
+  elements: readonly ExcalidrawElement[],
+  opts?: ListAnnotationsOpts
 ): AnnotationListItem[] {
-  const items: (AnnotationListItem & { x: number; y: number })[] = []
+  const items: AnnotationListItem[] = []
   const seenHighlightGroups = new Set<string>()
 
   // Sort highlights first so the representative is top-left-most per group.
@@ -64,21 +90,55 @@ export function listAnnotations(
     const gid = highlightGroupId(el)
     if (seenHighlightGroups.has(gid)) continue
     seenHighlightGroups.add(gid)
-    items.push({ id: el.id, kind: 'highlight', preview: highlightPreview(el), x: el.x, y: el.y })
+    const pageIndex = opts?.pageIndexAt?.(el.x + el.width / 2, el.y + el.height / 2) ?? undefined
+    items.push({
+      id: el.id,
+      kind: 'highlight',
+      createdAt: annotationCreatedAt(el),
+      preview: highlightPreview(el),
+      ...(pageIndex != null ? { pageIndex } : {})
+    })
   }
 
   for (const el of elements) {
-    if (el.isDeleted || !isPdfNote(el)) continue
-    items.push({ id: el.id, kind: 'note', preview: notePreview(el), x: el.x, y: el.y })
+    if (el.isDeleted) continue
+    if (isPdfNote(el)) {
+      items.push({
+        id: el.id,
+        kind: 'note',
+        createdAt: annotationCreatedAt(el),
+        preview: notePreview(el),
+        plateValue: getNotePlateValue(el)
+      })
+      continue
+    }
+    if (isPdfSearchCapture(el)) {
+      const fileId = getSearchCaptureFileId(el)
+      const fileDataURL = fileId && opts?.fileDataURL ? opts.fileDataURL(fileId) : null
+      items.push({
+        id: el.id,
+        kind: 'search',
+        createdAt: annotationCreatedAt(el),
+        preview: searchPreview(el),
+        query: getSearchCaptureQuery(el),
+        fileDataURL
+      })
+    }
   }
 
-  items.sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x))
-  return items.map(({ id, kind, preview }) => ({ id, kind, preview }))
+  items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
+  return items
 }
 
 /** Stable signature for dirty-gating React list updates (no geometry). */
 export function annotationsSignature(items: readonly AnnotationListItem[]): string {
-  return items.map((i) => `${i.id}|${i.kind}|${i.preview}`).join('\n')
+  return items
+    .map((i) => {
+      const page = i.pageIndex ?? ''
+      const img = i.fileDataURL ? '1' : '0'
+      return `${i.id}|${i.kind}|${i.createdAt}|${i.preview}|${page}|${img}`
+    })
+    .join('\n')
 }
 
 export type CanvasStats = { highlights: number; notes: number; searches: number }
@@ -92,8 +152,7 @@ export function countCanvasStats(elements: readonly ExcalidrawElement[]): Canvas
     if (el.isDeleted) continue
     if (isPdfHighlight(el)) highlightGroups.add(highlightGroupId(el))
     else if (isPdfNote(el)) notes++
-    // Inline flag — avoid importing pdfSearchCapture (pulls Excalidraw into bun:test).
-    else if (el.customData?.pdfSearchCapture === true) searches++
+    else if (isPdfSearchCapture(el)) searches++
   }
   return { highlights: highlightGroups.size, notes, searches }
 }

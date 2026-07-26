@@ -2,9 +2,9 @@
 
 Ask questions about the open PDF using local embeddings + OpenRouter for answers.
 
-**Status:** Implemented (open → serial embed queue in main, nav progress indicator, Chat tab, Settings AI key, `{pdfId}.rag.json`).
+**Status:** Implemented (open → serial embed queue in main, nav progress indicator, Settings AI key, `{pdfId}.rag.json`). **Chat tab in `PdfSidebar` is hidden** until canvas Q&A lands; `PdfChatPanel` / RAG backend kept.
 
-**UX note:** Chat-in-`PdfSidebar` is **legacy**. Product north ([`product-north.md`](product-north.md)): lasting research (including AI Q&A) belongs on the **canvas**. Removing sidebar Chat and moving explicit ask → canvas cards is **later** roadmap debt — do not deepen the sidebar transcript silo. This doc describes what ships today.
+**UX note:** Chat-in-`PdfSidebar` is **legacy / hidden**. Product north ([`product-north.md`](product-north.md)): lasting research (including AI Q&A) belongs on the **canvas**. Do not deepen the sidebar transcript silo.
 
 ---
 
@@ -37,7 +37,7 @@ Out of scope:
 |---------|----------|
 | **Settings → AI** | OpenRouter key (save / test / clear via `safeStorage` in main). Chat model select. Copy: embeddings run locally. |
 | **Nav sidebar (above Settings)** | Active embed job + progress; queued PDF titles. Hidden when idle. |
-| **PdfSidebar → Chat** | One-line index status; message list; prompt; citation chips → `onGoToPage`. **Legacy** until removed. |
+| **PdfSidebar → Chat** | **Hidden** (panel code retained). Indexing still runs on PDF open; Settings AI unchanged. |
 | **Without key** | Indexing still runs on PDF open; Send blocked with CTA to Settings. |
 | **Empty PDF text** | “No extractable text”. |
 
@@ -47,7 +47,7 @@ Motion: short fade/slide on messages (~150ms); send `active:scale-[0.96]`; `tabu
 
 ## Destination (later)
 
-- Remove Chat tab from `PdfSidebar`.
+- Chat tab already hidden; delete `PdfChatPanel` when canvas Q&A ships.
 - Explicit ask → canvas research cards (session artifacts, deletable, with citations).
 - Prefer session / canvas as source of truth over `{pdfId}.chat.json` as primary UX.
 

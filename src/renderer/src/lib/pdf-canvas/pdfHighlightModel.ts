@@ -8,6 +8,8 @@ export type PdfHighlightData = {
   text: string
   /** Shared across all rects from one text selection. Legacy: missing → treat as el.id. */
   groupId: string
+  /** ISO timestamp; stamped at create. Legacy may omit. */
+  createdAt?: string
 }
 
 export function isPdfHighlight(el: ExcalidrawElement): el is OrderedExcalidrawElement {

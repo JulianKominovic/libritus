@@ -1,0 +1,24 @@
+---
+description: Never import Lucide icons directly — always use DynamicIcon.
+alwaysApply: true
+---
+
+# Lucide icons: always use DynamicIcon
+
+Never import icon components from `lucide-react`. Always use `DynamicIcon` from `lucide-react/dynamic` with a kebab-case `name`.
+
+```tsx
+// ❌ BAD
+import { Globe, ChevronDown } from 'lucide-react'
+
+<Globe className="size-4" />
+<ChevronDown />
+
+// ✅ GOOD
+import { DynamicIcon } from 'lucide-react/dynamic'
+
+<DynamicIcon name="globe" className="size-4" />
+<DynamicIcon name="chevron-down" />
+```
+
+Type-only imports from `lucide-react` (`import type { LucideProps }`) are fine when needed for props typing.

@@ -195,6 +195,7 @@ export function seedNoteElement(opts?: {
   x?: number
   y?: number
   text?: string
+  createdAt?: string
 }): Record<string, unknown> {
   const id = opts?.id ?? 'seed-note'
   const text = opts?.text ?? 'seeded note'
@@ -227,7 +228,8 @@ export function seedNoteElement(opts?: {
     locked: false,
     customData: {
       pdfNote: true,
-      plateValue: [{ type: 'p', children: [{ text }] }]
+      plateValue: [{ type: 'p', children: [{ text }] }],
+      ...(opts?.createdAt ? { createdAt: opts.createdAt } : {})
     }
   }
 }
@@ -238,6 +240,7 @@ export function seedHighlightElement(opts?: {
   y?: number
   text?: string
   groupId?: string
+  createdAt?: string
 }): Record<string, unknown> {
   const id = opts?.id ?? 'seed-hl'
   return {
@@ -270,7 +273,8 @@ export function seedHighlightElement(opts?: {
     customData: {
       pdfHighlight: true,
       text: opts?.text ?? 'highlighted',
-      ...(opts?.groupId ? { groupId: opts.groupId } : {})
+      ...(opts?.groupId ? { groupId: opts.groupId } : {}),
+      ...(opts?.createdAt ? { createdAt: opts.createdAt } : {})
     }
   }
 }
@@ -286,6 +290,7 @@ export function seedSearchCaptureElement(opts?: {
   url?: string
   sourceHighlightId?: string
   fileId?: string
+  createdAt?: string
   capturedAt?: string
 }): Record<string, unknown> {
   const id = opts?.id ?? 'seed-search-capture'
@@ -297,6 +302,7 @@ export function seedSearchCaptureElement(opts?: {
     query,
     url,
     ...(opts?.sourceHighlightId ? { sourceHighlightId: opts.sourceHighlightId } : {}),
+    ...(opts?.createdAt ? { createdAt: opts.createdAt } : {}),
     ...(fileId
       ? { fileId, capturedAt: opts?.capturedAt ?? new Date().toISOString() }
       : {})

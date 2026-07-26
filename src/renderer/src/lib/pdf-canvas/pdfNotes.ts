@@ -433,7 +433,8 @@ export function createWysiwygNote(opts: {
       roughness: 0,
       customData: {
         pdfNote: true,
-        plateValue
+        plateValue,
+        createdAt: new Date().toISOString()
       } satisfies PdfNoteData
     }
   ])
@@ -487,7 +488,10 @@ export function createNoteFromHighlight(
   const noteData = {
     pdfNote: true as const,
     plateValue: getNotePlateValue(noteBase),
-    sourceHighlightId: groupId
+    sourceHighlightId: groupId,
+    ...(typeof noteBase.customData?.createdAt === 'string'
+      ? { createdAt: noteBase.customData.createdAt }
+      : {})
   } satisfies PdfNoteData
 
   const geo = arrowBetweenRects(highlight, noteBase)

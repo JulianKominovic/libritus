@@ -9,6 +9,8 @@ export type PdfNoteData = {
   plateValue: Value
   /** Set when created via Add note from a highlight (for side alternation). */
   sourceHighlightId?: string
+  /** ISO timestamp; stamped at create. Legacy may omit. */
+  createdAt?: string
 }
 
 export function emptyPlateValue(): Value {

@@ -24,8 +24,8 @@ import { useLang } from '@renderer/i18n/lang-context'
 import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
 import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { cn } from '@renderer/lib/utils'
-import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
 import { EmbeddingJobsIndicator } from '@renderer/organisms/embeddings/EmbeddingJobsIndicator'
+import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
 import { DynamicIcon } from 'lucide-react/dynamic'
@@ -291,7 +291,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
             <ContextMenuTrigger
               className={cn(
                 buttonVariants({ variant: 'none' }),
-                'w-full relative justify-start !p-0 h-10 line-clamp-3 flex',
+                'w-full relative justify-start p-0! h-10 line-clamp-3 flex active:scale-100 hover:font-semibold transition-[transform,font-weight] duration-100',
                 isActive ? 'font-semibold active' : ''
               )}
               onClick={() => {

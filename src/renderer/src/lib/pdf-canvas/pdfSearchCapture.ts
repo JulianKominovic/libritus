@@ -13,6 +13,9 @@ export type PdfSearchCaptureData = {
   url: string
   sourceHighlightId?: string
   fileId?: string
+  /** ISO timestamp; stamped at placeholder create. Legacy may omit. */
+  createdAt?: string
+  /** ISO timestamp when PNG was promoted onto the canvas. */
   capturedAt?: string
 }
 
@@ -195,6 +198,7 @@ export function applySearchCaptureScreenshot(
     url: patch.url,
     fileId: patch.fileId,
     capturedAt: patch.capturedAt,
+    ...(typeof el.customData?.createdAt === 'string' ? { createdAt: el.customData.createdAt } : {}),
     ...(typeof el.customData?.sourceHighlightId === 'string'
       ? { sourceHighlightId: el.customData.sourceHighlightId }
       : {})
@@ -300,6 +304,7 @@ export function createSearchCapture(opts: {
     pdfSearchCapture: true,
     query: opts.query,
     url: opts.url,
+    createdAt: new Date().toISOString(),
     ...(opts.sourceHighlightId ? { sourceHighlightId: opts.sourceHighlightId } : {})
   }
 

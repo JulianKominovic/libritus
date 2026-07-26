@@ -9,7 +9,7 @@ import {
   seedSession
 } from './helpers/seed'
 
-test('annotation panel lists items and jump selects note', async () => {
+test('annotation panel lists items and jump centers note', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-ann-panel-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir, pages: 2 })
 
@@ -23,13 +23,15 @@ test('annotation panel lists items and jump selects note', async () => {
         id: 'panel-hl',
         x: 40,
         y: 100,
-        text: 'panel highlight text'
+        text: 'panel highlight text',
+        createdAt: '2026-01-01T00:00:00.000Z'
       }),
       seedNoteElement({
         id: 'panel-note',
         x: 200,
         y: 400,
-        text: 'panel note preview'
+        text: 'panel note preview',
+        createdAt: '2026-01-02T00:00:00.000Z'
       })
     ]
   })
@@ -45,15 +47,17 @@ test('annotation panel lists items and jump selects note', async () => {
     await expect(sidebar).toBeVisible()
 
     await page.getByRole('tab', { name: 'Annotations' }).click()
-    await expect(
-      page.getByRole('button', { name: 'Highlight: panel highlight text' })
-    ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Note: panel note preview' })).toBeVisible()
+    // Newest first: note before highlight
+    const noteRow = page.getByRole('button', { name: /Note: panel note preview/ })
+    const hlRow = page.getByRole('button', { name: /Highlight.*panel highlight text/ })
+    await expect(noteRow).toBeVisible()
+    await expect(hlRow).toBeVisible()
+    await expect(hlRow).toContainText(/Page \d+/)
 
-    await page.getByRole('button', { name: 'Note: panel note preview' }).click()
-    await expect(page.locator('[data-pdf-note]').filter({ hasText: 'panel note preview' })).toBeVisible({
-      timeout: 10_000
-    })
+    await noteRow.click()
+    await expect(
+      page.locator('[data-pdf-note]').filter({ hasText: 'panel note preview' })
+    ).toBeVisible({ timeout: 10_000 })
   } finally {
     await close()
   }
@@ -72,7 +76,7 @@ test('annotation panel empty state', async () => {
 
     await expect(page.getByLabel(/Document outline/)).toBeVisible()
     await page.getByRole('tab', { name: 'Annotations' }).click()
-    await expect(page.getByText('No highlights or notes yet.')).toBeVisible()
+    await expect(page.getByText('No annotations yet.')).toBeVisible()
   } finally {
     await close()
   }
@@ -95,14 +99,16 @@ test('annotation panel shows one row per highlight group', async () => {
         x: 40,
         y: 100,
         text,
-        groupId
+        groupId,
+        createdAt: '2026-01-01T00:00:00.000Z'
       }),
       seedHighlightElement({
         id: 'panel-g-b',
         x: 40,
         y: 124,
         text,
-        groupId
+        groupId,
+        createdAt: '2026-01-01T00:00:00.000Z'
       })
     ]
   })
@@ -117,7 +123,7 @@ test('annotation panel shows one row per highlight group', async () => {
     await expect(page.getByLabel(/Document outline/)).toBeVisible()
     await page.getByRole('tab', { name: 'Annotations' }).click()
 
-    const rows = page.getByRole('button', { name: `Highlight: ${text}` })
+    const rows = page.getByRole('button', { name: new RegExp(`Highlight.*${text}`) })
     await expect(rows).toHaveCount(1)
   } finally {
     await close()

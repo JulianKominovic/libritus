@@ -14,7 +14,7 @@ type NoteEmbedProps = {
   onExitEdit: () => void
 }
 
-function NoteStaticBody({ value }: { value: Value }) {
+export function NoteStaticBody({ value }: { value: Value }) {
   // usePlateEditor adds NavigationFeedbackPlugin (hooks in transformProps).
   // PlateStatic has no Plate store → crash. createSlateEditor = static-only core.
   const editor = useMemo(() => createSlateEditor({ plugins: BaseEditorKit, value }), [value])

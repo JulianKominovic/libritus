@@ -461,3 +461,13 @@ El activate del guest es host-owned: `pointerdown`/`pointerup` en capture sobre 
 
 Ignorar targets en `[data-browser-chrome], .layer-ui__wrapper, .context-menu, .excalidraw-toast-container` en activate/deactivate. Mismo filtro en el `pointermove` que frena hover de embeds, para no robar hover del UI.
 
+### `annotationList` no debe importar `pdfSearchCapture`
+
+#### Descripción más detallada
+
+Al listar search captures en Annotations, el approach natural fue `import { isPdfSearchCapture, … } from './pdfSearchCapture'`. Ese módulo importa Excalidraw runtime → rompe `bun:test` de `annotationList` (mismo motivo que el check inline histórico en `countCanvasStats`).
+
+#### Corrección
+
+Flags/getters locales inline (`customData?.pdfSearchCapture`, `fileId`, `query`) dentro de `annotationList.ts`. No importar `pdfSearchCapture` desde lógica que corre en unit tests sin Excalidraw.
+

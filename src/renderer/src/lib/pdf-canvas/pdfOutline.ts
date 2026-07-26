@@ -7,6 +7,22 @@ export type OutlineNode = {
   children: OutlineNode[]
 }
 
+export type FlatOutlineRow = {
+  title: string
+  pageIndex: number | null
+  depth: number
+}
+
+/** Depth-first flatten for virtualized outline lists (always expanded). */
+export function flattenOutline(nodes: OutlineNode[], depth = 0): FlatOutlineRow[] {
+  const out: FlatOutlineRow[] = []
+  for (const n of nodes) {
+    out.push({ title: n.title, pageIndex: n.pageIndex, depth })
+    if (n.children.length > 0) out.push(...flattenOutline(n.children, depth + 1))
+  }
+  return out
+}
+
 type RawOutlineItem = {
   title: string
   dest: string | Array<unknown> | null

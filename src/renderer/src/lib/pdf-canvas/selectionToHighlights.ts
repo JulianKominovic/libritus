@@ -86,6 +86,7 @@ export function selectionToHighlightSkeletons(
   const range = selection.getRangeAt(0)
   const lineBoxes = mergeSameLineRects(range.getClientRects())
   const groupId = crypto.randomUUID()
+  const createdAt = new Date().toISOString()
   const skeletons: ExcalidrawElementSkeleton[] = []
 
   for (const box of lineBoxes) {
@@ -112,7 +113,8 @@ export function selectionToHighlightSkeletons(
       customData: {
         pdfHighlight: true,
         text,
-        groupId
+        groupId,
+        createdAt
       } satisfies PdfHighlightData
     })
   }

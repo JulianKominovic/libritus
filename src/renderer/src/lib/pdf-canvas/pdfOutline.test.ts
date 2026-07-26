@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PdfDocument } from './PdfDocument'
-import { loadOutline } from './pdfOutline'
+import { flattenOutline, loadOutline, type OutlineNode } from './pdfOutline'
 
 function fakeDoc(proxy: {
   getOutline: () => Promise<unknown>
@@ -15,6 +15,30 @@ function fakeDoc(proxy: {
     destroy: async () => undefined
   } as unknown as PdfDocument
 }
+
+describe('flattenOutline', () => {
+  test('depth-first with depth; empty → []', () => {
+    expect(flattenOutline([])).toEqual([])
+    const tree: OutlineNode[] = [
+      {
+        title: 'A',
+        pageIndex: 0,
+        children: [
+          { title: 'A.1', pageIndex: 1, children: [] },
+          { title: 'A.2', pageIndex: 2, children: [{ title: 'A.2.1', pageIndex: 3, children: [] }] }
+        ]
+      },
+      { title: 'B', pageIndex: null, children: [] }
+    ]
+    expect(flattenOutline(tree)).toEqual([
+      { title: 'A', pageIndex: 0, depth: 0 },
+      { title: 'A.1', pageIndex: 1, depth: 1 },
+      { title: 'A.2', pageIndex: 2, depth: 1 },
+      { title: 'A.2.1', pageIndex: 3, depth: 2 },
+      { title: 'B', pageIndex: null, depth: 0 }
+    ])
+  })
+})
 
 describe('loadOutline', () => {
   test('empty / missing outline returns []', async () => {

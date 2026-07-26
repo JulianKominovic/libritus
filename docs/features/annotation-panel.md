@@ -1,6 +1,6 @@
 # Annotation panel (“my work”)
 
-Sidebar/panel listing the user’s highlights and notes for the open PDF, with jump-to on click.
+Sidebar/panel listing the user’s highlights, notes, and web search captures for the open PDF, with jump-to on click.
 
 **Status:** implemented (`PdfSidebar` Annotations tab + `annotationList`, wired in `PdfCanvasApp`).
 
@@ -10,17 +10,18 @@ Product north ([`product-north.md`](product-north.md)): lasting research lives o
 
 ## Product goals
 
-1. See all PDF highlights and WYSIWYG notes for the current document without hunting on the canvas.
-2. Click a row → select the element and move the camera so it is in view.
-3. Show enough preview to recognize the item (highlight snippet if available; note plain-text excerpt from `plateValue`).
+1. See all PDF highlights, WYSIWYG notes, and web search captures for the current document without hunting on the canvas.
+2. Click a row → move the camera so the item is centered (do **not** select).
+3. Rich enough preview to recognize the item (highlight page + snippet; note Plate read-only; search PNG or query chrome).
 4. Stay in sync with the live scene (create / delete / edit updates the list).
+5. Newest-first order by `createdAt`.
 
 Out of scope (for now):
 
 - Cross-document annotation inbox.
 - Full-text search inside notes (can share UI chrome with [`pdf-search.md`](pdf-search.md) later).
-- Editing note content inside the panel (jump + open on canvas / activate embed).
-- Freehand / arbitrary shapes in v1 of the panel (highlights + `pdfNote` only).
+- Editing note content inside the panel (jump only).
+- Freehand / arbitrary shapes in the panel.
 - Delete from the panel (use canvas Remove).
 - Relocating the list off `PdfSidebar` (destination / later only).
 
@@ -31,10 +32,13 @@ Out of scope (for now):
 | Control | Behavior |
 |---------|----------|
 | **Toggle** | Navbar panel-right button (and Settings → “Show PDF sidebar”); panel on the right. |
-| **Tab** | Outline / Pages / Annotations (shared Tabs UI). |
-| **List** | Flat list sorted by scene Y then X; kind label + truncated preview. |
-| **Row click** | Camera to element center; set `selectedElementIds` (no auto-edit). |
-| **Empty** | “No highlights or notes yet.” |
+| **Tab** | Outline / Pages / Annotations (shared Tabs UI). Chat tab is **hidden** (RAG UI deferred). |
+| **List** | Flat list sorted by `createdAt` desc; max height 200px per row with bottom fade when overflowing. |
+| **Highlight row** | Kind + page number next to date + text snippet. |
+| **Note row** | Kind + date + read-only Plate (`NoteStaticBody`). |
+| **Search row** | Kind + date + capture image (or query chrome if not yet promoted). |
+| **Row click** | Camera to element center; **no** `selectedElementIds`. |
+| **Empty** | “No annotations yet.” |
 
 Chrome: right overlay sidebar (`pointer-events-auto` in text-select mode).
 
@@ -42,14 +46,16 @@ Chrome: right overlay sidebar (`pointer-events-auto` in text-select mode).
 
 ## Model / approach
 
-- Source of truth: Excalidraw scene elements with `customData.pdfHighlight` / `customData.pdfNote`.
-- Multi-line text selection stamps a shared `customData.groupId` on every highlight rect → one list row, one Remove target, one logical highlight for stats.
+- Source of truth: Excalidraw scene elements with `customData.pdfHighlight` / `pdfNote` / `pdfSearchCapture`.
+- Stamp `createdAt` (ISO) at create. Legacy: `createdAt` → `capturedAt` → `el.updated`.
+- Multi-line text selection stamps a shared `customData.groupId` (+ same `createdAt`) on every highlight rect → one list row.
 - Derive list in `listAnnotations` (filter `isDeleted`, dedupe highlights by `groupId`); do **not** keep a parallel annotation store.
-- React list updates gated by `annotationsSignature` (id / kind / preview only — not geometry).
-- Jump: element AABB center → `scrollX` / `scrollY` + select.
-- Note preview: `platePlainText(plateValue)` truncated.
+- React list updates gated by `annotationsSignature` (id / kind / createdAt / preview / page / image presence — not geometry).
+- Jump: element AABB center → `scrollX` / `scrollY` only.
+- Note preview: full `plateValue` via `NoteStaticBody` (not editable).
+- Search preview: `fileId` → Excalidraw binary `dataURL` when available.
 
-When page-space lands ([`page-space-annotations.md`](page-space-annotations.md)), list rows can show `pageIndex` and sort by document order.
+When page-space lands ([`page-space-annotations.md`](page-space-annotations.md)), list rows can store `pageIndex` on the annotation itself instead of deriving from layout.
 
 ---
 
@@ -57,10 +63,11 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 
 | Feature | Interaction |
 |---------|----------|
-| **WYSIWYG notes** | Rows for `pdfNote`; click selects, does not auto-enter edit. |
-| **Highlights** | One row per `groupId` (multi-line selection = one unit); snippet from `customData.text`. |
-| **Web search capture** | Not listed here (canvas image / embed artifact). Catalog count is `canvasStats.searches` — see [`web-search-capture.md`](web-search-capture.md). |
+| **WYSIWYG notes** | Rows for `pdfNote`; click jumps, does not auto-enter edit. |
+| **Highlights** | One row per `groupId`; page via `PageLayout.pageIndexAtWorldPoint`; snippet from `customData.text`. |
+| **Web search capture** | Listed; image thumb after promote. Catalog count is `canvasStats.searches`. |
 | **Sessions** | No separate file — scene already persists. |
+| **PDF RAG chat** | Chat tab hidden from sidebar; Settings AI / indexing unchanged. |
 | **Essays HUD** | Essays are a different surface; do not mix into this list until essays exist. |
 
 ---
@@ -68,6 +75,7 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 ## Closed decisions
 
 1. Scene-derived list only (no second DB).
-2. Jump + select; do not auto-activate note edit.
-3. Highlights + notes first; shapes/arrows later if needed.
-4. Third tab on `PdfSidebar` (not a separate panel); toggle via navbar / settings. Leave as-is until a later nav-only-sidebar pass.
+2. Jump without select; do not auto-activate note edit.
+3. Highlights + notes + search captures; shapes/arrows later if needed.
+4. Third tab on `PdfSidebar` (not a separate panel); Chat hidden until canvas AI lands.
+5. Newest-first by `createdAt`.

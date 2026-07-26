@@ -355,7 +355,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   /** List identity/preview only — skip setState when signature unchanged. */
   const syncAnnotations = useCallback((elements: Parameters<typeof listAnnotations>[0]) => {
-    const items = listAnnotations(elements)
+    const layout = sessionRef.current?.layout
+    const files = apiRef.current?.getFiles() ?? {}
+    const items = listAnnotations(elements, {
+      pageIndexAt: (x, y) => layout?.pageIndexAtWorldPoint(x, y) ?? null,
+      fileDataURL: (fileId) => {
+        const f = files[fileId]
+        return typeof f?.dataURL === 'string' ? f.dataURL : null
+      }
+    })
     const sig = annotationsSignature(items)
     if (sig === annotationsSigRef.current) return
     annotationsSigRef.current = sig
@@ -1167,8 +1175,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       api.updateScene({
         appState: {
           scrollX,
-          scrollY,
-          selectedElementIds: { [id]: true }
+          scrollY
         }
       })
       markUnsaved()
@@ -1803,14 +1810,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       {session && pageCount > 0 && showPdfOutline ? (
         <PdfSidebar
           ref={pdfSidebarRef}
-          pdfId={pdfId}
           outline={outline}
           pageCount={pageCount}
           thumbPool={session.thumbPool}
           annotations={annotations}
           initialPage={currentPageRef.current}
           onGoToPage={goToPage}
-          onSelectAnnotation={goToAnnotation}
+          onGoToAnnotation={goToAnnotation}
         />
       ) : null}
 
