@@ -4,6 +4,7 @@
   "description": "Modern reading app designed to make reading simple, elegant, and enjoyable. Clean interface for exploring texts, highlighting key parts, and managing your reading experience without distractions. Built for curious minds. AI powered.",
   "main": "./out/main/index.js",
   "author": "Julian Kominovic",
+  "license": "CC-BY-NC-SA-4.0",
   "homepage": "https://github.com/JulianKominovic/libritus",
   "scripts": {
     "format": "prettier --write .",
