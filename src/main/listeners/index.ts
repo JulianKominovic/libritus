@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { APP_DATA_DIR } from '..'
 import { attachAiIpcListeners } from '../ai'
+import { atomicWriteFile } from '../atomicWrite'
 import { attachWebBrowserIpc } from '../web-browser'
 //@ts-expect-error - this is a raw file
 import PROSE_CSS_INJECTABLE from '../assets/prose-injectable.css?raw'
@@ -70,7 +71,7 @@ const attachIPCListeners = (): void => {
   })
   ipcMain.handle('write-file', async (_, { filename, data }) => {
     const fullPath = path.join(APP_DATA_DIR, filename)
-    await fs.writeFile(fullPath, data)
+    await atomicWriteFile(fullPath, data)
     return fullPath
   })
   ipcMain.handle('read-file', async (_, { filename }) => {

@@ -1,4 +1,5 @@
 import { readFile, writeFile } from '@renderer/integrations/fs'
+import { isSessionPersistFrozen } from './sessionPersistFreeze'
 import {
   parseSessionSnapshot,
   type SaveStatus,
@@ -25,6 +26,8 @@ export async function readSession(pdfId: string): Promise<SessionSnapshot | null
 }
 
 export async function writeSession(pdfId: string, snapshot: SessionSnapshot): Promise<void> {
+  // ponytail: ErrorBoundary freezes writes after crash so leave-flush cannot wipe disk.
+  if (isSessionPersistFrozen()) return
   const json = JSON.stringify(snapshot)
   await writeFile(sessionFilename(pdfId), new TextEncoder().encode(json))
 }

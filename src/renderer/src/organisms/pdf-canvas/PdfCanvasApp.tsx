@@ -14,6 +14,7 @@ import { enqueueRagIndex } from '@renderer/lib/ai/ipc'
 import { readFile } from '@renderer/integrations/fs'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
+import { clearSessionPersistFreeze, isSessionPersistFrozen } from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
 import {
   annotationsSignature,
   canvasStatsNeedWriteback,
@@ -238,7 +239,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     () => ({
       appState: {
         viewBackgroundColor: 'transparent',
-        currentItemArrowType: 'elbow' as const,
+        currentItemArrowType: 'sharp' as const,
         scrollX: INITIAL_CAMERA.scrollX,
         scrollY: INITIAL_CAMERA.scrollY,
         zoom: { value: INITIAL_CAMERA.zoom as NormalizedZoomValue }
@@ -462,6 +463,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [pdfId, sceneElementsForPersist])
 
   const writeSnapshotNow = useCallback(async (): Promise<boolean> => {
+    if (isSessionPersistFrozen()) return false
     if (!readyRef.current || !dirtyRef.current) {
       syncSaveChip('saved')
       return true
@@ -572,6 +574,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   useEffect(() => {
     const generation = ++openGenerationRef.current
     let cancelled = false
+    clearSessionPersistFreeze()
     readyRef.current = false
     dirtyRef.current = false
     lastSavedSigRef.current = ''
@@ -762,7 +765,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   useEffect(() => {
     return () => {
       clearSaveTimer()
-      if (dirtyRef.current && apiRef.current) {
+      // Frozen after ErrorBoundary crash — do not flush empty/corrupt scene over disk.
+      if (dirtyRef.current && apiRef.current && !isSessionPersistFrozen()) {
         const api = apiRef.current
         const cam = cameraRef.current
         const elements = JSON.parse(
@@ -773,7 +777,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
               .map((el) => normalizePdfSearchCapture(normalizePdfNote(el)))
           )
         ) as unknown[]
-        disposeBrowser()
         const snapshot: SessionSnapshot = {
           version: SESSION_VERSION,
           docId: pdfId,
@@ -790,6 +793,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         syncReadingProgress(categoryId, pdfId, currentPageRef.current, totalPages)
         syncCanvasStats(categoryId, pdfId, elements as Parameters<typeof countCanvasStats>[0])
       }
+      disposeBrowser()
       const current = sessionRef.current
       if (!current) return
       sessionRef.current = null

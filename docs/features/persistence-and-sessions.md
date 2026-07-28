@@ -131,5 +131,6 @@ Payload: scene elements + camera → `{pdfId}.session.json` (no attachment bytes
 2. [x] Open path restores session when present.
 3. [x] Autosave 5s + flush on leave.
 4. [x] Saved/Unsaved chip in UI.
-5. [ ] Atomic write (tmp + rename) if IPC gains support — currently overwrite via `write-file`.
-6. [ ] Migrate legacy highlights into session / page-space model.
+5. [x] Atomic write (tmp + fsync + rename) in main `write-file` IPC — see `src/main/atomicWrite.ts`.
+6. [x] Freeze session writes on canvas crash (`PdfCanvasErrorBoundary` + `sessionPersistFreeze`) so leave-flush cannot wipe disk.
+7. [ ] Migrate legacy highlights into session / page-space model.
