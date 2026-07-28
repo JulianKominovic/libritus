@@ -549,6 +549,61 @@ describe('pdfNotes', () => {
     expect(changed).toBe(false)
   })
 
+  test('syncPdfNoteArrows does not migrate free endBinding when host arrow already exists', () => {
+    // Add note → host pdfNoteArrow; user draws a free arrow ending on the same note.
+    // On reopen, migrate must not rewrite the free arrow into a second highlight→note connector.
+    const base = createWysiwygNote({ x: 200, y: 100, id: 'add-note' })
+    const note = {
+      ...base,
+      customData: {
+        ...base.customData,
+        pdfNote: true as const,
+        sourceHighlightId: 'hl-1'
+      }
+    } as OrderedExcalidrawElement
+    const hostArrow = {
+      ...fakeHighlight({ id: 'host-arr', x: 10, y: 20, width: 190, height: 80 }),
+      type: 'arrow' as const,
+      locked: true,
+      elbowed: false,
+      customData: {
+        pdfNoteArrow: true,
+        noteId: note.id,
+        side: 'right',
+        startX: 10,
+        startY: 32
+      },
+      startBinding: null,
+      endBinding: null,
+      points: [
+        [0, 0],
+        [190, 80]
+      ]
+    } as unknown as OrderedExcalidrawElement
+    const freeArrow = {
+      ...fakeHighlight({ id: 'free-arr', x: 50, y: 300, width: 40, height: -150 }),
+      type: 'arrow' as const,
+      locked: false,
+      customData: undefined,
+      startBinding: null,
+      endBinding: { elementId: note.id, focus: 0.5, gap: 8 },
+      points: [
+        [0, 0],
+        [40, -150]
+      ]
+    } as unknown as OrderedExcalidrawElement
+
+    const { elements } = syncPdfNoteArrows([note, hostArrow, freeArrow])
+    const free = elements.find((el) => el.id === 'free-arr')!
+    expect(isPdfNoteArrow(free)).toBe(false)
+    expect(free.x).toBe(50)
+    expect(free.y).toBe(300)
+    expect((free as { endBinding?: { elementId?: string } }).endBinding?.elementId).toBe(note.id)
+    expect(elements.filter((el) => !el.isDeleted && isPdfNoteArrow(el)).map((el) => el.id)).toEqual([
+      'host-arr'
+    ])
+  })
+
   test('syncPdfNoteArrows migrateBoundArrows:false leaves live endBinding arrow alone', () => {
     // Mid-draw: Excalidraw snaps arrow end to the note embeddable. Host must not
     // rewrite it on onChange or updateScene fights the draw → Maximum update depth.

@@ -487,3 +487,13 @@ Causa real: notas son embeddables bindable → mid-draw `endBinding` a la nota �
 
 `detachBindingsToPdfNotes` / `setPdfNotesLocked` mid-draw y rebase `sceneOrigin` para coords ≪1e6. El usuario rechazó ambos: quitan binding o son un parche de coords. El loop se corta **sin** tocar features: en `handleExcalidrawChange`, si `newElement`/`multiElement` ≠ null → no `updateScene` del host (solo `markUnsaved`). Bindings a notes intactos.
 
+### Migrate on open: flecha libre se fusionaba con Add-note arrow
+
+#### Descripción más detallada
+
+Add note crea `pdfNoteArrow` host. El usuario dibuja otra flecha libre con `endBinding` a esa misma note. Al reabrir, `migrateBoundArrows` (default en open) veía `endBinding` + `sourceHighlightId` y reescribía la flecha libre como un **segundo** `pdfNoteArrow` con geometría highlight→note → solape / “merge” con el conector automático.
+
+#### Corrección
+
+En el branch migrate: si ya existe un `pdfNoteArrow` vivo para ese `noteId`, no migrar. Legacy (solo endBinding, sin host arrow) sigue migrando.
+

@@ -126,6 +126,15 @@ export function syncPdfNoteArrows(
   const byId = new Map(elements.map((el) => [el.id, el]))
   let changed = false
 
+  // Notes that already have a live host connector — free endBinding arrows must not
+  // be rewritten into a second pdfNoteArrow (Add note + manual arrow overlap on reopen).
+  const notesWithHostArrow = new Set<string>()
+  for (const el of elements) {
+    if (el.isDeleted || !isPdfNoteArrow(el)) continue
+    const nid = el.customData?.noteId
+    if (typeof nid === 'string') notesWithHostArrow.add(nid)
+  }
+
   // Migrate legacy bound arrows → host-managed (once, typically on open).
   const migrated = migrateBoundArrows
     ? elements.map((el) => {
@@ -137,6 +146,8 @@ export function syncPdfNoteArrows(
         if (!note || !isPdfNote(note) || note.isDeleted) return el
         // Place-note free arrows keep Excalidraw bindings (no host pdfNoteArrow).
         if (typeof note.customData?.sourceHighlightId !== 'string') return el
+        // Add-note already has host arrow — leave user free arrows alone.
+        if (notesWithHostArrow.has(noteId)) return el
 
         changed = true
         const hl = noteArrowAnchor(elements, note, { startX: el.x, startY: el.y })
