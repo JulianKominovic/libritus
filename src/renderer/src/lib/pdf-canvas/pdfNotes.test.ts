@@ -488,6 +488,14 @@ describe('pdfNotes', () => {
 
   test('syncPdfNoteArrows migrates legacy endBinding arrows', () => {
     const note = createWysiwygNote({ x: 200, y: 100, id: 'legacy-note' })
+    const noteLinked = {
+      ...note,
+      customData: {
+        ...note.customData,
+        pdfNote: true as const,
+        sourceHighlightId: 'hl-legacy'
+      }
+    } as OrderedExcalidrawElement
     const legacyArrow = {
       ...fakeHighlight({ id: 'legacy-arr', x: 80, y: 180, width: 120, height: 0 }),
       type: 'arrow' as const,
@@ -496,7 +504,7 @@ describe('pdfNotes', () => {
       customData: undefined,
       startBinding: null,
       endBinding: {
-        elementId: note.id,
+        elementId: noteLinked.id,
         focus: 0,
         gap: 0,
         fixedPoint: [0, 0.5] as [number, number]
@@ -508,19 +516,73 @@ describe('pdfNotes', () => {
       ]
     } as unknown as OrderedExcalidrawElement
     const noteWithBound = {
-      ...note,
+      ...noteLinked,
       boundElements: [{ id: 'legacy-arr', type: 'arrow' as const }]
     } as OrderedExcalidrawElement
 
     const { elements, changed } = syncPdfNoteArrows([noteWithBound, legacyArrow])
     expect(changed).toBe(true)
     const arrow = elements.find((el) => el.id === 'legacy-arr')!
-    const fixedNote = elements.find((el) => el.id === note.id)!
+    const fixedNote = elements.find((el) => el.id === noteLinked.id)!
     expect(isPdfNoteArrow(arrow)).toBe(true)
     expect((arrow as { endBinding?: unknown }).endBinding).toBeNull()
     expect((arrow as { elbowed?: boolean }).elbowed).toBe(false)
     expect(fixedNote.boundElements).toBeNull()
     expect(Math.hypot(arrow.width, arrow.height)).toBeLessThan(5000)
+  })
+
+  test('syncPdfNoteArrows does not migrate endBinding without sourceHighlightId', () => {
+    const note = createWysiwygNote({ x: 200, y: 100, id: 'place-note' })
+    const freeArrow = {
+      ...fakeHighlight({ id: 'free-arr', x: 80, y: 180, width: 120, height: 0 }),
+      type: 'arrow' as const,
+      locked: false,
+      customData: undefined,
+      startBinding: null,
+      endBinding: { elementId: note.id, focus: 0, gap: 1 },
+      points: [
+        [0, 0],
+        [120, 0]
+      ]
+    } as unknown as OrderedExcalidrawElement
+    const { changed } = syncPdfNoteArrows([note, freeArrow])
+    expect(changed).toBe(false)
+  })
+
+  test('syncPdfNoteArrows migrateBoundArrows:false leaves live endBinding arrow alone', () => {
+    // Mid-draw: Excalidraw snaps arrow end to the note embeddable. Host must not
+    // rewrite it on onChange or updateScene fights the draw → Maximum update depth.
+    const note = createWysiwygNote({ x: 200, y: 100, id: 'live-note' })
+    const liveArrow = {
+      ...fakeHighlight({ id: 'live-arr', x: 80, y: 180, width: 40, height: 0 }),
+      type: 'arrow' as const,
+      locked: false,
+      elbowed: false,
+      customData: undefined,
+      startBinding: null,
+      endBinding: {
+        elementId: note.id,
+        focus: 0,
+        gap: 1
+      },
+      boundElements: null,
+      points: [
+        [0, 0],
+        [40, 0]
+      ]
+    } as unknown as OrderedExcalidrawElement
+
+    const { elements, changed } = syncPdfNoteArrows([note, liveArrow], {
+      migrateBoundArrows: false
+    })
+    expect(changed).toBe(false)
+    const arrow = elements.find((el) => el.id === 'live-arr')!
+    expect(isPdfNoteArrow(arrow)).toBe(false)
+    expect((arrow as { endBinding?: { elementId?: string } }).endBinding?.elementId).toBe(
+      note.id
+    )
+    expect(arrow.locked).toBe(false)
+    expect(arrow.width).toBe(40)
   })
 
   test('createNoteFromHighlight empty quote uses empty plate', () => {

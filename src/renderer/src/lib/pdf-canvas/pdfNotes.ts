@@ -110,45 +110,54 @@ function noteArrowAnchor(
 
 /**
  * Keep highlight→note arrows glued to the note without Excalidraw bindings.
- * Also migrates legacy endBinding/elbow arrows that explode on note drag.
+ * Optionally migrates legacy endBinding/elbow arrows that explode on note drag.
  *
  * ponytail: Excalidraw updateBoundElements (elbow or straight) blows up one-sided
  * connectors to ~1e5px when the bound embeddable moves. Host owns geometry.
+ *
+ * migrateBoundArrows: only on session restore. Live onChange must pass false —
+ * mid-draw endBinding to a note embeddable + host updateScene → Maximum update depth.
  */
 export function syncPdfNoteArrows(
-  elements: readonly OrderedExcalidrawElement[]
+  elements: readonly OrderedExcalidrawElement[],
+  opts?: { migrateBoundArrows?: boolean }
 ): { elements: OrderedExcalidrawElement[]; changed: boolean } {
+  const migrateBoundArrows = opts?.migrateBoundArrows !== false
   const byId = new Map(elements.map((el) => [el.id, el]))
   let changed = false
 
-  // Migrate legacy bound arrows → host-managed (once).
-  const migrated = elements.map((el) => {
-    if (el.isDeleted || el.type !== 'arrow' || isPdfNoteArrow(el)) return el
-    const endBinding = (el as { endBinding?: { elementId?: string } | null }).endBinding
-    const noteId = endBinding?.elementId
-    if (!noteId) return el
-    const note = byId.get(noteId)
-    if (!note || !isPdfNote(note) || note.isDeleted) return el
+  // Migrate legacy bound arrows → host-managed (once, typically on open).
+  const migrated = migrateBoundArrows
+    ? elements.map((el) => {
+        if (el.isDeleted || el.type !== 'arrow' || isPdfNoteArrow(el)) return el
+        const endBinding = (el as { endBinding?: { elementId?: string } | null }).endBinding
+        const noteId = endBinding?.elementId
+        if (!noteId) return el
+        const note = byId.get(noteId)
+        if (!note || !isPdfNote(note) || note.isDeleted) return el
+        // Place-note free arrows keep Excalidraw bindings (no host pdfNoteArrow).
+        if (typeof note.customData?.sourceHighlightId !== 'string') return el
 
-    changed = true
-    const hl = noteArrowAnchor(elements, note, { startX: el.x, startY: el.y })
-    const geo = arrowBetweenRects(hl, note)
-    return {
-      ...el,
-      ...geo,
-      locked: true,
-      elbowed: false,
-      startBinding: null,
-      endBinding: null,
-      customData: {
-        pdfNoteArrow: true,
-        noteId,
-        side: geo.side,
-        startX: geo.startX,
-        startY: geo.startY
-      } satisfies PdfNoteArrowData
-    } as OrderedExcalidrawElement
-  })
+        changed = true
+        const hl = noteArrowAnchor(elements, note, { startX: el.x, startY: el.y })
+        const geo = arrowBetweenRects(hl, note)
+        return {
+          ...el,
+          ...geo,
+          locked: true,
+          elbowed: false,
+          startBinding: null,
+          endBinding: null,
+          customData: {
+            pdfNoteArrow: true,
+            noteId,
+            side: geo.side,
+            startX: geo.startX,
+            startY: geo.startY
+          } satisfies PdfNoteArrowData
+        } as OrderedExcalidrawElement
+      })
+    : [...elements]
 
   if (changed) {
     // Drop boundElements refs to migrated arrows on notes.
@@ -162,7 +171,9 @@ export function syncPdfNoteArrows(
       return { ...el, boundElements: boundElements.length ? boundElements : null }
     })
     // Migration already mutated — always report changed even if geometry is a no-op.
-    const synced = syncPdfNoteArrows(cleared as OrderedExcalidrawElement[])
+    const synced = syncPdfNoteArrows(cleared as OrderedExcalidrawElement[], {
+      migrateBoundArrows: false
+    })
     return { elements: synced.elements, changed: true }
   }
 

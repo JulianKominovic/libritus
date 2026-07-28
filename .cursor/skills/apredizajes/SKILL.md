@@ -471,3 +471,19 @@ Al listar search captures en Annotations, el approach natural fue `import { isPd
 
 Flags/getters locales inline (`customData?.pdfSearchCapture`, `fileId`, `query`) dentro de `annotationList.ts`. No importar `pdfSearchCapture` desde lógica que corre en unit tests sin Excalidraw.
 
+### Long PDF arrow crash: no era ±1e6 / elbow, era migrate mid-draw
+
+#### Descripción más detallada
+
+Crash `Maximum update depth` al dibujar flecha manual con una nota presente (a veces en PDFs largos con logs `y≈3e6`). El approach inicial apuntó al clamp elbow / techo ±1e6 de Excalidraw. El usuario corrigió: también con flechas rectas, y **solo con NoteEmbed**.
+
+Causa real: notas son embeddables bindable → mid-draw `endBinding` a la nota → `syncPdfNoteArrows` migraba eso a `pdfNoteArrow` + `updateScene` pelea con el draw en curso.
+
+#### Corrección
+
+`syncPdfNoteArrows(..., { migrateBoundArrows })`. Live `onChange` pasa `false`; migrate legacy solo en open/restore (default `true`). Unit test: `migrateBoundArrows:false` deja la flecha con endBinding intacta. Migrate legacy solo si la nota tiene `sourceHighlightId` (Place note + flecha libre no se convierte en host arrow).
+
+#### Approach erróneo (no repetir)
+
+`detachBindingsToPdfNotes` / `setPdfNotesLocked` mid-draw y rebase `sceneOrigin` para coords ≪1e6. El usuario rechazó ambos: quitan binding o son un parche de coords. El loop se corta **sin** tocar features: en `handleExcalidrawChange`, si `newElement`/`multiElement` ≠ null → no `updateScene` del host (solo `markUnsaved`). Bindings a notes intactos.
+

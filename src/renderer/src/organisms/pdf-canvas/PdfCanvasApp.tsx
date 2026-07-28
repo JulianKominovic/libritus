@@ -916,7 +916,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           // Host arrows always — delete cascade + undo revive must not skip on embed hover spam.
           // IncludingDeleted: soft-deleted arrows stay in the store for revive after Ctrl+Z.
           let scene = api.getSceneElementsIncludingDeleted()
-          const syncedNotes = syncPdfNoteArrows(scene)
+          // ponytail: never host-updateScene mid-draw — fights Excalidraw's in-progress
+          // linear element (bindings to notes stay intact; we just don't rewrite the scene).
+          const drawing =
+            api.getAppState().newElement != null || api.getAppState().multiElement != null
+          if (drawing) {
+            markUnsaved()
+            return
+          }
+
+          // ponytail: never migrateBoundArrows on live onChange — mid-draw endBinding
+          // to a note embeddable + updateScene → Maximum update depth. Legacy migrate on open.
+          const syncedNotes = syncPdfNoteArrows(scene, { migrateBoundArrows: false })
           if (syncedNotes.changed) {
             scene = syncedNotes.elements
             api.updateScene({

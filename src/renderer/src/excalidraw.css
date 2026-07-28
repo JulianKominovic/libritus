@@ -112,3 +112,7 @@
 .excalidraw .FixedSideContainer.FixedSideContainer_side_top {
   top: 2px;
 }
+
+.excalidraw [title='Elbow arrow'] {
+  display: none !important;
+}
