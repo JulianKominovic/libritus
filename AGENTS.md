@@ -44,7 +44,7 @@ Guiding principles:
 | Outline + page thumbnails (sidebar) | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp` |
 | Annotation panel (highlights + notes + searches list) | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp` |
 | PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **hidden**) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
-| Annotation polish (partial): highlight color palette + delete note (keeps highlight); remaining: copy text in text-select without highlight | `HighlightToolbar`, `selectionToHighlights` (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`); note delete via Excalidraw + host `pdfNoteArrow` cleanup |
+| Annotation polish: highlight color palette + delete note (keeps highlight) + Copiar on toolbar | `HighlightToolbar`, `selectionToHighlights` (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`); note delete via Excalidraw + host `pdfNoteArrow` cleanup |
 
 ### Pending / roadmap
 
@@ -101,7 +101,7 @@ src/renderer/src/
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md) (Chat hidden), [`web-search-capture`](docs/features/web-search-capture.md), [`annotation-polish`](docs/features/annotation-polish.md) (partial — copy remaining), [`adaptive-pdf-render-scale`](docs/features/adaptive-pdf-render-scale.md) (Phase 1).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md) (Chat hidden), [`web-search-capture`](docs/features/web-search-capture.md), [`annotation-polish`](docs/features/annotation-polish.md), [`adaptive-pdf-render-scale`](docs/features/adaptive-pdf-render-scale.md) (Phase 1).
 
 Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`page-space-annotations`](docs/features/page-space-annotations.md) (optional), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md), [`navigation-history`](docs/features/navigation-history.md).
 

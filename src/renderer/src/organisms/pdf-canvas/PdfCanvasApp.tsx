@@ -1457,6 +1457,21 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     markUnsaved()
   }, [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks])
 
+  const copyActiveHighlightText = useCallback(() => {
+    const api = apiRef.current
+    const highlightId = activeHighlightIdRef.current
+    if (!api || !highlightId) return
+
+    const highlight = api.getSceneElements().find((el) => el.id === highlightId)
+    if (!highlight || highlight.isDeleted) return
+
+    const text = highlight.customData?.text
+    if (typeof text !== 'string' || !text.trim()) return
+
+    void navigator.clipboard.writeText(text)
+    hideHighlightToolbar()
+  }, [hideHighlightToolbar])
+
   const removeActiveHighlight = useCallback(() => {
     const api = apiRef.current
     const highlightId = activeHighlightIdRef.current
@@ -1806,6 +1821,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         onRecolor={recolorActiveHighlight}
         onAddNote={addNoteToActiveHighlight}
         onSearch={addSearchCaptureToActiveHighlight}
+        onCopy={copyActiveHighlightText}
         onRemove={removeActiveHighlight}
       />
 

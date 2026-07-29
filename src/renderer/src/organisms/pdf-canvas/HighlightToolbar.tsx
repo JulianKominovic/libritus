@@ -2,7 +2,7 @@ import {
   HIGHLIGHT_COLORS,
   normalizeHighlightColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
-import { Trash2 } from 'lucide-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { forwardRef } from 'react'
 
 type HighlightToolbarProps = {
@@ -10,11 +10,15 @@ type HighlightToolbarProps = {
   onRecolor: (color: string) => void
   onAddNote: () => void
   onSearch: () => void
+  onCopy: () => void
   onRemove: () => void
 }
 
 export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps>(
-  function HighlightToolbar({ activeColor, onRecolor, onAddNote, onSearch, onRemove }, ref) {
+  function HighlightToolbar(
+    { activeColor, onRecolor, onAddNote, onSearch, onCopy, onRemove },
+    ref
+  ) {
     return (
       <div
         ref={ref}
@@ -51,10 +55,10 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
         </button>
         <button
           type="button"
-          disabled
-          className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
+          onClick={onCopy}
         >
-          Traducir
+          Copiar
         </button>
         <div className="mx-1 w-px shrink-0 self-stretch bg-neutral-200" aria-hidden />
         <button
@@ -63,7 +67,7 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
           className="flex self-stretch items-center justify-center rounded-full px-3 text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
           onClick={onRemove}
         >
-          <Trash2 className="size-4" aria-hidden />
+          <DynamicIcon name="trash-2" className="size-4" aria-hidden />
         </button>
       </div>
     )
