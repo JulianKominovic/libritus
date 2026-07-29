@@ -1599,8 +1599,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         api.updateScene({
           appState: {
             zoom: { value: nextZoom as NormalizedZoomValue },
-            scrollX: state.scrollX + viewportX * (invZoom - invNext),
-            scrollY: state.scrollY + viewportY * (invZoom - invNext)
+            scrollX: state.scrollX + viewportX * (invNext - invZoom),
+            scrollY: state.scrollY + viewportY * (invNext - invZoom)
           }
         })
         return
