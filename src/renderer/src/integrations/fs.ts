@@ -1,5 +1,9 @@
-function convertFileSrc(path: string): string {
-  return `asset://${path}`
+/** Map an absolute OS path to the custom `asset:` protocol (Windows-safe). */
+function convertFileSrc(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/')
+  // pathToFileURL-style: Windows drive → /C:/…, POSIX already starts with /
+  const pathname = /^[a-zA-Z]:\//.test(normalized) ? `/${normalized}` : normalized
+  return `asset://${pathname}`
 }
 
 export async function writeFile(filename: string, data: Uint8Array): Promise<string> {

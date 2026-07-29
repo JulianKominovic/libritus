@@ -1,7 +1,7 @@
 {
   "name": "libritus",
   "version": "1.0.0",
-  "description": "Modern reading app designed to make reading simple, elegant, and enjoyable. Clean interface for exploring texts, highlighting key parts, and managing your reading experience without distractions. Built for curious minds. AI powered.",
+  "description": "Research workspace with an infinite PDF canvas.",
   "main": "./out/main/index.js",
   "author": "Julian Kominovic",
   "license": "CC-BY-NC-SA-4.0",
@@ -17,7 +17,7 @@
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps && mkdir -p src/renderer/public && rm -rf src/renderer/public/fonts && mkdir -p src/renderer/public/fonts && for f in Assistant Cascadia ComicShanns Excalifont Liberation Lilita Nunito Virgil; do cp -R \"node_modules/@excalidraw/excalidraw/dist/prod/fonts/$f\" src/renderer/public/fonts/; done",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
+    "build:win": "npm run build && electron-builder --win --x64",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "test": "bun test src",

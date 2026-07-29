@@ -23,6 +23,10 @@ const pdfStatPillClassName =
   'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1 tabular-nums'
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
+  const updatePdf = usePdfs((s) => s.updatePdf)
+  const debouncedUpdateName = useDebounceCallback((name: string) => {
+    updatePdf(categoryId, pdf.id, { name })
+  }, SLOW_DEBOUNCE_TIME)
   const [, drag, preview] = useDrag(() => ({
     type: PDF_CARD_DRAG_TYPE,
     previewOptions: {
@@ -37,57 +41,71 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
   const searchesNumber = pdf.canvasStats?.searches
   const essaysNumber = pdf.essays?.length
   return (
-    <ContextMenu key={pdf.id}>
-      <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>} asChild>
-        <Link
-          to={`/category/${categoryId}/${pdf.id}`}
-          className={
-            'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-transform duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:scale-105 group'
-          }
-        >
-          <img
-            ref={preview as unknown as React.Ref<HTMLImageElement>}
-            src={pdf.thumbnail || ''}
-            alt={pdf.name}
-            className={'size-full object-cover'}
-          />
-          <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
-            {essaysNumber && essaysNumber > 0 ? (
+    <div key={pdf.id} className="flex w-56 flex-col gap-2">
+      <ContextMenu>
+        <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>} asChild>
+          <Link
+            to={`/category/${categoryId}/${pdf.id}`}
+            className={
+              'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-[scale,box-shadow] duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:scale-105 group'
+            }
+          >
+            <img
+              ref={preview as unknown as React.Ref<HTMLImageElement>}
+              src={pdf.thumbnail || ''}
+              alt={pdf.name}
+              className={'size-full object-cover'}
+            />
+            <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
+              {essaysNumber && essaysNumber > 0 ? (
+                <p className={pdfStatPillClassName}>
+                  <DynamicIcon name="file-pen-line" className="size-4 text-morphing-700" />
+                  {essaysNumber}
+                </p>
+              ) : null}
+              {notesNumber && notesNumber > 0 ? (
+                <p className={pdfStatPillClassName}>
+                  <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
+                  {notesNumber}
+                </p>
+              ) : null}
+              {searchesNumber && searchesNumber > 0 ? (
+                <p className={pdfStatPillClassName}>
+                  <DynamicIcon name="globe" className="size-4 text-morphing-700" />
+                  {searchesNumber}
+                </p>
+              ) : null}
+              {highlightsNumber && highlightsNumber > 0 ? (
+                <p className={pdfStatPillClassName}>
+                  <DynamicIcon name="highlighter" className="size-4 text-morphing-700" />
+                  {highlightsNumber}
+                </p>
+              ) : null}
               <p className={pdfStatPillClassName}>
-                <DynamicIcon name="file-pen-line" className="size-4 text-morphing-700" />
-                {essaysNumber}
+                {pdf.progress.percentage > 0 ? (
+                  `${pdf.progress.percentage.toFixed(0)}%`
+                ) : (
+                  <i className="font-serif">New</i>
+                )}
               </p>
-            ) : null}
-            {notesNumber && notesNumber > 0 ? (
-              <p className={pdfStatPillClassName}>
-                <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
-                {notesNumber}
-              </p>
-            ) : null}
-            {searchesNumber && searchesNumber > 0 ? (
-              <p className={pdfStatPillClassName}>
-                <DynamicIcon name="globe" className="size-4 text-morphing-700" />
-                {searchesNumber}
-              </p>
-            ) : null}
-            {highlightsNumber && highlightsNumber > 0 ? (
-              <p className={pdfStatPillClassName}>
-                <DynamicIcon name="highlighter" className="size-4 text-morphing-700" />
-                {highlightsNumber}
-              </p>
-            ) : null}
-            <p className={pdfStatPillClassName}>
-              {pdf.progress.percentage > 0 ? (
-                `${pdf.progress.percentage.toFixed(0)}%`
-              ) : (
-                <i className="font-serif">New</i>
-              )}
-            </p>
-          </div>
-        </Link>
-      </ContextMenuTrigger>
-      <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
-    </ContextMenu>
+            </div>
+          </Link>
+        </ContextMenuTrigger>
+        <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
+      </ContextMenu>
+      <input
+        key={`pdf-name-${pdf.id}`}
+        className="w-full truncate bg-transparent text-center text-sm text-morphing-800 focus:outline-0"
+        defaultValue={pdf.name}
+        title={pdf.name}
+        onChange={(e) => {
+          const name = e.target.value.trim()
+          if (name) debouncedUpdateName(name)
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      />
+    </div>
   )
 }
 

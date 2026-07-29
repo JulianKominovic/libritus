@@ -13,6 +13,35 @@ No es un archivo de aprendizajes para usar siempre, sino que se usa para evitar 
 
 Este archivo es mantenido y actualizado por el agente.
 
+### Windows: create category no-op + no DevTools
+
+#### Descripción más detallada
+
+Tras arreglar titlebar/hash router, "Create category" no hacía nada. Causas: (1) `APP_DATA_DIR` no se creaba → `atomicWriteFile` ENOENT; (2) en Windows `fs.rename` no pisa el destino → falla al actualizar `categories.json`; (3) el `.then` del click tragaba el error. DevTools solo vía optimizer en `is.dev`, así que en el `.exe` no se podía inspeccionar.
+
+#### Corrección
+
+- `mkdir` del parent en `atomicWriteFile` + fallback unlink+rename en Windows.
+- `fs.mkdir(APP_DATA_DIR)` al `ready`.
+- F12 / Ctrl+Shift+I / Cmd+Option+I abren DevTools también empaquetado.
+- `convertFileSrc` + protocol `asset:` con paths Windows (`asset:///C:/…`).
+
+### Windows build: ARM por defecto + titlebar + file:// router
+
+#### Descripción más detallada
+
+`electron-builder --win` en Mac ARM genera **win-arm64**. En PCs x64 el installer falla o la app no abre (síntoma típico NSIS: "Falta el icono de acceso directo"). Además `description` larga en `package.json` corrompe el shortcut NSIS.
+
+La ventana usa `titleBarStyle: 'hidden'` pensado para macOS (traffic lights). En Windows/Linux sin `titleBarOverlay` **no hay** min/max/close.
+
+El renderer usa `useBrowserLocation` sobre `file://`. En Windows el pathname es `/C:/…/index.html` → las rutas `/` no matchean; los Links reescriben a `file:///C:/category/…` → home vacío / navegación muerta aunque el chrome se vea.
+
+#### Corrección
+
+- `build:win` → `--win --x64`; `win.target` NSIS x64; description corta; iconos NSIS explícitos.
+- `titleBarOverlay` en win/linux (height 50); traffic lights solo en darwin; navbar `pl-20` (mac) / `pr-36` (win).
+- `useHashLocation` cuando `location.protocol === 'file:'`.
+
 ### `sendWithPromise` null: text layer after PDF destroy
 
 #### Descripción más detallada
@@ -496,4 +525,14 @@ Add note crea `pdfNoteArrow` host. El usuario dibuja otra flecha libre con `endB
 #### Corrección
 
 En el branch migrate: si ya existe un `pdfNoteArrow` vivo para ese `noteId`, no migrar. Legacy (solo endBinding, sin host arrow) sigue migrando.
+
+### macOS: `Asset protocol error` / `net::ERR_FAILED` tras fix Windows
+
+#### Descripción más detallada
+
+Para Windows se cambió el handler `asset:` a `request.url.replace(/^asset:/, 'file:')`. En macOS las thumbnails/PDFs en `categories.json` siguen el formato legacy de Electron: `asset://localhost/%2FUsers%2F…`. El replace produce `file://localhost/%2FUsers%2F…` → `ERR_FAILED`.
+
+#### Corrección
+
+`replace` solo en `win32`. En darwin/linux: `file://${decodeURIComponent(new URL(request.url).pathname)}` (soporta `localhost/%2F…` y `asset:///Users/…`).
 

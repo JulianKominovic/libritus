@@ -46,14 +46,13 @@ describe('atomicWriteFile', () => {
     expect(await readFile(file, 'utf8')).toBe('GOOD')
   })
 
-  test('failed tmp write does not touch original', async () => {
+  test('creates missing parent directories', async () => {
     dir = await mkdtemp(path.join(tmpdir(), 'atomic-write-'))
-    const file = path.join(dir, 'session.json')
-    await writeFile(file, 'GOOD')
+    const file = path.join(dir, 'nested', 'deep', 'session.json')
 
-    const missingParent = path.join(dir, 'no-such-dir', 'session.json')
-    await expect(atomicWriteFile(missingParent, 'BAD')).rejects.toThrow()
+    await atomicWriteFile(file, 'OK')
 
-    expect(await readFile(file, 'utf8')).toBe('GOOD')
+    expect(await readFile(file, 'utf8')).toBe('OK')
   })
 })
+

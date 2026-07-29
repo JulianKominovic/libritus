@@ -95,5 +95,18 @@ const attachIPCListeners = (): void => {
       .then(() => true)
       .catch(() => false)
   })
+  ipcMain.handle(
+    'window:set-title-bar-overlay',
+    (event, opts: { color: string; symbolColor: string }) => {
+      if (process.platform === 'darwin') return
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) return
+      win.setTitleBarOverlay({
+        color: opts.color,
+        symbolColor: opts.symbolColor,
+        height: 32
+      })
+    }
+  )
 }
 export default attachIPCListeners

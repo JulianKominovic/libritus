@@ -1,11 +1,13 @@
 import { randomUUID } from 'crypto'
 import fs from 'fs/promises'
+import path from 'path'
 
 /** Write via tmp + fsync + rename so a crash mid-write cannot truncate the destination. */
 export async function atomicWriteFile(
   fullPath: string,
   data: Uint8Array | string
 ): Promise<void> {
+  await fs.mkdir(path.dirname(fullPath), { recursive: true })
   // Unique tmp: concurrent writes to the same path must not share one `.tmp`.
   const tmp = `${fullPath}.${randomUUID()}.tmp`
   await fs.writeFile(tmp, data)
@@ -15,5 +17,11 @@ export async function atomicWriteFile(
   } finally {
     await fh.close()
   }
-  await fs.rename(tmp, fullPath)
+  try {
+    await fs.rename(tmp, fullPath)
+  } catch {
+    // Windows cannot rename over an existing file (EPERM/EEXIST).
+    await fs.unlink(fullPath)
+    await fs.rename(tmp, fullPath)
+  }
 }

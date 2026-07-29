@@ -1,5 +1,6 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, net, protocol, shell } from 'electron'
+import fs from 'fs/promises'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import attachIPCListeners from './listeners'
@@ -56,18 +57,25 @@ function askRendererToFlushBeforeQuit(): void {
 
 function createWindow(): void {
   // Create the browser window.
+  // Mac: hidden title bar keeps traffic lights. Windows/Linux need titleBarOverlay
+  // or there are no min/max/close controls at all.
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
     title: 'Libritus',
     titleBarStyle: 'hidden',
-    titleBarOverlay: false,
-    trafficLightPosition: {
-      x: 16,
-      y: 17
-    },
     autoHideMenuBar: true,
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 16, y: 17 } }
+      : {
+          titleBarOverlay: {
+            // Default morphing-50 / morphing-900; renderer syncs on theme change.
+            color: '#ebebeb',
+            symbolColor: '#2f2f2f',
+            height: 32
+          }
+        }),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -83,6 +91,16 @@ function createWindow(): void {
     if (allowQuit) return
     e.preventDefault()
     askRendererToFlushBeforeQuit()
+  })
+
+  // Packaged builds: F12 / Ctrl+Shift+I (Cmd+Option+I on macOS).
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type !== 'keyDown') return
+    const toggle =
+      input.key === 'F12' ||
+      (input.key.toLowerCase() === 'i' && input.control && input.shift) ||
+      (input.key.toLowerCase() === 'i' && input.meta && input.alt)
+    if (toggle) mainWindow.webContents.toggleDevTools()
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -105,9 +123,10 @@ console.log(process.env.NODE_ENV)
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId(APP_ID)
+  await fs.mkdir(APP_DATA_DIR, { recursive: true })
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -118,12 +137,12 @@ app.whenReady().then(() => {
 
   protocol.handle('asset', async (request) => {
     try {
-      // Parse the URL to get the pathname
-      const url = new URL(request.url)
-      const filePath = decodeURIComponent(url.pathname)
-
-      // Create a proper file:// URL
-      const fileUrl = `file://${filePath}`
+      // Windows: asset:///C:/… — scheme swap keeps the drive letter.
+      // macOS/Linux: parse pathname so legacy asset://localhost/%2FUsers%2F… still works.
+      const fileUrl =
+        process.platform === 'win32'
+          ? request.url.replace(/^asset:/, 'file:')
+          : `file://${decodeURIComponent(new URL(request.url).pathname)}`
       return await net.fetch(fileUrl)
     } catch (error) {
       console.error('Asset protocol error:', error)

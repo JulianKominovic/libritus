@@ -123,8 +123,17 @@ function Navbar() {
   const setShowPdfOutline = useSettings((s) => s.setShowPdfOutline)
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
 
+  // Mac traffic lights sit on the left; Windows/Linux overlay controls on the right.
+  const isMac = window.electron.process.platform === 'darwin'
+
   return (
-    <nav className="w-full h-[50px] flex items-center justify-between px-4 pl-20 window-nav">
+    <nav
+      className={
+        isMac
+          ? 'w-full h-[50px] flex items-center justify-between px-4 pl-20 window-nav'
+          : 'w-full h-[50px] flex items-center justify-between px-4 pr-36 window-nav'
+      }
+    >
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
