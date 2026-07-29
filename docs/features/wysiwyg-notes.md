@@ -29,13 +29,15 @@ Out of scope (for now):
 | **Place note**             | Click canvas → create note centered on click; selected, not editing.                                 |
 | **Add note** (highlight)   | Creates note + locked host-managed arrow (no Excalidraw bindings). Initial placement: 1st/3rd/… right of highlight; 2nd/4th/… left. On drag, arrow re-anchors to the shortest highlight↔note AABB segment. |
 | **Remove** (highlight)     | Soft-deletes the highlight group + notes with matching `sourceHighlightId` + their `pdfNoteArrow`s + linked search captures / `pdfSearchArrow`s (see [`web-search-capture.md`](web-search-capture.md)). Place-note / Place-browser cards (no link) stay. |
+| **Remove note**            | Select note (edge) → Backspace/Delete: note + `pdfNoteArrow` gone; source highlight kept. See [`annotation-polish.md`](annotation-polish.md). |
+| **Highlight color**        | Palette on active highlight toolbar — see [`annotation-polish.md`](annotation-polish.md). |
 | **Edge / border drag**     | Excalidraw selection and move on the embeddable.                                                     |
 | **Click center**           | Activate embed → Plate editable (`activeEmbeddable`).                                                |
 | **Escape / click outside** | Leave edit mode (`activeEmbeddable` cleared). Toolbar clicks must **not** exit edit.                 |
 | **Type / format**          | `NoteEditorKit` while editing; writes `customData.plateValue`.                                       |
 | **Toolbar**                | Fixed sticky bar inside the note + floating bar on selection (no AI). Slash `/` and emoji supported. |
 
-Chrome: **Place note** / **Place browser** chips next to **Select text** (bottom-right). Highlight chips **Add note** / **Buscar** / **Remove** float above the active highlight (**Remove** cascades linked notes, search captures, and arrows via `idsDeletedWithHighlight`).
+Chrome: **Place note** / **Place browser** chips next to **Select text** (bottom-right). Highlight chips **Add note** / **Buscar** / **Remove** plus color palette float above the active highlight (**Remove** cascades linked notes, search captures, and arrows via `idsDeletedWithHighlight`; color + delete-note UX: [`annotation-polish.md`](annotation-polish.md)).
 
 Default note size: **320×240** (`NOTE_WIDTH` / `NOTE_HEIGHT`).
 

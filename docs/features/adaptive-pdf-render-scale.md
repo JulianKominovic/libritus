@@ -3,7 +3,7 @@
 **Status:** Phase 1 done; Phase 2 optional / not started.  
 **Related:** world-scale normalization ([`pageWorldScale.ts`](../../src/renderer/src/lib/pdf-canvas/pageWorldScale.ts)), roadmap LOD ([`docs/roadmap.md`](../roadmap.md)), memory notes in [`AGENTS.md`](../../AGENTS.md).
 
-This doc is a handoff for implementing sharper / more consistent page bitmaps across PDFs. It is **not** the full zoom-based LOD system (v2); it is the smaller fix that becomes necessary once pages are normalized to a shared world width.
+This doc is a handoff for implementing sharper / more consistent page bitmaps across PDFs. It is **not** the full zoom-based LOD system (see roadmap **Scale / memory**); it is the smaller fix that becomes necessary once pages are normalized to a shared world width. Excalidraw stays the canvas — LOD is host/pdf.js work.
 
 ---
 
@@ -104,11 +104,12 @@ Skip Phase 2 until Phase 1 is validated in product — most “definition differ
 
 ### Out of scope (do not sneak in)
 
-- Full zoom-based LOD / tile pyramid (roadmap v2).
+- Full zoom-based LOD / tile pyramid (roadmap **Scale / memory**).
 - Re-raster on every zoom tick.
 - Patching Excalidraw.
 - Putting page bitmaps into the Excalidraw element store.
 - Raising global `FIXED_RENDER_SCALE` without tying it to `worldScale` (makes huge PDFs worse for RAM).
+- Building a custom canvas engine for sharpness.
 
 ---
 

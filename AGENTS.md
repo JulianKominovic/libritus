@@ -1,16 +1,16 @@
 # AGENTS.md — Libritus Infinite PDF Canvas
 
-Context for agents working on this repo. **Product north** (research canvas): [`docs/features/product-north.md`](docs/features/product-north.md). Architecture: [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md). This file is the operational ground truth: what ships today, gaps vs the ideal, and conventions.
+Context for agents working on this repo. **Product north** (research canvas): [`docs/features/product-north.md`](docs/features/product-north.md). Architecture: [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md). This file is the operational ground truth: what ships today, gaps, and conventions.
 
 ## Project meta
 
-**Libritus** is an Electron **research workspace**. Reading a PDF on an **infinite canvas** is the entry point; the canvas holds the investigation (notes, highlights, diagrams, and — destination — other study artifacts). Stack today: Excalidraw + native pdf.js, whiteboard-style pan/zoom.
+**Libritus** is an Electron **research workspace**. Reading a PDF on an **infinite canvas** is the entry point; the canvas holds the investigation (notes, highlights, diagrams, and — destination — other study artifacts). Stack: **Excalidraw** + native pdf.js, whiteboard-style pan/zoom. We are **not** building a custom camera / Pixi engine while Excalidraw works well.
 
 Performance goal: PDFs with **3000+ pages** without degrading pan/zoom or render.
 
 Guiding principles:
 
-> Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations in page coordinates**.
+> Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations**.
 
 > Research belongs on the **canvas**. AI only on **explicit ask** — do **not** build or promote auto-summarize, auto-highlight, or auto-keyword features.
 
@@ -26,10 +26,10 @@ Guiding principles:
 | Session per PDF (`{pdfId}.session.json`: elements + camera) | `PdfCanvasApp`, `lib/pdf-canvas/session` |
 | Autosave debounce 5s + Saved/Unsaved + flush on leave | `PdfCanvasApp` |
 | Open PDF from category → ArrayBuffer → pdf.js | `PdfCanvasApp`, `PdfDocument` |
-| Column layout + gap | `PageLayout` |
+| Column layout + gap + world-scale normalization | `PageLayout`, `pageWorldScale` |
 | Virtualization: visible pages only (+ buffer) | `PagePool`, `PdfLayer` |
 | Reusable pool + cancel off-screen renders | `PagePool` |
-| Fixed-scale bitmap + CSS zoom (no re-raster on zoom) | `PdfRenderer`, `PdfLayer` |
+| Adaptive render density + CSS zoom (no re-raster on zoom) | `PdfRenderer`, `renderScaleForWorld`, `PdfLayer` |
 | Text layer only on visible pages | `TextLayerPool` |
 | “Select text” mode (pointer-events + manual wheel) | `PdfCanvasApp`, CSS |
 | Selection → locked Excalidraw highlights | `selectionToHighlights` |
@@ -42,47 +42,28 @@ Guiding principles:
 | Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |
 | PDF text search (find bar + jump + hit overlay) | `PdfFindBar`, `pdfSearch`, `PdfLayer.setSearchHit`, `PdfCanvasApp` |
 | Outline + page thumbnails (sidebar) | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp` |
-| Annotation panel (highlights + notes list) | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp` |
-| PDF RAG chat (local MiniLM + OpenRouter BYOK) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
+| Annotation panel (highlights + notes + searches list) | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp` |
+| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **hidden**) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
+| Annotation polish (partial): highlight color palette + delete note (keeps highlight); remaining: copy text in text-select without highlight | `HighlightToolbar`, `selectionToHighlights` (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`); note delete via Excalidraw + host `pdfNoteArrow` cleanup |
 
 ### Pending / roadmap
 
 | Priority | Feature | Notes |
 |----------|---------|--------|
-| **v1.1** | Canonical annotation model (`pageIndex` + page-space geometry) | Today live in Excalidraw **scene coords** |
+| **v1.1** | Finish annotation polish | Copy selected PDF text without creating a highlight |
+| **v1.1** | Optional page-space annotation model (`pageIndex` + page geometry) | Today live in Excalidraw **scene coords** (intentional); not a renderer-migration path |
 | **v1.1** | Migrate legacy highlights/comments/essays from `categories.json` | Old lector model — not wired to canvas |
-| **v1.1** | Page-stable highlights | Bridge toward renderer migration |
-| **v2** | Own camera + visual engine (Pixi or equivalent) | Camera is Excalidraw today |
-| **v2** | Spatial annotation culling + index | `findPdfHighlightAt` is linear scan |
-| **v2** | LOD / thumbnails | Single `FIXED_RENDER_SCALE = 2` |
-| **v2+** | Hi-res tiles, HTTP range, OPFS | Open loads whole PDF into RAM |
-| **Later** | Remove sidebar AI Chat; Q&A → canvas cards; nav-only sidebar | See [`product-north.md`](docs/features/product-north.md), roadmap |
+| **v1.1** | Essays HUD / reading shortcuts / navigation history | See feature specs |
+| **Scale** | Visible-set cap, LOD beyond Phase 1, evict release, streaming/OPFS | Stay on Excalidraw — see roadmap |
+| **Later** | Canvas Q&A cards; nav-only PDF sidebar; retire Chat silo | See [`product-north.md`](docs/features/product-north.md), roadmap |
 
 See [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
-## Optimal architecture (destination)
+## Current architecture
 
-Full detail: [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md).
-
-```
-React (infrequent UI)           Frame loop (rAF)
-─────────────────────           ────────────────
-toolbar, file open              camera → visible pages
-tool / selection UI             page pool + LOD textures
-note editors (HUD DOM)          annotation cull + draw
-```
-
-- **Target stack**: pdf.js (worker) + Pixi (or own canvas) + mutable camera outside React + Zustand; metadata/thumbs on disk or IDB if needed.
-- **Coords**: Screen ↔ World ↔ Page. Annotations **always** in page-space + `pageIndex`.
-- **Hard rule**: **pan/zoom must not re-render React**.
-
----
-
-## Current architecture (v1)
-
-Electron + React. Excalidraw = camera + annotation tools. PDF = virtualized DOM layer **underneath**, not Excalidraw shapes.
+Electron + React. **Excalidraw = camera + annotation tools.** PDF = virtualized DOM layer **underneath**, not Excalidraw shapes. Full write-up: [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md).
 
 ```
 src/main/                     # Electron main + IPC (read/write appData)
@@ -103,10 +84,11 @@ src/renderer/src/
   lib/pdf-canvas/
     PdfDocument.ts            # pdf.js wrapper (0-based public API)
     PageLayout.ts             # Y stack + queryVisible + page nav helpers
+    pageWorldScale.ts         # world-scale normalize + renderScaleForWorld
     PagePool.ts               # canvas slots, LRU, cancel
     ThumbPool.ts              # hard-capped low-scale thumbs for sidebar
     TextLayerPool.ts          # text layer slots
-    PdfRenderer.ts            # fixed-scale render
+    PdfRenderer.ts            # render at given pdf.js scale
     pdfOutline.ts             # embedded TOC → pageIndex tree
     annotationList.ts         # scene → highlight/note list + plate plain text + canvasStats
     selectionToHighlights.ts  # DOM selection → Excalidraw highlights
@@ -119,9 +101,9 @@ src/renderer/src/
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md), [`web-search-capture`](docs/features/web-search-capture.md).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md) (Chat hidden), [`web-search-capture`](docs/features/web-search-capture.md), [`annotation-polish`](docs/features/annotation-polish.md) (partial — copy remaining), [`adaptive-pdf-render-scale`](docs/features/adaptive-pdf-render-scale.md) (Phase 1).
 
-Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`annotation-polish`](docs/features/annotation-polish.md), [`page-space-annotations`](docs/features/page-space-annotations.md), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md).
+Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`page-space-annotations`](docs/features/page-space-annotations.md) (optional), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md), [`navigation-history`](docs/features/navigation-history.md).
 
 ### Flow
 
@@ -130,25 +112,25 @@ Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md
 3. Excalidraw `onScrollChange` / `onChange` → dirty → debounce 5s → session file.
 4. `PdfLayer`: world AABB → `layout.queryVisible` → `pool.syncVisible` / `textPool.syncVisible`.
 5. Zoom: same texture; only `translate * zoom` + `scale(zoom)`.
-6. Highlights: Excalidraw rects with `customData.pdfHighlight`, `locked: true` — **still scene space**.
+6. Highlights: Excalidraw rects with `customData.pdfHighlight`, `locked: true` — **scene space**.
 7. Notes: Excalidraw **embeddables** with `customData.pdfNote` + `plateValue` (solid fill); Plate via `renderEmbeddable` / `NoteEmbed` (see wysiwyg-notes doc).
 8. Search captures: placeholder embeddable → guest `BrowserWindow` on activate → PNG in `attachments/` → native Excalidraw `image` (see web-search-capture doc).
 
-### Conscious gaps vs optimal
+### Conscious gaps (improve on Excalidraw)
 
-| Optimal | Today |
-|---------|--------|
-| Own camera / stage | Excalidraw is source of truth |
+| Gap | Today |
+|-----|--------|
 | Page-space annotations | Scene coords (session persists scene-space on purpose) |
-| LOD / tiles | Fixed scale 2 |
-| Render outside React reconcile | Camera can still drive PdfLayer updates |
-| Spatial index | Linear element scan |
+| LOD / tiles | Adaptive density Phase 1 (`renderScaleForWorld`); no zoom-based LOD yet |
+| Camera outside React | Excalidraw owns camera; host syncs pools via refs |
+| Spatial index | Linear element scan (`findPdfHighlightAt`) |
+| Whole PDF in RAM | Open = ArrayBuffer → `getDocument({ data })` |
 
 ---
 
 ## Memory — diagnosis and levers
 
-~1 GB with a large PDF is plausible in this v1: scale-2 canvases + aggressive buffer + whole PDF in RAM + text layers + Excalidraw.
+~1 GB with a large PDF is plausible: page bitmaps + buffer + whole PDF in RAM + text layers + Excalidraw.
 
 Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still asks for N≫poolSize pages: both pools do `capacity = Math.max(poolSize, needed)`.
 
@@ -156,7 +138,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 | Source | What happens | Files |
 |--------|--------------|-------|
-| **Page bitmaps** | Each slot renders at `FIXED_RENDER_SCALE = 2`. Letter ≈ ~8 MB RGBA per page. | `PdfRenderer.ts`, `PagePool.ts` |
+| **Page bitmaps** | Each slot renders at `renderScaleForWorld(worldScale)` (~`TARGET_WORLD_DENSITY` = 2 device px per world CSS px, clamped). Letter ≈ ~8 MB RGBA per page at 2×. | `PdfRenderer.ts`, `pageWorldScale.ts`, `PagePool.ts` |
 | **Visibility buffer** | `PdfLayer` expands AABB with viewport size / zoom. Zoom-out explodes the visible set. | `PdfLayer.tsx`, `PageLayout.queryVisible` |
 | **Whole PDF in process** | Open = ArrayBuffer → `getDocument({ data })`. | `PdfDocument.ts`, `PdfCanvasApp` |
 | **Metadata pass** | `getPage` for all pages for sizes — warms worker on huge docs. | `PdfDocument.open` |
@@ -167,7 +149,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 1. Shrink `queryVisible` buffer (page-height based, not full viewport in all directions).
 2. Hard cap visible set (e.g. 3–5 nearest to camera center).
-3. Lower or LOD `FIXED_RENDER_SCALE` (2 → 1.5/1; later zoom-based LOD).
+3. Zoom-based LOD beyond Phase 1 adaptive density (see [`adaptive-pdf-render-scale.md`](docs/features/adaptive-pdf-render-scale.md)).
 4. Release resources on evict (`canvas.width = 0`, `page.cleanup()`).
 5. Text layer only in text-select mode or strict viewport.
 6. Avoid loading entire PDF as ArrayBuffer (streaming / range / OPFS).
@@ -178,8 +160,9 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - Put PDF pages into the Excalidraw element store (breaks virtualization).
 - Re-render pdf.js on every zoom tick.
-- Raise `FIXED_RENDER_SCALE` for sharpness without LOD or visible cap.
+- Raise render density for sharpness without LOD or visible cap.
 - Assume lowering `DEFAULT_POOL_SIZE` alone is enough.
+- Build a second canvas engine “for performance” without measuring Excalidraw as the bottleneck.
 
 ---
 
@@ -187,18 +170,18 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 1. **Electron shell** — IPC via `integrations/fs`; PDFs live as `{pdfId}.pdf` in appData; catalog in `categories.json`. Always import pdf.js via `lib/pdf-canvas/pdfjs.ts` (legacy build) — Electron's Chromium may lack `Map.getOrInsertComputed` that pdf.js 6 needs.
 2. **Never put PDF pages in the Excalidraw element store** — always the virtualized layer (`PagePool` / `PdfLayer`).
-3. **When extending annotations**, prefer `pageIndex` + page coords (even if Excalidraw paints in scene). Avoid deepening the scene-only dead end.
+3. **When extending annotations**, prefer `pageIndex` + page coords when adding new durable geometry (even if Excalidraw paints in scene). Do not deepen scene-only blindly — but scene-space sessions remain valid until page-space lands.
 4. **Heavy new resources** → same pool pattern: fixed slots, LRU, cancel, generation counter.
-5. **Do not re-rasterize on every zoom** — fixed bitmap + CSS/camera transform, except future LOD threshold changes.
+5. **Do not re-rasterize on every zoom** — fixed/adaptive bitmap + CSS/camera transform, except future LOD threshold changes.
 6. **`pageIndex` 0-based** in app; pdf.js 1-based only inside `PdfDocument.getPage`.
 7. Pointer-events / text-select live in CSS — do not break pass-through.
 8. Highlights: identity = `customData.pdfHighlight === true`; keep `locked`.
-9. Notes: identity = `customData.pdfNote === true`; solid fill (never transparent); geometry via DOM/`applyGeometry`, not React state on `onChange`.
+9. Notes: identity = `customData.pdfNote === true`; solid fill (never transparent); geometry via Excalidraw / DOM, not React state on `onChange`.
 10. Code/comments in English; product docs may be Spanish.
-11. Minimal scope: no refactors or deps “because optimal asks for them” unless the task requires it.
+11. Minimal scope: no refactors or deps “because optimal asks for them” unless the task requires it. **Do not** propose Pixi / own-camera rewrites by default.
 12. **Light mode only** — no `dark:` Tailwind prefixes.
 13. **Never patch Excalidraw** — no `node_modules` edits, `patch-package`, postinstall hacks, or local forks for bugs. Mitigate in the host (events, wrappers, public props) or live with it / upstream.
-14. **Product north** — prefer canvas artifacts for lasting research; do not invent auto-summarize / auto-highlight / auto-keyword AI. Sidebar Chat is legacy until removed (do not deepen that silo). Destination: PDF sidebar = nav only.
+14. **Product north** — prefer canvas artifacts for lasting research; do not invent auto-summarize / auto-highlight / auto-keyword AI. Sidebar Chat is hidden/legacy (do not deepen that silo). Destination: PDF sidebar = nav only.
 
 ---
 
@@ -238,7 +221,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `pdfSearchCapture` (create / normalize / promote-to-image / arrow sync / cascade ids / Google URL), `web-browser-url` (http allowlist), `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `ThumbPool` (hard cap + gen abort), `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList` (plate strip + list + signature + canvasStats searches), `pdfRag` (chunk / cosine / fingerprint), `ragIndexQueue` (serial embed queue). E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `web-search-capture.spec` (Buscar → capture + arrow; Place browser → unanchored google.com; cascade Remove; activate → PNG as image; open grace; restore image; re-activate), `highlights.spec` (text-select + zoom≠1 + Remove + cascade notes/arrows + leave flush), `autosave.spec` (debounce 5s), `canvas-stats.spec` (highlights/notes/searches writeback), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape), `outline-thumbs.spec` (outline jump + thumb jump), `annotation-panel.spec` (list + jump + empty), `rag-chat.spec` (Chat tab + Settings AI). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`, `sample-outline.pdf`.
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfNoteModel` / `pdfHighlightModel` hit-tests, `pdfSearchCapture` (create / normalize / promote-to-image / arrow sync / cascade ids / Google URL), `web-browser-url` (http allowlist), `session` parse (incl. missing `docId`), `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (zoom), `PagePool` (incl. gen abort), `TextLayerPool`, `ThumbPool` (hard cap + gen abort), `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList` (plate strip + list + signature + canvasStats searches), `pdfRag` (chunk / cosine / fingerprint), `ragIndexQueue` (serial embed queue), `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec` (restore + flush), `session-errors` (corrupt / version / missing PDF), `notes.spec` (place / edit / drag / Add note / plateValue persist), `web-search-capture.spec` (Buscar → capture + arrow; Place browser → unanchored google.com; cascade Remove; activate → PNG as image; open grace; restore image; re-activate), `highlights.spec` (text-select + zoom≠1 + Remove + cascade notes/arrows + leave flush), `autosave.spec` (debounce 5s), `canvas-stats.spec` (highlights/notes/searches writeback), `open-race.spec` (A→B), `quit-flush.spec`, `pdf-canvas.spec` (navigator + multi-page prev/next/jump), `search.spec` (find bar + hit + next/prev + Escape), `outline-thumbs.spec` (outline jump + thumb jump), `annotation-panel.spec` (list + jump + empty), `rag-chat.spec` (Chat tab + Settings AI). Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`expectSaved` / `expectUnsaved`). Fixtures: `sample.pdf`, `sample-2p.pdf`, `sample-outline.pdf`.
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

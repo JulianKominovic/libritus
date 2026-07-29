@@ -113,4 +113,4 @@ Google may show CAPTCHA in the guest. Acceptable for MVP; **Open in system brows
 - Traducir on same surface.
 - Multiple guest “tabs”.
 - Search card without screenshot as degraded artifact.
-- Page-space anchoring with the rest of annotation migration.
+- Optional page-space anchoring if/when [`page-space-annotations.md`](page-space-annotations.md) lands.

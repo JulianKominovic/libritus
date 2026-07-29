@@ -1,13 +1,13 @@
 ---
 name: reviewer
 description: >
-  REQUIRED after every completed feature, bug fix, or user request that
-  changed code — the parent agent must invoke this subagent before the final
-  reply (see rule post-feature-reviewer). Also use on explicit review /
-  code-review asks and before commits/PRs. Reviews introduced diffs for bugs,
-  regressions, performance, bad practices, user data loss/corruption
-  (sessions, PDFs, categories), missing tests, and mac/Windows/Linux
-  differences. Readonly. Applies all project rules + aprendizajes skill only.
+  Invoke after non-trivial / medium+ risk code changes (see rule
+  post-feature-reviewer) — not for trivial or low-risk diffs. Also use on
+  explicit review / code-review asks and before commits/PRs when asked.
+  Reviews introduced diffs for bugs, regressions, performance, bad practices,
+  user data loss/corruption (sessions, PDFs, categories), missing tests, and
+  mac/Windows/Linux differences. Readonly. Applies all project rules +
+  aprendizajes skill only.
 readonly: true
 ---
 

@@ -6,7 +6,7 @@ Canonical product direction for Libritus. Cite this first when deciding features
 
 ## What Libritus is
 
-A **desktop research workspace**. The entry point is reading a PDF on an infinite canvas. The PDF is the trigger; the canvas is the **memory of the investigation**.
+A **desktop research workspace**. The entry point is reading a PDF on an infinite canvas (Excalidraw + virtualized pdf.js). The PDF is the trigger; the canvas is the **memory of the investigation**.
 
 Not a passive lector. Not a place where AI reads for you.
 

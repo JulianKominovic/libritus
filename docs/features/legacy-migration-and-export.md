@@ -12,7 +12,7 @@ Bring old lector-era annotations into the canvas world, and let users get their 
 
 1. When opening a PDF that still has legacy `highlights` / comments / essays on `categories.json`, offer or automatically map them into the canvas session (and/or essay sidecar).
 2. Do not double-import: mark migrated state so reopen is idempotent.
-3. Prefer page-space targets when [`page-space-annotations.md`](page-space-annotations.md) exists; otherwise best-effort scene placement with documented limits.
+3. Prefer page-space targets if [`page-space-annotations.md`](page-space-annotations.md) has landed; otherwise best-effort scene placement with documented limits.
 
 ### Export
 

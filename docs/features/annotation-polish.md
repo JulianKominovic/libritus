@@ -2,7 +2,7 @@
 
 Day-to-day quality-of-life for highlights and notes: colors, delete note, copy text, small interaction fixes.
 
-**Status:** planned.
+**Status:** partial — highlight colors and remove note shipped; copy text without creating a highlight remains planned.
 
 ---
 
@@ -23,12 +23,19 @@ Out of scope (for now):
 
 ## UX
 
+### Done
+
 | Action | Behavior |
 |--------|----------|
-| **Highlight color** | Chip or palette on the active highlight toolbar (next to Add note / Remove). Persist color on the element. |
-| **Remove note** | Deletes the note embeddable; if an arrow exists solely for that note (from Add note), delete it too. Do **not** delete the source highlight unless asked. |
-| **Copy text** | With a DOM selection in text-select mode: Cmd/Ctrl+C copies plain text. Optional “Copy” chip. |
+| **Highlight color** | Palette on the active highlight toolbar (next to Add note / Buscar / Remove). Persist color on the highlight group (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`). |
+| **Remove note** | Select the note (grab the **edge**), then Backspace/Delete. Excalidraw deletes the note embeddable; host cleans up its `pdfNoteArrow`. Source highlight is **kept**. Undo restores note + arrow. No dedicated “Remove note” chip. |
 | **Remove highlight** | Done in v1: cascades notes with `sourceHighlightId` + their arrows (`idsDeletedWithHighlight`). |
+
+### Remaining
+
+| Action | Behavior |
+|--------|----------|
+| **Copy text** | With a DOM selection in text-select mode: Cmd/Ctrl+C copies plain text **without** creating a highlight. Optional “Copy” chip. |
 
 Default highlight appearance stays readable on light pages (light-mode only).
 
@@ -36,9 +43,9 @@ Default highlight appearance stays readable on light pages (light-mode only).
 
 ## Model / approach
 
-- Colors: store on highlight element (`backgroundColor` / `customData`) consistently with how `selectionToHighlights` creates rects.
-- Note delete: pure helper on elements array (mirror `createNoteFromHighlight` invariants in reverse).
-- Copy: `window.getSelection().toString()` — no need to invent a parallel selection model.
+- Colors: store on highlight element (`backgroundColor` / `customData`) consistently with how `selectionToHighlights` creates rects — shipped via `HighlightToolbar` + `setHighlightGroupColor`.
+- Note delete: Excalidraw keyboard delete when the note is selected; host ensures `pdfNoteArrow` is removed with the note (highlight preserved).
+- Copy (remaining): `window.getSelection().toString()` — no need to invent a parallel selection model.
 
 ---
 
@@ -52,8 +59,22 @@ Default highlight appearance stays readable on light pages (light-mode only).
 
 ---
 
-## Closed decisions (draft)
+## Closed decisions
 
-1. Small fixed palette beats full color picker for v1.
-2. Remove note ≠ Remove highlight.
-3. Copy text works without creating a highlight.
+1. **Final / shipped.** Small fixed palette beats full color picker for v1.
+2. **Final / shipped.** Remove note ≠ Remove highlight. UX = keyboard delete on selected note (not a chip); highlight stays.
+3. **Planned / open.** Copy text works without creating a highlight.
+
+---
+
+## Acceptance
+
+### Shipped
+
+- [x] Active highlight shows a small color palette next to Add note / Buscar / Remove; choosing a color updates the highlight group and persists in the session.
+- [x] Select a note (edge) → Backspace/Delete removes the note and its `pdfNoteArrow`; source highlight remains; undo restores note + arrow.
+
+### Remaining
+
+- [ ] In Select text mode, with a DOM text selection and **no** highlight created: Cmd/Ctrl+C copies the selected plain text to the clipboard.
+- [ ] Optional: a “Copy” chip on the text-select chrome that does the same.

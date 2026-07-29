@@ -1,30 +1,55 @@
 ---
-description: Always run the reviewer subagent after finishing a feature or user request that changed code.
+description: Run the reviewer subagent after non-trivial code changes that warrant review.
 alwaysApply: true
 ---
 
-# Post-feature: always run `reviewer`
+# Post-feature: run `reviewer` when the diff warrants it
 
-After you **finish** implementing a feature, bugfix, or any user request that **changed code** (or tests/config that affect runtime), you **must** invoke the project subagent **`reviewer`** (`.cursor/agents/reviewer.md`) before your final reply.
+After you **finish** implementing a feature, bug fix, or any user request that **changed code**, invoke the project subagent **`reviewer`** (`.cursor/agents/reviewer.md`) **only if** the change set is non-trivial / medium+ risk. Do not burn a reviewer turn on trivial or low-risk diffs.
 
-## How
+## When to run (any of these → invoke)
+
+- Touches **user data paths**: sessions (`*.session.json`), PDFs, `categories.json`, attachments, RAG indexes, atomic write / flush / dirty gate / open race.
+- Touches **canvas / Excalidraw host**: highlights, notes, search capture, arrows, embeddables, `onChange` / camera / session restore.
+- Touches **PDF runtime**: pools, virtualization, render scale, text layer, destroy order.
+- New or changed **non-trivial logic** (control flow, async, IPC, FS, URL/navigation, security-sensitive).
+- User-visible **behavior** change or bug fix with a plausible regression.
+- Cross-OS concerns (paths, protocols, rename, window chrome, accelerators).
+- User explicitly asked for a review / code-review / before commit-or-PR review.
+
+**When unsure** on product/runtime code: run the reviewer.
+
+## When to skip
+
+Skip if **all** of the following hold, or any hard skip below:
+
+### Hard skip
+
+- Read-only turn (questions, explanation, exploration) with **no** code/test changes.
+- User explicitly said to skip (`skip review`, `no reviewer`, etc.).
+- You are **already** inside the `reviewer` subagent.
+
+### Trivial / low-risk (skip reviewer)
+
+- Docs-only, comments-only, or copy/typo fixes with no behavior impact.
+- Agent/cursor rules, skills, or prompt wiring (unless the user asked to review that).
+- Pure formatting / rename with no semantic change.
+- One-line or obvious mechanical edit (import path, string constant, dead-code delete) with no persistence, canvas, IPC, or FS involvement.
+- Tests-only that mirror already-reviewed logic without changing production code.
+- Commit/PR request with no further code changes, unless the user asked for a review.
+
+If you skip because the diff is trivial, do **not** mention the reviewer in the final reply unless the user asks.
+
+## How (when running)
 
 1. Complete the implementation work first.
 2. Launch the `reviewer` subagent (Task tool, `subagent_type: "reviewer"`) to review the **introduced changes** for this request/session.
 3. In the prompt, tell it to review the current diff / files touched for this task (include branch/base if relevant).
 4. Surface the reviewer’s verdict and critical/high findings in your final message to the user (brief). Do not silently discard blocking findings.
 
-## When to skip
-
-Skip **only** if one of these is true:
-
-- The turn was read-only (questions, explanation, exploration) with **no** code/test changes.
-- The user only asked for a commit/PR/docs-only change with no behavior impact, **and** did not ask for a review.
-- The user explicitly said to skip review (`skip review`, `no reviewer`, etc.).
-- You are **already** inside the `reviewer` subagent.
-
 ## Do not
 
-- Do not treat a self-review in the main agent as a substitute.
-- Do not start new unrelated work instead of running the reviewer.
+- Do not treat a self-review in the main agent as a substitute when a review **is** warranted.
+- Do not start new unrelated work instead of running the reviewer when warranted.
 - Do not auto-fix review findings unless the user asks.
+- Do not invoke reviewer “just in case” on trivial diffs.

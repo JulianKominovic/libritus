@@ -1,6 +1,6 @@
 # Infinite PDF Canvas — Architecture
 
-How the infinite PDF canvas is built and where it should converge for scale. **Product why** (research canvas, canvas owns research, AI subordinate): [`docs/features/product-north.md`](../features/product-north.md).
+How the infinite PDF canvas is built today. **Product why** (research canvas, canvas owns research, AI subordinate): [`docs/features/product-north.md`](../features/product-north.md). Operational ground truth: [`AGENTS.md`](../../AGENTS.md).
 
 Performance goal: PDFs with **3000+ pages** without degrading pan/zoom or render.
 
@@ -13,55 +13,51 @@ Canvas shape (how the workspace is laid out):
 - The PDF is the axis of the canvas: pages stacked in a column across infinite space.
 - Continuous reading with free pan/zoom (whiteboard style, not classic PDF scroll).
 - Annotation / research layer on top: notes, highlights, arrows, freehand, web search captures, and (destination) other study artifacts.
-- Stable coordinates in document/page space — not screen pixels — so zoom, pan, and persistence do not break annotations.
+- Coordinates today are Excalidraw **scene space** (session persists scene-space on purpose). Page-space (`pageIndex` + page geometry) remains an optional stability upgrade — see [`page-space-annotations.md`](../features/page-space-annotations.md).
 - **Destination chrome:** PDF sidebar = outline + page thumbs only; lasting research lives on the canvas, not in research sidebars.
 
 ---
 
-## Optimal plan (target architecture)
+## Current architecture (Excalidraw + virtualized pdf.js)
 
-Architecture to converge toward for real scale (thousands of pages + many annotations). v1 can live on Excalidraw; this plan is the performance and control destination.
-
-### Target stack
+Excalidraw is the **camera and annotation surface**. We are **not** planning a custom visual engine (Pixi / own canvas) while Excalidraw continues to work well. Scale and memory work stays in the **host**: page culling, pools, render density, and session model — not a renderer rewrite.
 
 | Layer | Technology | Role |
 |-------|------------|------|
 | App / shell | Electron + Vite + React + TypeScript | Toolbar, library, side panels, settings |
-| PDF | `pdfjs-dist` in **Web Worker** | Parse, `getPage`, render to canvas/`OffscreenCanvas` |
-| Visual engine | **PixiJS v8** (preferred) or Canvas2D + own matrix | Layers, page sprites, stroke batching |
-| Camera | Own implementation (`x`, `y`, `zoom`) | Pan/zoom at 60fps, independent of React |
-| Hit-testing | Own spatial index + engine picker | Select annotations without scanning the whole doc |
-| Ink | `perfect-freehand` (+ point simplification) | Smooth freehand; persist as path |
-| UI state | Zustand | Active tool, selection, UI flags |
-| Document | Typed store | Page metadata, annotations, undo stack |
-| Persistence | Disk (appData) + optional IDB for thumbs | Docs, annotations, thumbnail cache |
-| Later | HTTP range streaming, tiles, OPFS | Huge remote PDFs / local cache |
+| PDF | `pdfjs-dist` (worker, via `lib/pdf-canvas/pdfjs.ts`) | Parse, `getPage`, render to canvas |
+| Canvas + tools | **Excalidraw** | Camera, freehand, shapes, undo, embeddables |
+| PDF layer | Virtualized DOM under Excalidraw | `PageLayout` + `PagePool` / `TextLayerPool` / `PdfLayer` |
+| UI state | React + Zustand (settings, categories) | Tools chrome, library, prefs |
+| Persistence | Disk (appData) | `{pdfId}.pdf`, `{pdfId}.session.json`, `attachments/` |
 
-**Why Pixi (or own canvas) and not a generic whiteboard at scale:** full control of culling, LOD, and memory budget. Excalidraw/tldraw shine for tools and UX, but a shape store with thousands of pages/elements does not scale like a scene engine with sprite pools and textures.
+### Integration approach
 
-### React vs frame loop
+- Excalidraw as annotation and interaction surface.
+- PDF as a **virtualized background** under Excalidraw (not 3000 native shapes).
+- Only visible pages (+ buffer) rasterize.
+- Highlights / notes / search captures are Excalidraw elements with `customData` identity (`pdfHighlight`, `pdfNote`, `pdfSearchCapture`).
+
+### React vs camera updates
 
 ```
-React (infrequent)           Frame loop (each frame / rAF)
-─────────────────────        ─────────────────────────────
-toolbar, modals              read camera
-file picker                  compute visible pages
-tool change → store          assign page pool slots
-selection UI                 blit textures / redraw overlay
-                             hit-test only on pointer events
+React (infrequent UI)           Host sync (onScrollChange / onChange)
+─────────────────────           ────────────────────────────────────
+toolbar, modals                 camera → PdfLayer → queryVisible
+file picker                     page / text / thumb pools
+tool / selection chrome         CSS transform (no re-raster on zoom)
+note / search embeds            host arrow sync, session dirty
 ```
 
-Rule: **pan/zoom must not trigger React re-render**. Camera lives in a mutable store or refs; React only subscribes to what the UI needs (tool, selection count, page indicator).
+Rule of thumb: **pan/zoom should not rebuild React state for geometry**. Prefer refs + imperative DOM (highlight toolbar, browser chrome) over `setState` from every Excalidraw `onChange`.
 
-### Coordinate system
-
-Three spaces; convert explicitly:
+### Coordinate system (today)
 
 | Space | Description |
 |-------|-------------|
 | **Screen** | Viewport pixels (`clientX/Y`) |
-| **World** | Infinite canvas plane (`camera`: world → screen) |
-| **Page** | Local to a page: top-left origin, PDF units or normalized 0–1 |
+| **Scene / world** | Excalidraw plane (`scrollX` / `scrollY` / `zoom`) |
+| **Page** | Local to a page via `PageLayout` (used for visibility, search hits, thumbs) |
 
 PDF layout in world space (column):
 
@@ -69,138 +65,71 @@ PDF layout in world space (column):
 pageGap = 24  // world units
 page[i].y = sum(page[0..i-1].height) + i * pageGap
 page[i].x = 0
-page[i].width / height = PDF viewport (base scale 1)
+page[i].width / height = PDF viewport × worldScale
 ```
 
-Every annotation is stored as:
+Annotations (highlights, notes, captures) live in **scene coords** in the session. Search-hit overlays already use page-space rects for drawing.
 
-```ts
-{
-  id: string
-  pageIndex: number
-  // geometry in page coords (not world, not screen)
-}
-```
+### PDF pipeline
 
-### Scene layer model
+1. **Open**: `readFile` → `getDocument({ data })` in worker.
+2. **Metadata pass**: sizes for each page → `PageLayout` (+ `pageWorldScale`).
+3. **Visible set**: viewport ∩ page rects → `pageIndex` list (+ buffer).
+4. **Page pool**: reusable slots; LRU / cancel; `renderScaleForWorld(worldScale)`.
+5. **Zoom**: same bitmap; CSS / camera transform only (no re-raster on zoom tick).
+6. **Text layer**: visible pages when needed for selection.
 
-```
-Stage / root
-├── Camera container (translate + scale)
-│   ├── PdfLayer
-│   │   └── PageSlot[0..N]     // fixed pool, not 3000 nodes
-│   ├── AnnotationLayer
-│   │   ├── Highlights
-│   │   ├── Strokes
-│   │   ├── Arrows / shapes
-│   │   └── Notes (anchors)    // pin on page; card can be DOM HUD
-│   └── SelectionOverlay
-└── HUD (DOM/React, screen space): toolbar, page #, note editors
-```
-
-### PDF pipeline (pdf.js)
-
-1. **Open**: `getDocument` in worker.
-2. **Metadata pass**: sizes for each page → skeleton layout without rasterizing.
-3. **Visible set**: viewport∩page rects → `pageIndex` list (+ buffer).
-4. **Page pool**: N reusable slots; LRU eviction.
-5. **Render job**: LOD scale → `page.render` → texture; cancel if scrolled away.
-6. **Text layer**: only for visible pages when needed for selection.
-
-### Virtualization algorithm
+### Scene layer model (conceptual)
 
 ```
-onCameraChange (throttled to rAF):
-  viewWorld = invert(camera) applied to screen rect
-  expand viewWorld by buffer
-
-  visible = pages whose worldAABB intersects expanded view
-  // binary search on Y — O(log n + k)
-
-  for page in visible:
-    ensureSlot(page)
-    ensureTexture(page, lodFor(zoom))
-
-  for slot in pool not in visible:
-    mark cold → candidate eviction
+Excalidraw stage
+├── Camera (Excalidraw scroll + zoom)
+│   ├── PdfLayer (DOM under canvas) — PageSlot pool
+│   └── Elements — highlights, notes, search images, freehand, arrows
+└── HUD (DOM/React, screen space): navigator, find bar, tool chips, sidebars
 ```
 
-Suggested budget:
+### Performance levers (stay on Excalidraw)
 
-| Zoom | Pages in pool | Resolution |
-|------|---------------|------------|
-| Far (overview) | many, low-res | thumbnail ~0.2–0.5x |
-| Reading | ~8–15 | 1x–1.5x devicePixelRatio |
-| Close | ~4–8 | 2x or tiles |
+These improve scale **without** replacing the whiteboard:
 
-### Annotation layer
-
-Types: `highlight`, `stroke`, `arrow`, `note`, optional `rect`/`ellipse` — all page-space geometry.
-
-Index: `annotationsByPage` + spatial index in world-space; cull to viewport; hit-test via index then fine test.
+| Lever | Intent |
+|-------|--------|
+| Shrink / hard-cap visible set | Memory independent of zoom-out buffer |
+| Adaptive / LOD render density | Sharp reading zoom; cheaper overview |
+| Evict release | Zero canvas buffers / `page.cleanup()` on pool evict |
+| Streaming / range / OPFS (later) | Do not keep entire PDF ArrayBuffer forever |
+| Optional page-space annotations | Stable anchors if layout constants change; better list order |
 
 ### Performance targets
 
 | Metric | Target |
 |--------|--------|
-| Pan/zoom | 60 fps with warm pool |
-| Visible page change | texture ready < 100–200 ms (cache hit <<) |
+| Pan/zoom | Smooth with warm pool |
+| Visible page change | texture ready < 100–200 ms (cache hit ≪) |
 | Bitmap memory | configurable hard cap + LRU |
 | Open metadata 3000 pages | usable skeleton in a few seconds |
-| Cold overview | progressive thumbnails in idle |
 
 ### Risks and mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| GPU textures too large | LOD + tiles; cap scale |
-| Fast scroll = render thrashing | debounce hi-res; show low-res immediately; cancel jobs |
-| Main thread blocked by React | camera and render outside reconcile |
-| Cross-page annotations | primary `pageIndex` + world points, or rare world-space annotations |
-| Huge remote PDF | range requests; do not load all into RAM |
+| GPU / RAM from page bitmaps | Density clamp + visible cap + LRU |
+| Fast scroll = render thrashing | cancel jobs; buffer; avoid React on every tick |
+| Whole PDF in RAM | later: range / OPFS |
+| Linear annotation hit-test | acceptable while element counts stay modest; index later if needed |
 
-### “Done” criteria for the optimal plan
+### “Done” criteria for scale (host work)
 
 - Open a 3000-page PDF and navigate end to end without freeze.
 - Only a bounded number of pages rasterized at once.
-- Thousands of strokes/highlights with viewport culling.
-- Usable zoom-out overview (thumbnails), sharp zoom-in (hi-res/tiles).
-- Reload app → annotations restored anchored to the same pages.
-
----
-
-## v1 — Excalidraw (current)
-
-For the first shippable version we prioritize speed and ready annotation UX:
-
-| Layer | Technology |
-|-------|------------|
-| App | Electron + React + TypeScript |
-| PDF | `pdfjs-dist` (worker) |
-| Canvas + tools | **Excalidraw** |
-| Library | Existing categories store + appData files |
-| Persistence | `{pdfId}.session.json` on disk |
-
-### Integration approach
-
-- Excalidraw as annotation and interaction surface.
-- PDF as a **virtualized background** under Excalidraw (not 3000 native shapes).
-- Only visible pages (+ buffer) render.
-- Annotations live in the Excalidraw layer; move toward page-space as soon as practical.
-
-### Conscious v1 limits
-
-- Excalidraw is not the optimal engine for thousands of pages as native shapes.
-- If the element store or render starts to hurt, migrate camera/PDF/annotation layer to the optimal plan and reimplement (or adapt) tools on top.
-
-### Bridge v1 → optimal
-
-Prefer storing annotations in the canonical model (`pageIndex` + page-space geometry) even while Excalidraw uses another format internally. Migration then becomes a renderer/tools change, not a document rewrite.
+- Usable zoom-out overview; sharp enough zoom-in for reading.
+- Reload app → annotations restored with the session.
 
 ---
 
 ## Guiding principle
 
-> Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations in page coordinates**.
+> Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations**.
 
-Excalidraw accelerates v1; the optimal plan is the destination when PDF size and annotation volume demand it.
+Excalidraw is the canvas stack. Improve the pdf.js host and session model; do not invent a second engine unless Excalidraw itself becomes the bottleneck and product decides otherwise.

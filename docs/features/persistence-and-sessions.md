@@ -16,10 +16,9 @@ Libritus already has a category library (`categories.json` + `{pdfId}.pdf` in El
 
 Out of scope for this feature (see roadmap):
 
-- Canonical page-space model (`pageIndex` + geometry) — v1 uses scene-space on purpose (PDF layout is stable).
+- Canonical page-space model (`pageIndex` + geometry) — v1 uses scene-space on purpose (PDF layout is stable); optional later — [`page-space-annotations.md`](page-space-annotations.md).
 - Migrating legacy highlights/comments from `categories.json` into the session.
 - LOD / thumbnails in IDB.
-- Leaving Excalidraw.
 
 ---
 
@@ -68,7 +67,7 @@ type SessionSnapshot = {
 
 **What goes in `elements`:** whatever Excalidraw has in the scene (`getSceneElements()`), filtered to exclude `isDeleted` when practical. The PDF is the `PdfLayer` underneath — not an element. Image elements store only `fileId` (bytes in `attachments/`).
 
-WYSIWYG notes store Plate `plateValue` in `customData` on the note rectangle (`pdfNote: true`). No separate notes file — see [`wysiwyg-notes.md`](wysiwyg-notes.md).
+WYSIWYG notes store Plate `plateValue` in `customData` on the note **embeddable** (`pdfNote: true`). No separate notes file — see [`wysiwyg-notes.md`](wysiwyg-notes.md).
 
 Web search captures ([`web-search-capture.md`](web-search-capture.md)): placeholder `embeddable` until screenshot; after capture / restore with `fileId`, native Excalidraw `image` whose PNG lives under `attachments/` (same path as other canvas images).
 
@@ -133,4 +132,4 @@ Payload: scene elements + camera → `{pdfId}.session.json` (no attachment bytes
 4. [x] Saved/Unsaved chip in UI.
 5. [x] Atomic write (tmp + fsync + rename) in main `write-file` IPC — see `src/main/atomicWrite.ts`.
 6. [x] Freeze session writes on canvas crash (`PdfCanvasErrorBoundary` + `sessionPersistFreeze`) so leave-flush cannot wipe disk.
-7. [ ] Migrate legacy highlights into session / page-space model.
+7. [ ] Migrate legacy highlights into session (see [`legacy-migration-and-export.md`](legacy-migration-and-export.md)).

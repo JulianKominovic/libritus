@@ -20,7 +20,7 @@ Out of scope (for now):
 - User-created bookmarks stored in session (nice later; start with PDF outline + page index).
 - Generating high-res thumbs for every page on open (use low-res / idle / LRU).
 - Replacing the top-left page navigator ([`pdf-navigation.md`](pdf-navigation.md)).
-- Changing Annotations / Chat tabs in this feature (leave as-is; Chat removal is later roadmap).
+- Changing Annotations / Chat tabs in this feature (Chat tab is already hidden; permanent removal is later roadmap).
 
 ---
 
@@ -47,7 +47,7 @@ In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 
 ### Thumbnails
 
-- Separate `ThumbPool` at `THUMB_SCALE = 0.25`, **not** the main `PagePool` bitmaps at `FIXED_RENDER_SCALE`.
+- Separate `ThumbPool` at `THUMB_SCALE = 0.25`, **not** the main `PagePool` bitmaps (`renderScaleForWorld`).
 - Hard-capped LRU + cancel; virtualized list drives `syncVisible`.
 - Identity: `pageIndex` 0-based.
 

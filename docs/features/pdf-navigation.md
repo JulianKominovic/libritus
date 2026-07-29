@@ -16,11 +16,11 @@ Page navigator chrome for the infinite canvas: current page, total, prev/next, a
 3. Prev / next move the camera to the adjacent page (same zoom, stable X).
 4. Without an open session, the control is hidden.
 
-Out of scope (for now):
+Out of scope (for this feature):
 
-- Page thumbnails / page sidebar.
-- PDF outline / bookmarks in the canvas chrome.
-- PageUp/PageDown / “fit page” shortcuts (easy later on the same helpers).
+- Page thumbnails / outline — shipped separately as [`pdf-outline-and-thumbnails.md`](pdf-outline-and-thumbnails.md).
+- PageUp/PageDown / “fit page” shortcuts — [`reading-shortcuts.md`](reading-shortcuts.md).
+- In-memory jump history popover — [`navigation-history.md`](navigation-history.md).
 - Persisting “last page” separately from camera (camera already covers position).
 
 ---

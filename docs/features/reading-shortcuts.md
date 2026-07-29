@@ -16,7 +16,7 @@ Out of scope (for now):
 
 - Full custom keymap UI / user-remappable bindings.
 - Vim-style modes.
-- Changing `FIXED_RENDER_SCALE` on zoom (LOD is a separate roadmap item).
+- Changing render density on zoom (LOD is a separate scale roadmap item).
 
 ---
 

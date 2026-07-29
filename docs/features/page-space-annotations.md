@@ -1,23 +1,23 @@
 # Page-space annotations
 
-Canonical annotation model: geometry in **page coordinates** + `pageIndex`, with Excalidraw (or a future renderer) as a paint layer only.
+Optional canonical annotation model: geometry in **page coordinates** + `pageIndex`, with Excalidraw as the paint/camera layer.
 
-**Status:** planned — roadmap v1.1; required before a renderer migration stays safe.
+**Status:** planned — roadmap v1.1 (optional stability upgrade). Scene-space persistence is intentional today (PDF column layout is stable). **Not** a prerequisite for leaving Excalidraw — we are staying on Excalidraw.
 
 ---
 
 ## Product goals
 
-1. Persist highlights/notes (and later arrows) as `{ pageIndex, …geometry in page space }` so they survive layout/camera/renderer changes.
-2. Keep painting on Excalidraw in v1.1 by projecting page-space → scene coords via `PageLayout`.
-3. Stop deepening the scene-only dead end for new annotation features.
-4. Make list/search/jump features orderable by document position.
+1. Persist highlights/notes (and later arrows) as `{ pageIndex, …geometry in page space }` so they survive layout-constant changes (gap, world scale).
+2. Keep painting on Excalidraw by projecting page-space → scene coords via `PageLayout`.
+3. Make list/search/jump features orderable by document position (reliable “page N”).
 
 Out of scope (for now):
 
-- Replacing Excalidraw with Pixi (v2).
+- Replacing Excalidraw / building a custom renderer.
 - Rewriting freehand into page-space on day one (start with highlights + notes).
 - Changing PDF bytes or page order.
+- Blocking other features until this lands.
 
 ---
 
@@ -68,7 +68,6 @@ User-facing behavior should stay the same (select text → highlight, place note
 
 - Stable marks if column gap / layout constants change.
 - Reliable “page N” in [`annotation-panel.md`](annotation-panel.md).
-- Safer path to a non-Excalidraw renderer later.
 
 ---
 
@@ -79,8 +78,8 @@ User-facing behavior should stay the same (select text → highlight, place note
 | **Persistence** | Versioned session; migration from pure scene-space snapshots. |
 | **Selection → highlights** | Write page-space at create time. |
 | **WYSIWYG notes** | Store page anchor; project embeddable rect for paint. |
-| **Legacy migration** | Map old lector highlights into page-space, not scene guesses when possible. |
-| **Search hit overlay** | Same page-space rect language. |
+| **Legacy migration** | Map old lector highlights into page-space when available; else best-effort scene placement. |
+| **Search hit overlay** | Same page-space rect language (already used for hits). |
 
 ---
 
@@ -96,4 +95,4 @@ User-facing behavior should stay the same (select text → highlight, place note
 
 1. `pageIndex` 0-based everywhere in app code.
 2. Highlights + notes first; freehand later.
-3. Excalidraw remains paint/camera in v1.1.
+3. Excalidraw remains paint/camera; this model is optional host data, not a renderer migration path.
