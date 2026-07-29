@@ -1,0 +1,9 @@
+node_modules/ 
+dist/ 
+*.lock 
+coverage/ 
+*.min.js 
+*.map
+skills-lock.json
+out/
+*.tsbuildinfo

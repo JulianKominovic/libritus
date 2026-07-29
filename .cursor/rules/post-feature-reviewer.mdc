@@ -1,0 +1,30 @@
+---
+description: Always run the reviewer subagent after finishing a feature or user request that changed code.
+alwaysApply: true
+---
+
+# Post-feature: always run `reviewer`
+
+After you **finish** implementing a feature, bugfix, or any user request that **changed code** (or tests/config that affect runtime), you **must** invoke the project subagent **`reviewer`** (`.cursor/agents/reviewer.md`) before your final reply.
+
+## How
+
+1. Complete the implementation work first.
+2. Launch the `reviewer` subagent (Task tool, `subagent_type: "reviewer"`) to review the **introduced changes** for this request/session.
+3. In the prompt, tell it to review the current diff / files touched for this task (include branch/base if relevant).
+4. Surface the reviewer’s verdict and critical/high findings in your final message to the user (brief). Do not silently discard blocking findings.
+
+## When to skip
+
+Skip **only** if one of these is true:
+
+- The turn was read-only (questions, explanation, exploration) with **no** code/test changes.
+- The user only asked for a commit/PR/docs-only change with no behavior impact, **and** did not ask for a review.
+- The user explicitly said to skip review (`skip review`, `no reviewer`, etc.).
+- You are **already** inside the `reviewer` subagent.
+
+## Do not
+
+- Do not treat a self-review in the main agent as a substitute.
+- Do not start new unrelated work instead of running the reviewer.
+- Do not auto-fix review findings unless the user asks.
