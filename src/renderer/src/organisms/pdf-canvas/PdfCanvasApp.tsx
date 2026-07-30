@@ -854,6 +854,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [flushSave])
 
   // Flush before in-app <a> navigations (breadcrumbs, etc.) leave this PDF.
+  // Hash-router (file://) Links use href="#/…"; bare "#frag" is not a route change.
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       if (!dirtyRef.current) return
@@ -867,13 +868,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (!(anchor instanceof HTMLAnchorElement)) return
 
       const href = anchor.getAttribute('href')
-      if (!href || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('#')) {
+      if (!href || href.startsWith('http') || href.startsWith('mailto:')) return
+
+      if (href.startsWith('#')) {
+        if (!href.startsWith('#/')) return
+        const next = href.slice(1) // `/path`
+        const current = location.hash.replace(/^#/, '') || '/'
+        if (next === current) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        void flushSave().then(() => {
+          setLocation(next)
+        })
         return
       }
 
-      const url = new URL(href, window.location.origin)
+      const url = new URL(href, window.location.href)
       if (url.origin !== window.location.origin) return
-      if (url.pathname === window.location.pathname) return
+      if (url.pathname === window.location.pathname && url.search === window.location.search) {
+        return
+      }
 
       event.preventDefault()
       event.stopImmediatePropagation()

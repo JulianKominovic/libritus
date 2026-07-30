@@ -536,3 +536,23 @@ Para Windows se cambió el handler `asset:` a `request.url.replace(/^asset:/, 'f
 
 `replace` solo en `win32`. En darwin/linux: `file://${decodeURIComponent(new URL(request.url).pathname)}` (soporta `localhost/%2F…` y `asset:///Users/…`).
 
+### E2E: `Current page` nunca aparece / browser closed tras `useHashLocation`
+
+#### Descripción más detallada
+
+Tras el switch a `useHashLocation` en `file:` (packaged / e2e vía `loadFile`), `navigatePdf` seguía con `history.pushState('/category/…')` + `popstate`. Eso reescribe a `file:///category/…` y el router hash no cambia → la home sigue visible; el wait de `Current page` falla (a veces como "browser has been closed" cuando el test timeout cierra Electron).
+
+#### Corrección
+
+Helpers e2e: si `location.protocol === 'file:'` → `location.hash = path`; si no, pushState+popstate. Centralizar en `navigateApp` / `navigatePdf` / `navigateCategory`.
+
+### Leave Home con hash router: flush escribe `elements: []`
+
+#### Descripción más detallada
+
+El click interceptor en `PdfCanvasApp` hacía early-return si `href.startsWith('#')` (pensado para anclas). Con `useHashLocation`, los `<Link>` son `#/…` → no flush antes de navegar. El cleanup de unmount a veces escribe escena vacía (Excalidraw ya teardown) → wipe de highlights/notes. Tests de "Remove" pasaban en falso porque empty también cumple "highlight gone".
+
+#### Corrección
+
+Tratar `#/…` como navegación in-app (flush + `setLocation(href.slice(1))`); solo ignorar `#frag` sin `/`.
+

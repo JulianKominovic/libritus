@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { expectSaved, tmpAppData } from './helpers/canvas'
 import { launchApp } from './helpers/launch'
 import {
+  navigateCategory,
   openPdf,
   seedHighlightElement,
   seedLibrary,
@@ -13,10 +14,7 @@ import {
 } from './helpers/seed'
 
 async function openCategory(page: Page, categoryId: string): Promise<void> {
-  await page.evaluate((id) => {
-    history.pushState(null, '', `/category/${id}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }, categoryId)
+  await navigateCategory(page, categoryId)
   await page.getByRole('heading', { name: /\d+ pdfs/ }).waitFor({ state: 'visible', timeout: 30_000 })
 }
 

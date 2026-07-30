@@ -165,19 +165,34 @@ export async function readSessionFile(
   }
 }
 
+/**
+ * Client-side navigate within the SPA.
+ * Production/e2e loads file://…/index.html and uses wouter hash location (`#/…`);
+ * path pushState would become file:///category/… and never match.
+ */
+export async function navigateApp(page: Page, path: string): Promise<void> {
+  await page.evaluate((to) => {
+    if (location.protocol === 'file:') {
+      location.hash = to.startsWith('/') ? to : `/${to}`
+      return
+    }
+    history.pushState(null, '', to)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }, path)
+}
+
 /** Client-side navigate to PDF route (does not wait for canvas ready). */
 export async function navigatePdf(
   page: Page,
   categoryId: string,
   pdfId: string
 ): Promise<void> {
-  await page.evaluate(
-    ({ categoryId: cat, pdfId: id }) => {
-      history.pushState(null, '', `/category/${cat}/${id}`)
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    },
-    { categoryId, pdfId }
-  )
+  await navigateApp(page, `/category/${categoryId}/${pdfId}`)
+}
+
+/** Client-side navigate to category route. */
+export async function navigateCategory(page: Page, categoryId: string): Promise<void> {
+  await navigateApp(page, `/category/${categoryId}`)
 }
 
 export async function openPdf(

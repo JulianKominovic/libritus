@@ -3,13 +3,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { seedTwoCategories } from './helpers/seed'
+import { navigateCategory, seedTwoCategories } from './helpers/seed'
 
 async function openCategory(page: Page, categoryId: string): Promise<void> {
-  await page.evaluate((id) => {
-    history.pushState(null, '', `/category/${id}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }, categoryId)
+  await navigateCategory(page, categoryId)
   await page.getByRole('heading', { name: /\d+ pdfs/ }).waitFor({ state: 'visible', timeout: 30_000 })
 }
 
