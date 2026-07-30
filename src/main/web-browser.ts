@@ -1,5 +1,14 @@
 import { randomUUID } from 'crypto'
-import { app, BrowserWindow, ipcMain, session, shell, type Session, type WebContents } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  session,
+  shell,
+  WebContentsView,
+  type Session,
+  type WebContents
+} from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import { APP_DATA_DIR } from '.'
@@ -14,9 +23,10 @@ type OpenPayload = {
   bounds: BrowserBounds
 }
 
-/** App window that hosts the PDF canvas — never the guest overlay. */
+/** App window that hosts the PDF canvas. */
 let host: BrowserWindow | null = null
-let guest: BrowserWindow | null = null
+/** Guest browser surface — child of host contentView (not a separate BrowserWindow). */
+let guest: WebContentsView | null = null
 let loadedUrl = ''
 /** Deactivate/hide before this timestamp is ignored (open race). */
 let ignoreDeactivateUntil = 0
@@ -70,7 +80,7 @@ function guestSession(): Session {
 function resolveHost(): BrowserWindow | null {
   if (host && !host.isDestroyed()) return host
   for (const w of BrowserWindow.getAllWindows()) {
-    if (w !== guest && !w.isDestroyed()) {
+    if (!w.isDestroyed()) {
       host = w
       return w
     }
@@ -78,28 +88,57 @@ function resolveHost(): BrowserWindow | null {
   return null
 }
 
+function guestAlive(): boolean {
+  return guest != null && !guest.webContents.isDestroyed()
+}
+
 function guestContents(): WebContents | null {
-  if (!guest || guest.isDestroyed()) return null
+  if (!guestAlive() || !guest) return null
   const wc = guest.webContents
   if (!wc || wc.isDestroyed()) return null
   return wc
 }
 
+/** Attach guest to host contentView (reorder to top if already a child). */
+function attachGuest(parent: BrowserWindow): void {
+  if (!guestAlive() || !guest) return
+  parent.contentView.addChildView(guest)
+}
+
+/**
+ * Tear down guest completely. Only for browser:close / quit — never mid-load.
+ * Deactivate must hide only (see browser:deactivate).
+ */
 function disposeGuest(): void {
-  if (guest && !guest.isDestroyed()) {
-    guest.destroy()
+  const parent = resolveHost()
+  if (parent && !parent.isDestroyed() && guest) {
+    try {
+      parent.contentView.removeChildView(guest)
+    } catch {
+      // not attached
+    }
+  }
+  if (guest) {
+    const wc = guest.webContents
+    if (wc && !wc.isDestroyed()) {
+      wc.close()
+    }
   }
   guest = null
   loadedUrl = ''
 }
 
+function hideGuest(): void {
+  if (!guestAlive() || !guest) return
+  guest.setVisible(false)
+}
+
 function applyBounds(bounds: BrowserBounds): void {
-  const parent = resolveHost()
-  if (!parent || !guest || guest.isDestroyed()) return
-  const origin = parent.getContentBounds()
+  if (!guestAlive() || !guest) return
+  // Renderer sends window-client coords (Excalidraw viewport = contentView space).
   guest.setBounds({
-    x: Math.round(origin.x + bounds.x),
-    y: Math.round(origin.y + bounds.y),
+    x: Math.round(bounds.x),
+    y: Math.round(bounds.y),
     width: Math.max(1, Math.round(bounds.width)),
     height: Math.max(1, Math.round(bounds.height))
   })
@@ -148,24 +187,14 @@ function zoomGuestBy(deltaLevel: number): number {
   return factor
 }
 
-function ensureGuest(parent: BrowserWindow): BrowserWindow {
+function ensureGuest(parent: BrowserWindow): WebContentsView {
   host = parent
-  if (guest && !guest.isDestroyed()) return guest
+  if (guestAlive() && guest) {
+    attachGuest(parent)
+    return guest
+  }
 
-  // No `parent:` — child windows + focus races aborted loadURL (ERR_FAILED) in-app.
-  guest = new BrowserWindow({
-    show: false,
-    frame: false,
-    hasShadow: false,
-    roundedCorners: false,
-    resizable: false,
-    maximizable: false,
-    minimizable: false,
-    fullscreenable: false,
-    skipTaskbar: true,
-    autoHideMenuBar: true,
-    width: 430,
-    height: 930,
+  guest = new WebContentsView({
     webPreferences: {
       session: guestSession(),
       nodeIntegration: false,
@@ -174,30 +203,30 @@ function ensureGuest(parent: BrowserWindow): BrowserWindow {
     }
   })
 
-  guest.setMenu(null)
-  guest.webContents.setZoomFactor(GUEST_ZOOM_FACTOR)
+  const wc = guest.webContents
+  wc.setZoomFactor(GUEST_ZOOM_FACTOR)
 
-  guest.webContents.setWindowOpenHandler(({ url }) => {
+  wc.setWindowOpenHandler(({ url }) => {
     if (isHttpUrl(url)) void guestContents()?.loadURL(url)
     return { action: 'deny' }
   })
 
-  guest.webContents.on('will-navigate', (event, url) => {
+  wc.on('will-navigate', (event, url) => {
     if (isBlockedUrl(url)) event.preventDefault()
   })
 
-  guest.webContents.on('did-navigate', (_e, url) => {
+  wc.on('did-navigate', (_e, url) => {
     if (isHttpUrl(url)) loadedUrl = url
   })
 
-  guest.webContents.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
+  wc.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
     if (!isMainFrame) return
     // -3 ERR_ABORTED is normal for redirects; -2 may be a superseded navigation.
     if (code === -3) return
     console.warn('browser did-fail-load', { code, desc, url })
   })
 
-  guest.webContents.on('before-input-event', (event, input) => {
+  wc.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
     if (input.key === 'Escape') {
       resolveHost()?.webContents.send('browser:escape')
@@ -215,11 +244,13 @@ function ensureGuest(parent: BrowserWindow): BrowserWindow {
     }
   })
 
-  guest.on('closed', () => {
+  wc.on('destroyed', () => {
     guest = null
     loadedUrl = ''
   })
 
+  attachGuest(parent)
+  guest.setVisible(false)
   return guest
 }
 
@@ -253,23 +284,21 @@ async function persistCapturePng(png: Buffer): Promise<string | null> {
 export function attachWebBrowserIpc(): void {
   ipcMain.handle('browser:open', async (_e, payload: OpenPayload) => {
     if (!isHttpUrl(payload.url)) throw new Error('Only http(s) URLs are allowed')
-    const win = resolveHost() ?? BrowserWindow.getAllWindows().find((w) => w !== guest) ?? null
+    const win = resolveHost() ?? BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ?? null
     if (!win) throw new Error('No browser window')
 
     const view = ensureGuest(win)
     const zoomFactor = setGuestZoomFactor(GUEST_ZOOM_FACTOR)
     ignoreDeactivateUntil = Date.now() + OPEN_GRACE_MS
     applyBounds(payload.bounds)
-    // Keep guest above the host while browsing — chrome clicks focus the host
-    // and would otherwise bury this frameless window (no parent:).
-    view.setAlwaysOnTop(true, 'floating')
-    if (!view.isVisible()) view.showInactive()
+    // ponytail: hide-not-detach — never removeChildView mid-load (historical ERR_FAILED).
+    view.setVisible(true)
     navigate(payload.url)
     return { ok: true as const, zoomFactor }
   })
 
   ipcMain.handle('browser:setBounds', (_e, bounds: BrowserBounds) => {
-    if (!guest || guest.isDestroyed()) return { ok: false as const }
+    if (!guestAlive()) return { ok: false as const }
     applyBounds(bounds)
     return { ok: true as const }
   })
@@ -315,8 +344,8 @@ export function attachWebBrowserIpc(): void {
     }
 
     const wc = guestContents()
-    if (!wc || !guest || guest.isDestroyed()) {
-      disposeGuest()
+    if (!wc || !guestAlive()) {
+      hideGuest()
       return { fileId: null as string | null, url: '' }
     }
 
@@ -328,7 +357,7 @@ export function attachWebBrowserIpc(): void {
       url = ''
     }
 
-    // Capture before hide — isVisible can be false after host steals focus on some platforms.
+    // Capture before hide.
     try {
       const png = (await wc.capturePage()).toPNG({ scaleFactor: 2 })
       fileId = await persistCapturePng(png)
@@ -343,13 +372,12 @@ export function attachWebBrowserIpc(): void {
       console.warn('browser:deactivate cookie flush failed', err)
     }
 
-    guest.hide()
-    guest.setAlwaysOnTop(false)
+    // Hide only — keep attached so the next open does not recreate mid-race.
+    hideGuest()
     return { fileId, url: isHttpUrl(url) ? url : '' }
   })
 
   ipcMain.handle('browser:close', () => {
-    if (guest && !guest.isDestroyed()) guest.setAlwaysOnTop(false)
     disposeGuest()
     return { ok: true as const }
   })

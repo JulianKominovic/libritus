@@ -6,17 +6,59 @@ if (typeof globalThis.document === 'undefined') {
     createElement: () => ({
       style: { setProperty: () => undefined },
       className: '',
+      classList: { add: () => undefined, remove: () => undefined, contains: () => false },
       replaceChildren: () => undefined,
-      append: () => undefined
-    })
+      append: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined
+    }),
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    getSelection: () => null
+  }
+  ;(globalThis as { window: unknown }).window = {
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined
   }
 } else {
+  const doc = globalThis.document as Document & {
+    addEventListener?: (...a: unknown[]) => void
+    removeEventListener?: (...a: unknown[]) => void
+    getSelection?: () => null
+  }
+  if (typeof doc.addEventListener !== 'function') {
+    doc.addEventListener = () => undefined
+  }
+  if (typeof doc.removeEventListener !== 'function') {
+    doc.removeEventListener = () => undefined
+  }
+  if (typeof doc.getSelection !== 'function') {
+    doc.getSelection = () => null
+  }
+  if (typeof globalThis.window === 'undefined') {
+    ;(globalThis as { window: unknown }).window = {
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined
+    }
+  } else {
+    const win = globalThis.window as Window & {
+      addEventListener?: (...a: unknown[]) => void
+      removeEventListener?: (...a: unknown[]) => void
+    }
+    if (typeof win.addEventListener !== 'function') {
+      win.addEventListener = () => undefined
+    }
+    if (typeof win.removeEventListener !== 'function') {
+      win.removeEventListener = () => undefined
+    }
+  }
   const orig = globalThis.document.createElement.bind(globalThis.document)
   globalThis.document.createElement = ((tag: string) => {
     const el = orig(tag) as HTMLElement & {
       style: CSSStyleDeclaration & { setProperty?: (...a: unknown[]) => void }
       replaceChildren?: () => void
       append?: () => void
+      addEventListener?: (...a: unknown[]) => void
     }
     if (!el.style?.setProperty) {
       Object.defineProperty(el, 'style', {
@@ -26,6 +68,7 @@ if (typeof globalThis.document === 'undefined') {
     }
     if (!el.replaceChildren) el.replaceChildren = () => undefined
     if (!el.append) el.append = () => undefined
+    if (!el.addEventListener) el.addEventListener = () => undefined
     return el
   }) as typeof document.createElement
 }

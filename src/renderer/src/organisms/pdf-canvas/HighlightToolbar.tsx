@@ -6,6 +6,8 @@ import { DynamicIcon } from 'lucide-react/dynamic'
 import { forwardRef } from 'react'
 
 type HighlightToolbarProps = {
+  /** True while a DOM text selection awaits commit (no scene highlight yet). */
+  pending?: boolean
   activeColor: string
   onRecolor: (color: string) => void
   onAddNote: () => void
@@ -16,16 +18,21 @@ type HighlightToolbarProps = {
 
 export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps>(
   function HighlightToolbar(
-    { activeColor, onRecolor, onAddNote, onSearch, onCopy, onRemove },
+    { pending = false, activeColor, onRecolor, onAddNote, onSearch, onCopy, onRemove },
     ref
   ) {
     return (
       <div
         ref={ref}
         className="pointer-events-auto absolute z-90 hidden -translate-x-1/2 -translate-y-full gap-1 rounded-full border border-neutral-200 bg-white p-1 pl-2 shadow-lg h-11 items-center justify-center"
+        // Keep DOM selection while clicking toolbar (pending create path).
+        onMouseDown={(e) => e.preventDefault()}
+        data-highlight-toolbar
       >
         {HIGHLIGHT_COLORS.map(({ id, color }) => {
-          const selected = normalizeHighlightColor(activeColor) === normalizeHighlightColor(color)
+          const selected =
+            !pending &&
+            normalizeHighlightColor(activeColor) === normalizeHighlightColor(color)
           return (
             <button
               key={id}
@@ -60,15 +67,19 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
         >
           Copiar
         </button>
-        <div className="mx-1 w-px shrink-0 self-stretch bg-neutral-200" aria-hidden />
-        <button
-          type="button"
-          aria-label="Remove"
-          className="flex self-stretch items-center justify-center rounded-full px-3 text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
-          onClick={onRemove}
-        >
-          <DynamicIcon name="trash-2" className="size-4" aria-hidden />
-        </button>
+        {!pending ? (
+          <>
+            <div className="mx-1 w-px shrink-0 self-stretch bg-neutral-200" aria-hidden />
+            <button
+              type="button"
+              aria-label="Remove"
+              className="flex self-stretch items-center justify-center rounded-full px-3 text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
+              onClick={onRemove}
+            >
+              <DynamicIcon name="trash-2" className="size-4" aria-hidden />
+            </button>
+          </>
+        ) : null}
       </div>
     )
   }

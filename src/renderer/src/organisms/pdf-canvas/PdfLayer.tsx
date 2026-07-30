@@ -24,7 +24,6 @@ type PdfLayerProps = {
 	layout: PageLayout;
 	pool: PagePool;
 	textPool: TextLayerPool;
-	textSelectMode: boolean;
 };
 
 function visibleEqual(a: number[], b: number[]): boolean {
@@ -39,12 +38,10 @@ function PageSlotView({
 	page,
 	slot,
 	textSlot,
-	textSelectMode,
 }: {
 	page: PageRect;
 	slot?: PageSlot;
 	textSlot?: TextLayerSlot;
-	textSelectMode: boolean;
 }) {
 	const canvasHostRef = useRef<HTMLDivElement>(null);
 	const textHostRef = useRef<HTMLDivElement>(null);
@@ -96,27 +93,22 @@ function PageSlotView({
 				<div className="h-full w-full animate-pulse bg-neutral-100" />
 			)}
 			{textSlot?.ready ? (
-				<div
-					ref={textHostRef}
-					className={`absolute inset-0 ${
-						textSelectMode ? "pointer-events-auto" : "pointer-events-none"
-					}`}
-				/>
+				<div ref={textHostRef} className="pointer-events-auto absolute inset-0" />
 			) : null}
 		</div>
 	);
 }
 
 /**
- * Readonly visual PDF layer under Excalidraw. Text layer accepts hits only in
- * text-select mode (Excalidraw interactive canvas is made pass-through via CSS).
+ * Readonly visual PDF layer under Excalidraw. Text layer is always hittable;
+ * the host gates Excalidraw pass-through so elements stay above text.
  * Only mounts canvases / text layers for pages currently tracked by the pools.
  *
  * Camera updates are imperative (`applyCamera`) so pan/zoom does not re-render
  * React — only CSS transform + culling when the visible page set changes.
  */
 export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
-	function PdfLayer({ layout, pool, textPool, textSelectMode }, ref) {
+	function PdfLayer({ layout, pool, textPool }, ref) {
 		const [visible, setVisible] = useState<number[]>([]);
 		const [, setTick] = useState(0);
 
@@ -247,7 +239,6 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 								page={page}
 								slot={pool.getSlot(pageIndex)}
 								textSlot={textPool.getSlot(pageIndex)}
-								textSelectMode={textSelectMode}
 							/>
 						);
 					})}

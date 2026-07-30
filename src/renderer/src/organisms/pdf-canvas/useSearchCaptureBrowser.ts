@@ -40,7 +40,7 @@ type UseSearchCaptureBrowserArgs = {
 }
 
 /**
- * Guest BrowserWindow lifecycle for search captures.
+ * Guest WebContentsView lifecycle for search captures.
  * Owned by activeBrowserCaptureIdRef (not activeEmbeddable — guest steals focus mid-load).
  */
 export function useSearchCaptureBrowser({
@@ -272,7 +272,7 @@ export function useSearchCaptureBrowser({
     [apiRef, dirtyRef, elementScreenBounds, syncBrowserChromeHud, syncSaveChip]
   )
 
-  // Escape from guest BrowserWindow (focus is in the native window).
+  // Escape from guest WebContentsView (focus is in the guest webContents).
   useEffect(() => {
     const onEscape = () => {
       if (!activeBrowserCaptureIdRef.current) return

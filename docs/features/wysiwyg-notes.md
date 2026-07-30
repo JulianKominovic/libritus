@@ -37,7 +37,7 @@ Out of scope (for now):
 | **Type / format**          | `NoteEditorKit` while editing; writes `customData.plateValue`.                                       |
 | **Toolbar**                | Fixed sticky bar inside the note + floating bar on selection (no AI). Slash `/` and emoji supported. |
 
-Chrome: **Place note** / **Place browser** chips next to **Select text** (bottom-right). Highlight chips **Add note** / **Buscar** / **Remove** plus color palette float above the active highlight (**Remove** cascades linked notes, search captures, and arrows via `idsDeletedWithHighlight`; color + delete-note UX: [`annotation-polish.md`](annotation-polish.md)).
+Chrome: **Place note** / **Place browser** chips (toolbar). Highlight chips **Add note** / **Buscar** / **Remove** plus color palette float above the active highlight (**Remove** cascades linked notes, search captures, and arrows via `idsDeletedWithHighlight`; color + delete-note UX: [`annotation-polish.md`](annotation-polish.md)). Text is selectable with the Excalidraw selection tool (no separate Select-text mode).
 
 Default note size: **320×240** (`NOTE_WIDTH` / `NOTE_HEIGHT`).
 

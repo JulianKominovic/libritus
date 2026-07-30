@@ -183,7 +183,7 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      name: pdfMetadata.title,
+      name: data.name.replace(/\.[^/.]+$/, ''),
       filename: data.name,
       src: pdfSrc,
       size: data.size,

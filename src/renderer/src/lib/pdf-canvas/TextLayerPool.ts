@@ -1,5 +1,9 @@
 import type { PdfDocument } from './PdfDocument'
 import { TextLayer, setLayerDimensions } from './pdfjs'
+import {
+  registerTextLayerSelection,
+  unregisterTextLayerSelection
+} from './textLayerSelection'
 
 const DEFAULT_POOL_SIZE = 12
 
@@ -132,6 +136,7 @@ export class TextLayerPool {
       job.layer.cancel()
       this.jobs.delete(victim.pageIndex)
     }
+    unregisterTextLayerSelection(victim.div)
     victim.div.replaceChildren()
     this.slots.delete(victim.pageIndex)
   }
@@ -154,6 +159,7 @@ export class TextLayerPool {
     } else {
       slot.ready = false
       slot.lastUsed = ++this.clock
+      unregisterTextLayerSelection(slot.div)
       slot.div.replaceChildren()
     }
 
@@ -189,6 +195,7 @@ export class TextLayerPool {
       const endOfContent = document.createElement('div')
       endOfContent.className = 'endOfContent'
       slot.div.append(endOfContent)
+      registerTextLayerSelection(slot.div, endOfContent)
 
       slot.ready = true
       this.notify()
@@ -211,6 +218,7 @@ export class TextLayerPool {
     }
     this.jobs.clear()
     for (const slot of this.slots.values()) {
+      unregisterTextLayerSelection(slot.div)
       slot.div.replaceChildren()
     }
     this.slots.clear()

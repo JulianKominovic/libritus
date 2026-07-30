@@ -13,11 +13,14 @@ mock.module('@excalidraw/excalidraw', () => ({
 }))
 
 const {
+  clientRectsFromTextLayerSelection,
   clientToSceneCoords,
+  dropOversizedClientRects,
   HIGHLIGHT_FILL,
   normalizeHighlightColor,
   selectionToHighlightSkeletons,
-  setHighlightGroupColor
+  setHighlightGroupColor,
+  withHighlightSkeletonColor
 } = await import('./selectionToHighlights')
 
 function fakeHighlight(
@@ -188,9 +191,182 @@ describe('selectionToHighlightSkeletons', () => {
   })
 })
 
+describe('dropOversizedClientRects', () => {
+  test('drops page-tall boxes next to line-sized ones', () => {
+    const kept = dropOversizedClientRects([
+      { left: 0, top: 0, right: 100, bottom: 16 },
+      { left: 0, top: 0, right: 600, bottom: 792 },
+      { left: 0, top: 20, right: 80, bottom: 36 }
+    ])
+    expect(kept).toHaveLength(2)
+    expect(kept.every((b) => b.bottom - b.top <= 48)).toBe(true)
+  })
+})
+
+describe('clientRectsFromTextLayerSelection', () => {
+  test('uses span rects and ignores page-tall range.getClientRects', () => {
+    const spanBox = { left: 10, top: 20, right: 110, bottom: 36, width: 100, height: 16 }
+    const pageTall = { left: 0, top: 0, right: 600, bottom: 800, width: 600, height: 800 }
+
+    const span = {
+      getClientRects: () => [spanBox] as unknown as DOMRectList,
+      getBoundingClientRect: () => spanBox
+    }
+    const layer = {
+      querySelectorAll: (sel: string) => (sel === 'span' ? [span] : [])
+    }
+
+    const fakeDoc = {
+      querySelectorAll: (sel: string) => (sel === '.textLayer' ? [layer] : []),
+      createRange: () => ({
+        selectNodeContents: () => {},
+        setStart: () => {},
+        setEnd: () => {},
+        compareBoundaryPoints: () => 0,
+        getClientRects: () => [spanBox] as unknown as DOMRectList
+      })
+    }
+
+    const range = {
+      commonAncestorContainer: { ownerDocument: fakeDoc },
+      startContainer: span,
+      startOffset: 0,
+      endContainer: span,
+      endOffset: 1,
+      intersectsNode: (node: unknown) => node === layer || node === span,
+      getClientRects: () => [pageTall] as unknown as DOMRectList,
+      compareBoundaryPoints: () => 0
+    } as unknown as Range
+
+    // clipRangeToNode uses node.ownerDocument.createRange
+    ;(span as { ownerDocument?: unknown }).ownerDocument = fakeDoc
+
+    const boxes = clientRectsFromTextLayerSelection(range)
+    expect(boxes).toEqual([{ left: 10, top: 20, right: 110, bottom: 36 }])
+    expect(boxes.every((b) => b.bottom - b.top < 100)).toBe(true)
+  })
+
+  test('falls back to range.getClientRects when no textLayer spans', () => {
+    const line = { left: 5, top: 5, right: 50, bottom: 20, width: 45, height: 15 }
+    const fakeDoc = {
+      querySelectorAll: () => []
+    }
+    const range = {
+      commonAncestorContainer: { ownerDocument: fakeDoc },
+      intersectsNode: () => false,
+      getClientRects: () => [line] as unknown as DOMRectList
+    } as unknown as Range
+
+    expect(clientRectsFromTextLayerSelection(range)).toEqual([
+      { left: 5, top: 5, right: 50, bottom: 20 }
+    ])
+  })
+
+  test('clipped range prefers selected slice over full span box', () => {
+    const fullSpan = { left: 0, top: 0, right: 200, bottom: 16, width: 200, height: 16 }
+    const sliced = { left: 0, top: 0, right: 40, bottom: 16, width: 40, height: 16 }
+    const span = { ownerDocument: null as unknown }
+    const layer = { querySelectorAll: (s: string) => (s === 'span' ? [span] : []) }
+    const fakeDoc = {
+      querySelectorAll: (sel: string) => (sel === '.textLayer' ? [layer] : []),
+      createRange: () => ({
+        selectNodeContents: () => {},
+        setStart: () => {},
+        setEnd: () => {},
+        compareBoundaryPoints: () => 0,
+        getClientRects: () => [sliced] as unknown as DOMRectList
+      })
+    }
+    span.ownerDocument = fakeDoc
+    const range = {
+      commonAncestorContainer: { ownerDocument: fakeDoc },
+      startContainer: span,
+      startOffset: 0,
+      endContainer: span,
+      endOffset: 1,
+      compareBoundaryPoints: () => 0,
+      intersectsNode: (node: unknown) => node === layer || node === span,
+      getClientRects: () => [fullSpan] as unknown as DOMRectList
+    } as unknown as Range
+
+    const boxes = clientRectsFromTextLayerSelection(range)
+    expect(boxes).toEqual([{ left: 0, top: 0, right: 40, bottom: 16 }])
+  })
+
+  test('collects span boxes from multiple text layers (cross-page)', () => {
+    const boxA = { left: 10, top: 10, right: 80, bottom: 26, width: 70, height: 16 }
+    const boxB = { left: 10, top: 900, right: 90, bottom: 916, width: 80, height: 16 }
+    const spanA = {
+      ownerDocument: null as unknown,
+      getClientRects: () => [boxA] as unknown as DOMRectList,
+      getBoundingClientRect: () => boxA
+    }
+    const spanB = {
+      ownerDocument: null as unknown,
+      getClientRects: () => [boxB] as unknown as DOMRectList,
+      getBoundingClientRect: () => boxB
+    }
+    const layerA = { querySelectorAll: (s: string) => (s === 'span' ? [spanA] : []) }
+    const layerB = { querySelectorAll: (s: string) => (s === 'span' ? [spanB] : []) }
+
+    let createCount = 0
+    const fakeDoc = {
+      querySelectorAll: (sel: string) => (sel === '.textLayer' ? [layerA, layerB] : []),
+      createRange: () => {
+        const idx = createCount++
+        const rects = idx === 0 ? spanA.getClientRects() : spanB.getClientRects()
+        return {
+          selectNodeContents: () => {},
+          setStart: () => {},
+          setEnd: () => {},
+          compareBoundaryPoints: () => 0,
+          getClientRects: () => rects
+        }
+      }
+    }
+
+    spanA.ownerDocument = fakeDoc
+    spanB.ownerDocument = fakeDoc
+
+    const range = {
+      commonAncestorContainer: { ownerDocument: fakeDoc },
+      startContainer: spanA,
+      startOffset: 0,
+      endContainer: spanB,
+      endOffset: 1,
+      compareBoundaryPoints: () => 0,
+      intersectsNode: (node: unknown) =>
+        node === layerA || node === layerB || node === spanA || node === spanB,
+      getClientRects: () =>
+        [
+          { left: 0, top: 0, right: 600, bottom: 1600, width: 600, height: 1600 }
+        ] as unknown as DOMRectList
+    } as unknown as Range
+
+    const boxes = clientRectsFromTextLayerSelection(range)
+    expect(boxes).toHaveLength(2)
+    expect(boxes[0]!.bottom - boxes[0]!.top).toBe(16)
+    expect(boxes[1]!.bottom - boxes[1]!.top).toBe(16)
+    expect(Math.max(...boxes.map((b) => b.bottom - b.top))).toBeLessThan(100)
+  })
+})
+
 describe('normalizeHighlightColor', () => {
   test('trims and uppercases', () => {
     expect(normalizeHighlightColor('  #ff00ff ')).toBe('#FF00FF')
+  })
+})
+
+describe('withHighlightSkeletonColor', () => {
+  test('sets backgroundColor on every skeleton', () => {
+    const next = withHighlightSkeletonColor(
+      [
+        { type: 'rectangle', x: 0, y: 0, width: 10, height: 5, backgroundColor: '#FF00FF' },
+        { type: 'rectangle', x: 0, y: 10, width: 10, height: 5, backgroundColor: '#FF00FF' }
+      ],
+      '#22C55E'
+    )
+    expect(next.every((s) => s.backgroundColor === '#22C55E')).toBe(true)
   })
 })
 

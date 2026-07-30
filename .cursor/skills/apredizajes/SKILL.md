@@ -63,7 +63,7 @@ Causa: con el PDF layer en `transform: scale(z)`, el drag sintético de Playwrig
 
 #### Corrección
 
-En e2e a zoom ≠ 1: `selectNodeContents` + `mouseup` sintético en `[data-pdf-canvas-root]` (no `mouse.down` — colapsa la selección). Afirmar `aria-pressed=false` en Select text (salida de modo = highlight creado), no solo Unsaved.
+En e2e a zoom ≠ 1: `selectNodeContents` + `mouseup` sintético en `[data-pdf-canvas-root]` (no `mouse.down` — colapsa la selección). Afirmar toolbar **Add note** visible (highlight creado + HighlightToolbar), no solo Unsaved. (Ya no hay modo Select text / `aria-pressed`.)
 
 ### `resolveNoteFill`: `document` sin `getComputedStyle` en bun:test
 
@@ -555,4 +555,92 @@ El click interceptor en `PdfCanvasApp` hacía early-return si `href.startsWith('
 #### Corrección
 
 Tratar `#/…` como navegación in-app (flush + `setLocation(href.slice(1))`); solo ignorar `#frag` sin `/`.
+
+### Web search: reintento WebContentsView (hide-not-detach)
+
+#### Descripción más detallada
+
+El guest pasó de `BrowserWindow` overlay (`alwaysOnTop`, sin `parent:`) a `WebContentsView` hijo del host `contentView`. Motivo: el overlay flotaba sobre otras apps y se salía de la ventana. El fallo histórico con WCV era `ERR_FAILED` por `removeChildView` / deactivate mid-`loadURL` (y race con `activeEmbeddable`).
+
+#### Corrección
+
+- Session ownership sigue en `activeBrowserCaptureIdRef` (no `activeEmbeddable`).
+- `browser:deactivate`: `capturePage` + cookie flush + `setVisible(false)` — **nunca** `removeChildView` mid-load.
+- `browser:close` / quit: ahí sí detach + `webContents.close()`.
+- Bounds en coords del contentView (sin sumar screen origin). Sin `alwaysOnTop`.
+
+### Always-on text select: Cmd+Z “solo con canvas” y A “robado”
+
+#### Descripción más detallada
+
+Tras pass-through de la text layer, Cmd/Ctrl+Z parecía interceptado por el host. No lo estaba: Excalidraw por defecto pone `onKeyDown` solo en el nodo React (focus dentro de `.excalidraw`). Clicks en toolbar / text leave focus fuera → undo muerto hasta click en el canvas. Cmd+A seleccionaba todo el PDF text porque el browser default ganaba sobre Excalidraw select-all.
+
+Cross-page: `range.getClientRects()` devolvía cajas ~altura de página (`.endOfContent` / multi-page).
+
+#### Corrección
+
+- `handleKeyboardGlobally` en `<Excalidraw>` (document keydown).
+- Cmd/Ctrl+A: `preventDefault` + `removeAllRanges` (sin `stopPropagation`) salvo writable/note.
+- Rects: `clipRangeToNode` por `.textLayer span` + `dropOversizedClientRects`.
+- Toolbar: hide en `selectionchange` collapsed, pointerdown fuera (`removeAllRanges` si pending), Escape; Copiar también en pending.
+- E2E: rebuild (`electron-vite build`) antes de `playwright` directo — `test:e2e` ya buildea.
+
+### Text caret snap: only started on spans → margin→margin no-op
+
+#### Descripción más detallada
+
+Heurística de snap (whitespace → inicio/fin de línea) solo armaba `snapDrag` si el `pointerdown` caía en un `.textLayer span`. Arrastrar **margen → margen** (fuera del glifo pero sobre la página) nunca activaba el host: `.endOfContent` / hit en `.textLayer` tienen `user-select: none` o no inician Selection nativa, y el foco nunca se snapeaba. El síntoma: “selecciono en diagonal fuera del texto y no entra nada intermedio”.
+
+#### Corrección
+
+- `pointerdown` en cualquier hit de `.textLayer` registrado (whitespace o span).
+- Si whitespace: anclar con `resolveSnapCaret`, seed del Range, `fromWhitespace` → el host maneja todo el `pointermove`.
+- Si span: ancla nativa (`caretRangeFromPoint`); snap solo mientras el move está en whitespace.
+
+### Text caret snap: flicker cross-page por snappear contra la página de inicio
+
+#### Descripción más detallada
+
+Con drag margen→margen OK in-page. Al cruzar a la página siguiente, el `pointermove` seguía llamando `resolveSnapCaret(startLayer, x, y)` con coordenadas de la página 2. El focus saltaba a líneas de la página 1 y peleaba con la Selection cross-page nativa → flickering en whitespace.
+
+#### Corrección
+
+Resolver el focus en `layerFromTarget(hit)` (text layer bajo el cursor). Entre páginas (sin layer) no reescribir Selection. `focusLayer.classList.add('selecting')` al snappear.
+
+### Search capture image: outside-click no cierra browse
+
+#### Descripción más detallada
+
+E2E `center-click re-activates browse on native image capture` fallaba: chrome seguía `display:flex` tras click fuera. Causa: browse de `image` no setea `activeEmbeddable` (solo el hook `activeBrowserCaptureIdRef`). Al mover el mouse a vacío, `.pdf-text-pass` pone `.excalidraw-host { pointer-events: none }` → el listener de deactivate (en el host) no ve el pointerdown (cae en `.textLayer`). Los embeddables aguantaban porque Excalidraw deja `activeEmbeddable.active` y eso ya desactiva pass-through.
+
+#### Corrección
+
+En el gate de pass-through, tratar `isBrowsing()` como `activeEmbeddable.active` → `setPdfTextPass(false)`.
+
+### Always-on text pass: no se puede clickear / seleccionar en Excalidraw
+
+#### Descripción más detallada
+
+Tras pass-through siempre-on (selection tool + miss → `.pdf-text-pass` → host `pointer-events: none`), el canvas de Excalidraw queda sordo en casi toda la página PDF. Dos fallos:
+
+1. **Race en pointerdown:** el browser elige el target *antes* de que el handler en capture apague pass. Un click sobre una shape/highlight/nota con pass aún on cae en `.textLayer`; apagar PE en el mismo evento no retargetea → “no puedo clickear elementos”.
+2. **Gate por `event.target.closest('.textLayer')`:** con pass off el target es el canvas de Excalidraw, nunca el text layer → pass no se arma (o al revés: armar pass en cualquier miss incluyendo gutters mata el marquee).
+
+#### Corrección
+
+- Armar pass solo si el punto está en el **bbox** de un `.textLayer` (geométrico, no `event.target`).
+- Pad ~12px en hover para apagar PE antes del borde del elemento.
+- Si `pointerdown` llega con pass on + target en `.textLayer` + hit **sin pad** en escena: `preventDefault` + re-dispatch al canvas interactivo.
+- E2E: disparar `pointerdown` en coords de la shape *sin* `mouse.move` previo (el move limpiaría pass y no ejercita el race).
+
+### Flechas: handles de edición muertos sobre texto PDF
+
+#### Descripción más detallada
+
+Con selection tool + miss AABB → `.pdf-text-pass`, el canvas interactivo queda `pointer-events: none`. Las flechas son hairline (`height≈0` / `width≈0`); anclas, dot de bend, tip UI y bordes de resize viven fuera del AABB (+ pad que además se encoge con zoom). El forward de race solo cubre hit AABB estricto (pad=0), no el chrome de edición.
+
+#### Corrección
+
+En el gate de pass-through: si hay `selectedElementIds` o `editingLinearElement`, forzar pass off (Excalidraw posee el pointer hasta deseleccionar). E2E: flecha horizontal unlocked seleccionada + hover sobre texto → pass sigue off.
+
 

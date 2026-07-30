@@ -33,7 +33,7 @@ Out of scope (for now):
 | **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight (initial L/R parity; sync re-anchors to shortest AABB segment on drag). Selects the card; does **not** auto-activate. Google search URL from highlight text. |
 | **Place browser** | Toolbar toggle (like Place note). Next canvas click places the same embeddable at the pointer, **no** arrow / no `sourceHighlightId`. Initial URL `https://www.google.com`. Selects only — does not auto-activate. |
 | **Paste URL** | Paste a single http(s) URL on the canvas → same unanchored embeddable at viewport center with that URL (no arrow), then **auto-activates** the guest browser so the page is previewed immediately. Skips when clipboard also has image/files (leave Excalidraw image paste alone). Non-URL paste stays Excalidraw default. |
-| **Activate** | Center click (same as notes) → one frameless guest `BrowserWindow` aligned to the shape in screen space (default page zoom 0.8, `alwaysOnTop` while open). Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± zooms the guest. |
+| **Activate** | Center click (same as notes) → one `WebContentsView` child of the host, aligned to the shape in content coords (default page zoom 0.8). Clips to the app window; no separate OS window / `alwaysOnTop`. Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± zooms the guest. |
 | **Exit** | Escape or click outside → `capturePage` PNG under `attachments/` → native Excalidraw `image` with 16px rounded corners. |
 | **Resize / drag** | Excalidraw owns geometry (like notes). Arrows sync via host (no Excalidraw bindings). |
 | **Style panel** | Host activate/deactivate ignores Excalidraw `.layer-ui__wrapper` (and menus) so clicks on stroke/fill chrome do not open a capture sitting under the panel in scene space. |
@@ -46,13 +46,13 @@ Out of scope (for now):
 ```
 Buscar / Place browser / Paste URL → create embeddable (libritus://pdf-search-capture) [+ arrow if from highlight]
   → user activates → IPC browser:open({ url, bounds })
-  → main shows frameless BrowserWindow (partition persist:web-browser)
+  → main shows WebContentsView on host contentView (partition persist:web-browser)
   → pan/zoom/resize → browser:setBounds
-  → deactivate → capturePage PNG → attachments/{fileId}.png
+  → deactivate → capturePage PNG → hide view (no removeChildView mid-load)
   → promote shape to native Excalidraw image (customData.fileId / url / capturedAt)
 ```
 
-**Not** a `<webview>` in the renderer. **Not** a live page inside Excalidraw’s transform tree. The guest is a frameless `BrowserWindow` overlay (not parented; `WebContentsView` aborted mid-load in-app) aligned to the shape; placeholder stays an embeddable until a screenshot exists, then a native `image`.
+**Not** a `<webview>` in the renderer. **Not** a live page inside Excalidraw’s transform tree. The guest is a `WebContentsView` child of the host window (content coords; hide on deactivate, destroy only on close). Placeholder stays an embeddable until a screenshot exists, then a native `image`.
 
 ### Scene model
 
@@ -82,7 +82,7 @@ Arrow (Buscar only): `customData.pdfSearchArrow` + `captureId` / `startX` / `sta
 
 ### Closed decisions
 
-1. Overlay aligned to shape (frameless `BrowserWindow`), not `WebContentsView` / not DOM webview.
+1. Overlay aligned to shape (`WebContentsView` on host `contentView`; hide-not-detach on deactivate), not DOM webview / not a separate `BrowserWindow`.
 2. Persist guest partition.
 3. Default search engine: Google (with system-browser fallback).
 4. Host-managed arrow from highlight: yes.

@@ -5,30 +5,36 @@ import {
   newElementWith,
   sceneCoordsToViewportCoords
 } from '@excalidraw/excalidraw'
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
 import type {
   BinaryFiles,
   ExcalidrawImperativeAPI,
   NormalizedZoomValue
 } from '@excalidraw/excalidraw/types'
-import { enqueueRagIndex } from '@renderer/lib/ai/ipc'
 import { readFile } from '@renderer/integrations/fs'
+import { enqueueRagIndex } from '@renderer/lib/ai/ipc'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
-import { clearSessionPersistFreeze, isSessionPersistFrozen } from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
 import {
   annotationsSignature,
   countCanvasStats,
   listAnnotations,
   type AnnotationListItem
 } from '@renderer/lib/pdf-canvas/annotationList'
-import { syncCanvasStats, syncReadingProgress } from '@renderer/lib/pdf-canvas/catalogWriteback'
 import {
   fileIdsFromElements,
   loadBinaryFiles,
   persistNewBinaryFiles
 } from '@renderer/lib/pdf-canvas/attachments'
+import { syncCanvasStats, syncReadingProgress } from '@renderer/lib/pdf-canvas/catalogWriteback'
+import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
 import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
+import {
+  pageWorldScale,
+  renderScaleForWorld,
+  scaleSessionScene
+} from '@renderer/lib/pdf-canvas/pageWorldScale'
 import { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
 import {
   clearPdfNoteLinkForUi,
@@ -48,6 +54,8 @@ import {
   syncPdfNoteArrows,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
+import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
+import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
 import {
   attachmentFileIdsFromSearchCaptures,
   createSearchCapture,
@@ -66,37 +74,35 @@ import {
   SEARCH_CAPTURE_WIDTH,
   syncPdfSearchArrows
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
-import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
-import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
+import { findSceneElementAt, holdsPdfTextPassOff } from '@renderer/lib/pdf-canvas/sceneHit'
 import {
   clientToSceneCoords,
   findPdfHighlightAt,
   HIGHLIGHT_FILL,
   highlightGroupId,
   selectionToHighlightSkeletons,
-  setHighlightGroupColor
+  setHighlightGroupColor,
+  withHighlightSkeletonColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
-  pageWorldScale,
-  renderScaleForWorld,
-  scaleSessionScene
-} from '@renderer/lib/pdf-canvas/pageWorldScale'
-import {
   readSession,
-  writeSession,
   SESSION_VERSION,
+  writeSession,
   type SaveStatus,
   type SessionSnapshot
 } from '@renderer/lib/pdf-canvas/session'
 import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
 import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
-import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
+import {
+  clearSessionPersistFreeze,
+  isSessionPersistFrozen
+} from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
-import { Globe, HighlighterIcon, Search, StickyNote } from 'lucide-react'
+import { Globe, Search, StickyNote } from 'lucide-react'
 import type { Value } from 'platejs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
@@ -149,14 +155,14 @@ type PdfCanvasAppProps = {
 /**
  * React state kept only when a re-render is required:
  * - session: mount PdfLayer / navigator / enable tools
- * - textSelectMode: CSS pass-through + PdfLayer prop + listeners
  * - saveStatus: persistence chip
  * - place-note mode chip
  * - find bar open
  * - sidebar annotations list (id/kind/preview signature only)
  *
- * Everything else (camera, page, highlight chip) is ref + DOM.
+ * Everything else (camera, page, highlight chip, text pass-through) is ref + DOM.
  * Notes: Excalidraw embeddable + renderEmbeddable (no parallel HUD).
+ * Text select: selection tool + miss → `.pdf-text-pass` (host PE-none → text layer).
  */
 export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [, setLocation] = useLocation()
@@ -170,8 +176,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const pdfSidebarRef = useRef<PdfSidebarHandle>(null)
   const highlightToolbarRef = useRef<HTMLDivElement>(null)
   const activeHighlightIdRef = useRef<string | null>(null)
+  /** Text selection awaiting a color click — not yet in the scene. */
+  const pendingHighlightRef = useRef<ExcalidrawElementSkeleton[] | null>(null)
   const placeNoteModeRef = useRef(false)
   const placeBrowserModeRef = useRef(false)
+  /** Keep PE pass-through until pointerup so mid-drag over a shape doesn't steal text select. */
+  const textSelectGestureRef = useRef(false)
+  const pdfTextPassRef = useRef(false)
   const currentPageRef = useRef(1)
   const saveStatusRef = useRef<SaveStatus>('saved')
   const saveChipRef = useRef<HTMLSpanElement>(null)
@@ -191,7 +202,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
 
   const [session, setSession] = useState<RuntimeSession | null>(null)
-  const [textSelectMode, setTextSelectMode] = useState(false)
   const [placeNoteMode, setPlaceNoteMode] = useState(false)
   const [placeBrowserMode, setPlaceBrowserMode] = useState(false)
   const [outline, setOutline] = useState<OutlineNode[]>([])
@@ -200,6 +210,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeHighlightColor, setActiveHighlightColor] = useState<string>(HIGHLIGHT_FILL)
+  const [highlightToolbarPending, setHighlightToolbarPending] = useState(false)
 
   const initialData = useMemo(
     () => ({
@@ -226,8 +237,25 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   const hideHighlightToolbar = useCallback(() => {
     activeHighlightIdRef.current = null
+    pendingHighlightRef.current = null
+    setHighlightToolbarPending(false)
     const toolbar = highlightToolbarRef.current
     if (toolbar) toolbar.style.display = 'none'
+  }, [])
+
+  /** Keep Excalidraw shortcuts (undo) working after text-select / toolbar clicks. */
+  const focusCanvasRoot = useCallback(() => {
+    if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active') return
+    // Color/toolbar buttons steal focus after click — refocus on next frame.
+    requestAnimationFrame(() => {
+      containerRef.current?.focus({ preventScroll: true })
+    })
+  }, [])
+
+  const setPdfTextPass = useCallback((on: boolean) => {
+    if (pdfTextPassRef.current === on) return
+    pdfTextPassRef.current = on
+    containerRef.current?.classList.toggle('pdf-text-pass', on)
   }, [])
 
   const clearActiveEmbeddable = useCallback(() => {
@@ -261,23 +289,32 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const toolbar = highlightToolbarRef.current
     const api = apiRef.current
     const container = containerRef.current
-    const highlightId = activeHighlightIdRef.current
-    if (!toolbar || !api || !container || !highlightId) return
+    if (!toolbar || !api || !container) return
 
-    const highlight = api.getSceneElements().find((el) => el.id === highlightId)
-    if (!highlight || highlight.isDeleted) {
-      hideHighlightToolbar()
+    const pending = pendingHighlightRef.current
+    const highlightId = activeHighlightIdRef.current
+
+    let sceneX: number
+    let sceneY: number
+
+    if (pending && pending.length > 0) {
+      const first = pending[0]!
+      sceneX = (first.x ?? 0) + (typeof first.width === 'number' ? first.width / 2 : 0)
+      sceneY = first.y ?? 0
+    } else if (highlightId) {
+      const highlight = api.getSceneElements().find((el) => el.id === highlightId)
+      if (!highlight || highlight.isDeleted) {
+        hideHighlightToolbar()
+        return
+      }
+      sceneX = highlight.x + highlight.width / 2
+      sceneY = highlight.y
+    } else {
       return
     }
 
     const appState = api.getAppState()
-    const topCenter = sceneCoordsToViewportCoords(
-      {
-        sceneX: highlight.x + highlight.width / 2,
-        sceneY: highlight.y
-      },
-      appState
-    )
+    const topCenter = sceneCoordsToViewportCoords({ sceneX, sceneY }, appState)
     const bounds = container.getBoundingClientRect()
     toolbar.style.left = `${topCenter.x - bounds.left}px`
     toolbar.style.top = `${topCenter.y - bounds.top - 8}px`
@@ -286,9 +323,21 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   const showHighlightToolbar = useCallback(
     (highlightId: string) => {
+      pendingHighlightRef.current = null
+      setHighlightToolbarPending(false)
       activeHighlightIdRef.current = highlightId
       const el = apiRef.current?.getSceneElements().find((e) => e.id === highlightId)
       if (el) setActiveHighlightColor(el.backgroundColor || HIGHLIGHT_FILL)
+      positionHighlightToolbar()
+    },
+    [positionHighlightToolbar]
+  )
+
+  const showPendingHighlightToolbar = useCallback(
+    (skeletons: ExcalidrawElementSkeleton[]) => {
+      activeHighlightIdRef.current = null
+      pendingHighlightRef.current = skeletons
+      setHighlightToolbarPending(true)
       positionHighlightToolbar()
     },
     [positionHighlightToolbar]
@@ -311,7 +360,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         }
       }
 
-      if (activeHighlightIdRef.current) {
+      if (activeHighlightIdRef.current || pendingHighlightRef.current) {
         positionHighlightToolbar()
       }
       if (isBrowsing()) {
@@ -644,9 +693,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           migrated?.elements && Array.isArray(migrated.elements)
             ? syncPdfSearchArrows(
                 syncPdfNoteArrows(
-                  (migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>).map(
-                    (el) => normalizePdfSearchCapture(normalizePdfNote(el))
-                  )
+                  (
+                    migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
+                  ).map((el) => normalizePdfSearchCapture(normalizePdfNote(el)))
                 ).elements
               ).elements
             : []
@@ -890,6 +939,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (!restoringRef.current) {
         const api = apiRef.current
         if (api) {
+          // Undo / delete: drop highlight toolbar when the active rect is gone.
+          const hlId = activeHighlightIdRef.current
+          if (hlId) {
+            const stillThere = api.getSceneElements().some((el) => el.id === hlId && !el.isDeleted)
+            if (!stillThere) hideHighlightToolbar()
+          }
+
           // Host arrows always — delete cascade + undo revive must not skip on embed hover spam.
           // IncludingDeleted: soft-deleted arrows stay in the store for revive after Ctrl+Z.
           let scene = api.getSceneElementsIncludingDeleted()
@@ -982,6 +1038,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     },
     [
       deactivateSearchBrowser,
+      hideHighlightToolbar,
       isBrowsing,
       markUnsaved,
       queueStripPdfNoteLinks,
@@ -1000,7 +1057,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   const enterPlaceMode = useCallback(
     (kind: 'note' | 'browser') => {
-      setTextSelectMode(false)
       const isNote = kind === 'note'
       placeNoteModeRef.current = isNote
       placeBrowserModeRef.current = !isNote
@@ -1009,23 +1065,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       hideHighlightToolbar()
       clearActiveEmbeddable()
       setSelectionToolLocked(apiRef.current, true)
+      setPdfTextPass(false)
     },
-    [clearActiveEmbeddable, hideHighlightToolbar]
+    [clearActiveEmbeddable, hideHighlightToolbar, setPdfTextPass]
   )
-
-  const toggleTextSelectMode = useCallback(() => {
-    setTextSelectMode((prev) => {
-      const next = !prev
-      if (next) {
-        hideHighlightToolbar()
-        exitPlaceModes()
-        clearActiveEmbeddable()
-      } else {
-        window.getSelection()?.removeAllRanges()
-      }
-      return next
-    })
-  }, [clearActiveEmbeddable, exitPlaceModes, hideHighlightToolbar])
 
   const togglePlaceNoteMode = useCallback(() => {
     if (placeNoteModeRef.current) exitPlaceModes()
@@ -1218,12 +1261,46 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     ]
   )
 
+  /** Commit pending text-selection skeletons into the scene. Returns first highlight id. */
+  const commitPendingHighlight = useCallback(
+    (color: string = HIGHLIGHT_FILL): string | null => {
+      const api = apiRef.current
+      const pending = pendingHighlightRef.current
+      if (!api || !pending?.length) return null
+
+      const colored = withHighlightSkeletonColor(pending, color)
+      const newElements = convertToExcalidrawElements(colored)
+      api.updateScene({
+        elements: [...api.getSceneElements(), ...newElements],
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      window.getSelection()?.removeAllRanges()
+      pendingHighlightRef.current = null
+      setHighlightToolbarPending(false)
+
+      const first = newElements[0]
+      if (!first) return null
+
+      activeHighlightIdRef.current = first.id
+      setActiveHighlightColor(color)
+      markUnsaved()
+      focusCanvasRoot()
+      return first.id
+    },
+    [focusCanvasRoot, markUnsaved]
+  )
+
   const addArtifactFromHighlight = useCallback(
     (
       create: typeof createNoteFromHighlight | typeof createSearchCaptureFromHighlight,
       selectPred: typeof isPdfNote | typeof isPdfSearchCapture
     ) => {
       const api = apiRef.current
+      // Pending text selection: commit default-color highlight first, then artifact.
+      if (pendingHighlightRef.current?.length && !activeHighlightIdRef.current) {
+        if (!commitPendingHighlight()) return
+      }
+
       const highlightId = activeHighlightIdRef.current
       if (!api || !highlightId) return
 
@@ -1247,7 +1324,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       queueStripPdfNoteLinks()
       markUnsaved()
     },
-    [hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks]
+    [commitPendingHighlight, hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks]
   )
 
   const addNoteToActiveHighlight = useCallback(() => {
@@ -1259,6 +1336,17 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [addArtifactFromHighlight])
 
   const copyActiveHighlightText = useCallback(() => {
+    const pending = pendingHighlightRef.current
+    if (pending?.length) {
+      const text = pending[0]?.customData?.text
+      if (typeof text === 'string' && text.trim()) {
+        void navigator.clipboard.writeText(text)
+        hideHighlightToolbar()
+        window.getSelection()?.removeAllRanges()
+      }
+      return
+    }
+
     const api = apiRef.current
     const highlightId = activeHighlightIdRef.current
     if (!api || !highlightId) return
@@ -1294,13 +1382,23 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
     hideHighlightToolbar()
     markUnsaved()
-  }, [hideHighlightToolbar, markUnsaved])
+    focusCanvasRoot()
+  }, [focusCanvasRoot, hideHighlightToolbar, markUnsaved])
 
   const recolorActiveHighlight = useCallback(
     (color: string) => {
       const api = apiRef.current
+      if (!api) return
+
+      if (pendingHighlightRef.current?.length) {
+        const id = commitPendingHighlight(color)
+        if (id) showHighlightToolbar(id)
+        else hideHighlightToolbar()
+        return
+      }
+
       const highlightId = activeHighlightIdRef.current
-      if (!api || !highlightId) return
+      if (!highlightId) return
 
       const scene = api.getSceneElements()
       const highlight = scene.find((el) => el.id === highlightId)
@@ -1312,20 +1410,74 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       })
       setActiveHighlightColor(color)
       markUnsaved()
+      focusCanvasRoot()
     },
-    [markUnsaved]
+    [
+      commitPendingHighlight,
+      focusCanvasRoot,
+      hideHighlightToolbar,
+      markUnsaved,
+      showHighlightToolbar
+    ]
   )
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      if (!placeNoteModeRef.current && !placeBrowserModeRef.current) return
-      exitPlaceModes()
-      event.preventDefault()
+    const isWritableKeyTarget = (target: EventTarget | null): boolean => {
+      const el = target instanceof HTMLElement ? target : null
+      if (!el) return false
+      const tag = el.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return true
+      if (el.isContentEditable || el.closest('[contenteditable="true"]')) return true
+      return false
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [exitPlaceModes])
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (placeNoteModeRef.current || placeBrowserModeRef.current) {
+          exitPlaceModes()
+          event.preventDefault()
+          return
+        }
+        if (activeHighlightIdRef.current || pendingHighlightRef.current) {
+          hideHighlightToolbar()
+          window.getSelection()?.removeAllRanges()
+          event.preventDefault()
+        }
+        return
+      }
+
+      // Cmd/Ctrl+A → Excalidraw select-all (not browser select-all on .textLayer).
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        (event.key === 'a' || event.key === 'A') &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        if (isWritableKeyTarget(event.target)) return
+        const api = apiRef.current
+        if (api?.getAppState().activeEmbeddable?.state === 'active') return
+        if (api?.getAppState().editingTextElement) return
+        event.preventDefault()
+        window.getSelection()?.removeAllRanges()
+        // Do not stopPropagation — Excalidraw's select-all must still run.
+      }
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [exitPlaceModes, hideHighlightToolbar])
+
+  // Pending toolbar: hide when the DOM selection collapses / is cleared.
+  useEffect(() => {
+    const onSelectionChange = () => {
+      if (!pendingHighlightRef.current) return
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        hideHighlightToolbar()
+      }
+    }
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => document.removeEventListener('selectionchange', onSelectionChange)
+  }, [hideHighlightToolbar])
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
@@ -1393,38 +1545,43 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [markUnsaved, openSearchBrowser, queueStripPdfNoteLinks])
 
   useEffect(() => {
-    if (!textSelectMode) return
     const el = containerRef.current
     if (!el) return
 
     const onMouseUp = () => {
+      textSelectGestureRef.current = false
+
       const api = apiRef.current
       if (!api) return
+
+      const selection = window.getSelection()
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) return
+      const anchor = selection.anchorNode
+      const anchorEl = anchor instanceof Element ? anchor : (anchor?.parentElement ?? null)
+      if (!anchorEl?.closest('.textLayer')) return
 
       const skeletons = selectionToHighlightSkeletons(api.getAppState())
       if (!skeletons) return
 
-      const newElements = convertToExcalidrawElements(skeletons)
-      api.updateScene({
-        elements: [...api.getSceneElements(), ...newElements],
-        captureUpdate: CaptureUpdateAction.IMMEDIATELY
-      })
-
-      window.getSelection()?.removeAllRanges()
-      setTextSelectMode(false)
-      markUnsaved()
+      // Snapshot only — create on color click via HighlightToolbar.
+      showPendingHighlightToolbar(skeletons)
+      focusCanvasRoot()
     }
 
     el.addEventListener('mouseup', onMouseUp)
     return () => el.removeEventListener('mouseup', onMouseUp)
-  }, [markUnsaved, textSelectMode])
+  }, [focusCanvasRoot, showPendingHighlightToolbar])
 
   useEffect(() => {
-    if (!textSelectMode) return
     const el = containerRef.current
     if (!el) return
 
     const onWheel = (event: WheelEvent) => {
+      const overText =
+        pdfTextPassRef.current ||
+        (event.target instanceof Element && event.target.closest('.textLayer'))
+      if (!overText) return
+
       const api = apiRef.current
       if (!api) return
 
@@ -1478,7 +1635,186 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [textSelectMode])
+  }, [])
+
+  // Hit-test gate: selection tool + over PDF text layer box + no nearby scene
+  // element → pass through. Use geometric `.textLayer` bounds (not event.target):
+  // while Excalidraw is on top, target is the canvas, so closest('.textLayer')
+  // would never arm pass. Gutters keep marquee. Pad + pointerdown forward fix
+  // the PE-toggle race (browser sticks the event target for that frame).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    /** Screen px → scene pad so hover clears pass before entering the element. */
+    const PASS_HIT_PAD_PX = 12
+    let forwardingPointer = false
+
+    const isOverTextLayerBox = (clientX: number, clientY: number): boolean => {
+      for (const layer of el.querySelectorAll('.textLayer')) {
+        const r = layer.getBoundingClientRect()
+        if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+          return true
+        }
+      }
+      return false
+    }
+
+    const updatePassThrough = (clientX: number, clientY: number, target: EventTarget | null) => {
+      if (textSelectGestureRef.current) {
+        setPdfTextPass(true)
+        return
+      }
+      if (placeNoteModeRef.current || placeBrowserModeRef.current) {
+        setPdfTextPass(false)
+        return
+      }
+      if (isExcalidrawUiPointerTarget(target)) {
+        setPdfTextPass(false)
+        return
+      }
+      const api = apiRef.current
+      if (!api) {
+        setPdfTextPass(false)
+        return
+      }
+      const appState = api.getAppState()
+      if (!appState.zoom?.value || appState.activeTool.type !== 'selection') {
+        setPdfTextPass(false)
+        return
+      }
+      if (appState.activeEmbeddable?.state === 'active') {
+        setPdfTextPass(false)
+        return
+      }
+      // Image search captures browse without activeEmbeddable; keep host hittable
+      // so outside-click deactivate (listener on .excalidraw-host) still runs.
+      if (isBrowsing()) {
+        setPdfTextPass(false)
+        return
+      }
+      // Selection / linear-point edit owns the pointer — keep Excalidraw PE so
+      // arrow anchors, bend dots, and resize chrome stay hittable over PDF text
+      // (hairline AABB + pad miss would otherwise arm pass).
+      if (holdsPdfTextPassOff(appState)) {
+        setPdfTextPass(false)
+        return
+      }
+      // Empty gutters (not over a page text layer): Excalidraw keeps marquee.
+      if (!isOverTextLayerBox(clientX, clientY)) {
+        setPdfTextPass(false)
+        return
+      }
+      const { x, y } = clientToSceneCoords(clientX, clientY, appState)
+      const pad = PASS_HIT_PAD_PX / appState.zoom.value
+      const hit = findSceneElementAt(api.getSceneElements(), x, y, pad)
+      setPdfTextPass(hit == null)
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      updatePassThrough(event.clientX, event.clientY, event.target)
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      // Synthetic re-dispatch from the race fix below — don't re-enter.
+      if (forwardingPointer) return
+
+      const target = event.target
+      const wasPass = pdfTextPassRef.current
+      updatePassThrough(event.clientX, event.clientY, target)
+
+      const hideToolbarIfOutside = () => {
+        if (
+          target instanceof Element &&
+          !target.closest('[data-highlight-toolbar]') &&
+          (activeHighlightIdRef.current || pendingHighlightRef.current)
+        ) {
+          const wasPending = pendingHighlightRef.current != null
+          hideHighlightToolbar()
+          if (wasPending) window.getSelection()?.removeAllRanges()
+        }
+      }
+
+      // Race: pass was on → browser targeted `.textLayer`, but this point is
+      // inside a real (unpadded) scene element. Pad alone must not steal text
+      // clicks in the halo — only forward on a true AABB hit.
+      if (wasPass && target instanceof Element && target.closest('.textLayer')) {
+        const api = apiRef.current
+        const appState = api?.getAppState()
+        const scene =
+          api && appState?.zoom?.value
+            ? clientToSceneCoords(event.clientX, event.clientY, appState)
+            : null
+        const strictHit = scene
+          ? findSceneElementAt(api.getSceneElements(), scene.x, scene.y, 0)
+          : null
+        if (strictHit) {
+          setPdfTextPass(false)
+          hideToolbarIfOutside()
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          const canvas = el.querySelector('.excalidraw__canvas.interactive')
+          if (canvas instanceof HTMLElement) {
+            forwardingPointer = true
+            try {
+              canvas.dispatchEvent(
+                new PointerEvent('pointerdown', {
+                  bubbles: true,
+                  cancelable: true,
+                  composed: true,
+                  pointerId: event.pointerId,
+                  pointerType: event.pointerType,
+                  isPrimary: event.isPrimary,
+                  clientX: event.clientX,
+                  clientY: event.clientY,
+                  screenX: event.screenX,
+                  screenY: event.screenY,
+                  button: event.button,
+                  buttons: event.buttons,
+                  ctrlKey: event.ctrlKey,
+                  metaKey: event.metaKey,
+                  shiftKey: event.shiftKey,
+                  altKey: event.altKey,
+                  view: window
+                })
+              )
+            } finally {
+              forwardingPointer = false
+            }
+          }
+          return
+        }
+      }
+
+      if (pdfTextPassRef.current) {
+        textSelectGestureRef.current = true
+      }
+
+      // Hide toolbar on outside click even when `.pdf-text-pass` (Excalidraw onPointerDown may not fire).
+      hideToolbarIfOutside()
+    }
+
+    const onPointerUp = (event: PointerEvent) => {
+      textSelectGestureRef.current = false
+      updatePassThrough(event.clientX, event.clientY, event.target)
+    }
+
+    const onBlur = () => {
+      textSelectGestureRef.current = false
+      setPdfTextPass(false)
+    }
+
+    el.addEventListener('pointermove', onPointerMove, true)
+    el.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      el.removeEventListener('pointermove', onPointerMove, true)
+      el.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [hideHighlightToolbar, isBrowsing, setPdfTextPass])
 
   // Excalidraw setStates activeEmbeddable "hover" on every pointermove over an
   // embed center (no equality guard) → full App re-render. Stop those moves
@@ -1518,9 +1854,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       ref={containerRef}
       data-pdf-canvas-root
       tabIndex={-1}
-      className={`relative h-full w-full overflow-hidden bg-morphing-50${
-        textSelectMode ? ' text-select-mode' : ''
-      }`}
+      className="relative h-full w-full overflow-hidden bg-morphing-50"
     >
       {session ? (
         <PdfLayer
@@ -1528,18 +1862,17 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           layout={session.layout}
           pool={session.pool}
           textPool={session.textPool}
-          textSelectMode={textSelectMode}
         />
       ) : null}
 
-      <div
-        ref={excalidrawHostRef}
-        className={`absolute inset-0 z-10${textSelectMode ? ' pointer-events-none' : ''}`}
-      >
+      <div ref={excalidrawHostRef} className="excalidraw-host absolute inset-0 z-10">
         <Excalidraw
           excalidrawAPI={(api) => {
             apiRef.current = api
           }}
+          // PDF text pass-through / toolbar clicks leave focus outside `.excalidraw`;
+          // without this, Cmd/Ctrl+Z (undo) only works after clicking the canvas.
+          handleKeyboardGlobally
           initialData={initialData}
           onChange={handleExcalidrawChange}
           onScrollChange={handleScrollChange}
@@ -1626,19 +1959,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             >
               <Globe className="size-4" aria-hidden />
             </button>
-            <button
-              type="button"
-              aria-label="Select text"
-              aria-pressed={textSelectMode}
-              className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
-                textSelectMode
-                  ? 'bg-neutral-200 text-neutral-900'
-                  : 'text-neutral-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
-              }`}
-              onClick={toggleTextSelectMode}
-            >
-              <HighlighterIcon className="size-4" aria-hidden />
-            </button>
             {findOpen ? (
               <>
                 <div className="mx-2 h-full w-px shrink-0 bg-neutral-200" aria-hidden />
@@ -1656,6 +1976,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       ) : null}
       <HighlightToolbar
         ref={highlightToolbarRef}
+        pending={highlightToolbarPending}
         activeColor={activeHighlightColor}
         onRecolor={recolorActiveHighlight}
         onAddNote={addNoteToActiveHighlight}
