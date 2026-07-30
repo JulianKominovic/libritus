@@ -1745,9 +1745,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           api && appState?.zoom?.value
             ? clientToSceneCoords(event.clientX, event.clientY, appState)
             : null
-        const strictHit = scene
-          ? findSceneElementAt(api.getSceneElements(), scene.x, scene.y, 0)
-          : null
+        const strictHit =
+          api && scene ? findSceneElementAt(api.getSceneElements(), scene.x, scene.y, 0) : null
         if (strictHit) {
           setPdfTextPass(false)
           hideToolbarIfOutside()

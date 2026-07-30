@@ -127,7 +127,7 @@ type ClosestEl = {
  */
 export function isWhitespaceHit(target: EventTarget | null): boolean {
   if (target == null || typeof target !== 'object') return false
-  const el = target as ClosestEl
+  const el = target as unknown as ClosestEl
   if (typeof el.closest !== 'function' || typeof el.classList?.contains !== 'function') {
     return false
   }

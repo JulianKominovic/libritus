@@ -210,7 +210,7 @@ function stubClipboard(opts: {
     types,
     files: { length: opts.filesLength ?? 0 } as FileList,
     getData: (format: string) => (format === 'text/plain' ? text : '')
-  } as DataTransfer
+  } as unknown as DataTransfer
 }
 
 describe('pastedHttpUrlForSearchCapture', () => {
