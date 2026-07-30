@@ -156,6 +156,8 @@ function ensureGuest(parent: BrowserWindow): BrowserWindow {
   guest = new BrowserWindow({
     show: false,
     frame: false,
+    hasShadow: false,
+    roundedCorners: false,
     resizable: false,
     maximizable: false,
     minimizable: false,

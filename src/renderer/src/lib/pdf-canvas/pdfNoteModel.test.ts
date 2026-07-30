@@ -6,8 +6,7 @@ import {
   getNotePlateValue,
   isPdfNote,
   isPdfNoteCenterHit,
-  plateValueFromQuote,
-  queryVisibleNotes
+  plateValueFromQuote
 } from './pdfNoteModel'
 
 function fakeNote(
@@ -71,19 +70,6 @@ describe('pdfNoteModel', () => {
     expect(getNotePlateValue({ ...note, customData: {} } as OrderedExcalidrawElement).length).toBe(
       1
     )
-  })
-
-  test('queryVisibleNotes culls by AABB', () => {
-    const note = fakeNote({ id: 'n1', x: 10, y: 20 })
-    const outside = fakeNote({ id: 'n2', x: 500, y: 500 })
-    const visible = queryVisibleNotes([note, outside], {
-      minX: 0,
-      minY: 0,
-      maxX: 100,
-      maxY: 100
-    })
-    expect(visible.length).toBe(1)
-    expect(visible[0]?.id).toBe('n1')
   })
 
   test('findPdfNoteAt: miss, hit, deleted skip, top-most wins', () => {

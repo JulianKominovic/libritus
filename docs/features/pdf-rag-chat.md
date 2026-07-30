@@ -2,9 +2,9 @@
 
 Ask questions about the open PDF using local embeddings + OpenRouter for answers.
 
-**Status:** Implemented (open → serial embed queue in main, nav progress indicator, Settings AI key, `{pdfId}.rag.json`). **Chat tab in `PdfSidebar` is hidden** until canvas Q&A lands; `PdfChatPanel` / RAG backend kept.
+**Status:** Implemented (open → serial embed queue in main, nav progress indicator, Settings AI key, `{pdfId}.rag.json`). **Chat tab is unmounted** from `PdfSidebar` until canvas Q&A lands; `PdfChatPanel` / RAG backend kept for that migration.
 
-**UX note:** Chat-in-`PdfSidebar` is **legacy / hidden**. Product north ([`product-north.md`](product-north.md)): lasting research (including AI Q&A) belongs on the **canvas**. Do not deepen the sidebar transcript silo.
+**UX note:** Chat-in-`PdfSidebar` is **legacy / unmounted** (not a hidden tab). Product north ([`product-north.md`](product-north.md)): lasting research (including AI Q&A) belongs on the **canvas**. Do not deepen the sidebar transcript silo.
 
 ---
 

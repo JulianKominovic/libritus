@@ -77,7 +77,7 @@ Identity helper: `isPdfNote(el)` → `customData.pdfNote === true`.
 | Path                                               | Role                                                                                     |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `lib/pdf-canvas/arrowBetweenRects.ts`              | O(1) shortest AABB connector (shared by note + search arrows)                            |
-| `lib/pdf-canvas/pdfNoteModel.ts`                   | `isPdfNote`, `getNotePlateValue`, `queryVisibleNotes`, `findPdfNoteAt`                   |
+| `lib/pdf-canvas/pdfNoteModel.ts`                   | `isPdfNote`, `getNotePlateValue`, `findPdfNoteAt`                                        |
 | `lib/pdf-canvas/pdfNotes.ts`                       | `createWysiwygNote`, `createNoteFromHighlight`, `normalizePdfNote`, `withNotePlateValue` |
 | `lib/pdf-canvas/pdfNotes.test.ts`                  | Unit tests for note create / normalize / highlight→arrow invariants                      |
 | `organisms/pdf-canvas/NoteEmbed.tsx`               | Plate static/edit inside embeddable                                                      |

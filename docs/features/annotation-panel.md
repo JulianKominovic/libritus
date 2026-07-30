@@ -32,7 +32,7 @@ Out of scope (for now):
 | Control | Behavior |
 |---------|----------|
 | **Toggle** | Navbar panel-right button (and Settings → “Show PDF sidebar”); panel on the right. |
-| **Tab** | Outline / Pages / Annotations (shared Tabs UI). Chat tab is **hidden** (RAG UI deferred). |
+| **Tab** | Outline / Pages / Annotations (shared Tabs UI). Chat tab is **unmounted** (RAG UI deferred). |
 | **List** | Flat list sorted by `createdAt` desc; max height 200px per row with bottom fade when overflowing. |
 | **Highlight row** | Kind + page number next to date + text snippet. |
 | **Note row** | Kind + date + read-only Plate (`NoteStaticBody`). |

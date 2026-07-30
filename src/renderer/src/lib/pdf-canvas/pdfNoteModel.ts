@@ -72,18 +72,3 @@ export function isPdfNoteCenterHit(
     sceneY <= el.y + (2 * el.height) / 3
   )
 }
-
-/** Notes whose AABB intersects the viewport AABB (scene space). */
-export function queryVisibleNotes(
-  elements: readonly OrderedExcalidrawElement[],
-  view: { minX: number; minY: number; maxX: number; maxY: number }
-): OrderedExcalidrawElement[] {
-  const out: OrderedExcalidrawElement[] = []
-  for (const el of elements) {
-    if (el.isDeleted || !isPdfNote(el)) continue
-    if (el.x + el.width < view.minX || el.x > view.maxX) continue
-    if (el.y + el.height < view.minY || el.y > view.maxY) continue
-    out.push(el)
-  }
-  return out
-}

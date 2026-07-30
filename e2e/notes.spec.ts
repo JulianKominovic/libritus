@@ -230,6 +230,50 @@ test('edit note persists plateValue in session after flush', async () => {
   }
 })
 
+test('leave while editing note persists pending plateValue', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-plate-leave-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const unique = `plate-leave-${Date.now()}`
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [seedNoteElement({ id: 'edit-leave', x: 200, y: 150, text: 'before leave' })]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await expect(page.getByText('before leave')).toBeVisible({ timeout: 30_000 })
+
+    await activateNoteEmbed(page, 'before leave')
+    await page.waitForTimeout(400)
+
+    const editable = page.locator('[contenteditable="true"]').first()
+    await editable.click()
+    await page.keyboard.press('ControlOrMeta+A')
+    await editable.pressSequentially(unique, { delay: 20 })
+    await expect(editable).toContainText(unique, { timeout: 5_000 })
+    await expectUnsaved(page)
+
+    // Leave without Escape — pending Plate must flush via sceneElementsForPersist.
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => JSON.stringify(s.elements ?? []).includes(unique)
+    )
+    expect(JSON.stringify(snap.elements)).toContain(unique)
+  } finally {
+    await close()
+  }
+})
+
 test('note toolbar click keeps edit mode', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-toolbar-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })

@@ -23,7 +23,6 @@ export {
   isPdfNote,
   isPdfNoteCenterHit,
   plateValueFromQuote,
-  queryVisibleNotes,
   type PdfNoteData
 } from './pdfNoteModel'
 

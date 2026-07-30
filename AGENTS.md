@@ -43,7 +43,7 @@ Guiding principles:
 | PDF text search (find bar + jump + hit overlay) | `PdfFindBar`, `pdfSearch`, `PdfLayer.setSearchHit`, `PdfCanvasApp` |
 | Outline + page thumbnails (sidebar) | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp` |
 | Annotation panel (highlights + notes + searches list) | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp` |
-| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **hidden**) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
+| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **unmounted**) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
 | Annotation polish: highlight color palette + delete note (keeps highlight) + Copiar on toolbar | `HighlightToolbar`, `selectionToHighlights` (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`); note delete via Excalidraw + host `pdfNoteArrow` cleanup |
 
 ### Pending / roadmap

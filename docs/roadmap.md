@@ -26,7 +26,7 @@ Feature write-ups: [`wysiwyg-notes`](features/wysiwyg-notes.md), [`persistence-a
 
 Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
 
-Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat tab **hidden**; RAG backend kept), [`web-search-capture`](features/web-search-capture.md), [`annotation-polish`](features/annotation-polish.md), [`adaptive-pdf-render-scale`](features/adaptive-pdf-render-scale.md) (Phase 1).
+Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat tab **unmounted**; RAG backend kept), [`web-search-capture`](features/web-search-capture.md), [`annotation-polish`](features/annotation-polish.md), [`adaptive-pdf-render-scale`](features/adaptive-pdf-render-scale.md) (Phase 1).
 
 | Item | Notes |
 |------|--------|
