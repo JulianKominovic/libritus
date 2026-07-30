@@ -8,8 +8,16 @@ function readZoomFactor(result: unknown): number {
   return typeof z === 'number' && Number.isFinite(z) ? z : 0.8
 }
 
-export async function browserOpen(url: string, bounds: BrowserBounds): Promise<number> {
-  const result = await window.electron.ipcRenderer.invoke('browser:open', { url, bounds })
+export async function browserOpen(
+  url: string,
+  bounds: BrowserBounds,
+  zoomFactor?: number
+): Promise<number> {
+  const result = await window.electron.ipcRenderer.invoke('browser:open', {
+    url,
+    bounds,
+    zoomFactor
+  })
   return readZoomFactor(result)
 }
 
@@ -17,12 +25,10 @@ export async function browserSetBounds(bounds: BrowserBounds): Promise<void> {
   await window.electron.ipcRenderer.invoke('browser:setBounds', bounds)
 }
 
-export async function browserZoomIn(): Promise<number> {
-  return readZoomFactor(await window.electron.ipcRenderer.invoke('browser:zoomIn'))
-}
-
-export async function browserZoomOut(): Promise<number> {
-  return readZoomFactor(await window.electron.ipcRenderer.invoke('browser:zoomOut'))
+export async function browserSetZoom(zoomFactor: number): Promise<number> {
+  return readZoomFactor(
+    await window.electron.ipcRenderer.invoke('browser:setZoom', zoomFactor)
+  )
 }
 
 export async function browserGoBack(): Promise<void> {

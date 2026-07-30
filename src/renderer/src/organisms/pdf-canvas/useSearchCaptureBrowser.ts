@@ -10,19 +10,24 @@ import {
   browserDeactivate,
   browserOpen,
   browserSetBounds,
-  browserZoomIn,
-  browserZoomOut,
+  browserSetZoom,
   OPEN_GRACE_MS,
   type BrowserBounds
 } from '@renderer/integrations/webBrowser'
 import { loadBinaryFiles } from '@renderer/lib/pdf-canvas/attachments'
 import {
   applySearchCaptureScreenshot,
+  demoteSearchCaptureToEmbeddable,
   findPdfSearchCaptureAt,
+  getSearchCaptureFileId,
   getSearchCaptureUrl,
+  guestEffectiveZoom,
+  isActiveSearchCapturePointerHit,
   isPdfSearchCapture,
   isPdfSearchCaptureCenterHit,
-  resolveSearchCaptureOpenUrl
+  resolveSearchCaptureOpenUrl,
+  SEARCH_CAPTURE_DEFAULT_USER_ZOOM,
+  stepGuestUserZoom
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
 import { clientToSceneCoords } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
@@ -38,6 +43,9 @@ type UseSearchCaptureBrowserArgs = {
   syncSaveChip: (next: SaveStatus) => void
   clearActiveEmbeddable: () => void
 }
+
+/** Keep Excalidraw transform handles outside the native WCV hit area. */
+const GUEST_BOUNDS_INSET_PX = 12
 
 /**
  * Guest WebContentsView lifecycle for search captures.
@@ -57,6 +65,10 @@ export function useSearchCaptureBrowser({
   const browserOpenedAtRef = useRef(0)
   const browserChromeRef = useRef<HTMLDivElement>(null)
   const zoomPercentRef = useRef<HTMLSpanElement>(null)
+  /** Chrome % — independent of Excalidraw camera; effective = user × canvasZoom. */
+  const userZoomFactorRef = useRef(SEARCH_CAPTURE_DEFAULT_USER_ZOOM)
+  /** Last *requested* effective (skip redundant IPC); clamp may make Chromium differ. */
+  const lastRequestedEffectiveZoomRef = useRef<number | null>(null)
   const captureActivateDownRef = useRef<{
     id: string
     clientX: number
@@ -67,6 +79,37 @@ export function useSearchCaptureBrowser({
     const el = zoomPercentRef.current
     if (el) el.textContent = `${Math.round(factor * 100)}%`
   }, [])
+
+  const canvasZoom = useCallback((): number => {
+    const z = apiRef.current?.getAppState().zoom?.value
+    return typeof z === 'number' && z > 0 && Number.isFinite(z) ? z : 1
+  }, [apiRef])
+
+  /** Apply Chromium zoom = userZoom × canvasZoom (skip IPC if request unchanged). */
+  const applyEffectiveGuestZoom = useCallback(
+    (userZoom: number) => {
+      const effective = guestEffectiveZoom(userZoom, canvasZoom())
+      if (lastRequestedEffectiveZoomRef.current === effective) return
+      lastRequestedEffectiveZoomRef.current = effective
+      // Fire-and-forget; do not rewrite userZoom from clamped return.
+      void browserSetZoom(effective)
+    },
+    [canvasZoom]
+  )
+
+  /** Chrome / Cmd±: step user zoom in user space, then compensate. */
+  const stepUserZoom = useCallback(
+    (deltaLevel: number) => {
+      if (!activeBrowserCaptureIdRef.current) return
+      const next = stepGuestUserZoom(userZoomFactorRef.current, deltaLevel)
+      userZoomFactorRef.current = next
+      setZoomPercentLabel(next)
+      // Force re-apply even if product coincidentally matches (e.g. after clamp).
+      lastRequestedEffectiveZoomRef.current = null
+      applyEffectiveGuestZoom(next)
+    },
+    [applyEffectiveGuestZoom, setZoomPercentLabel]
+  )
 
   const elementScreenBounds = useCallback(
     (el: { x: number; y: number; width: number; height: number }): BrowserBounds | null => {
@@ -88,6 +131,22 @@ export function useSearchCaptureBrowser({
     [apiRef]
   )
 
+  /** Inset guest so edge/corner handles stay on the host (WCV can't steal the drag). */
+  const guestScreenBounds = useCallback(
+    (el: { x: number; y: number; width: number; height: number }): BrowserBounds | null => {
+      const full = elementScreenBounds(el)
+      if (!full) return null
+      const inset = GUEST_BOUNDS_INSET_PX
+      return {
+        x: full.x + inset,
+        y: full.y + inset,
+        width: Math.max(1, full.width - inset * 2),
+        height: Math.max(1, full.height - inset * 2)
+      }
+    },
+    [elementScreenBounds]
+  )
+
   const hideBrowserChromeHud = useCallback(() => {
     const chrome = browserChromeRef.current
     if (chrome) chrome.style.display = 'none'
@@ -107,6 +166,19 @@ export function useSearchCaptureBrowser({
     [containerRef]
   )
 
+  const syncGuestToElement = useCallback(
+    (el: { x: number; y: number; width: number; height: number }) => {
+      const full = elementScreenBounds(el)
+      const guest = guestScreenBounds(el)
+      if (!full || !guest) return
+      browserBoundsRef.current = guest
+      syncBrowserChromeHud(full)
+      void browserSetBounds(guest)
+      applyEffectiveGuestZoom(userZoomFactorRef.current)
+    },
+    [applyEffectiveGuestZoom, elementScreenBounds, guestScreenBounds, syncBrowserChromeHud]
+  )
+
   const deactivateSearchBrowser = useCallback(async () => {
     const captureId = activeBrowserCaptureIdRef.current
     if (!captureId) return
@@ -117,6 +189,7 @@ export function useSearchCaptureBrowser({
 
     activeBrowserCaptureIdRef.current = null
     browserBoundsRef.current = null
+    lastRequestedEffectiveZoomRef.current = null
     hideBrowserChromeHud()
     clearActiveEmbeddable()
 
@@ -169,35 +242,79 @@ export function useSearchCaptureBrowser({
       height: number
       customData?: ExcalidrawElement['customData']
     }) => {
-      const bounds = elementScreenBounds(el)
-      if (!bounds) return
+      const guest = guestScreenBounds(el)
+      const full = elementScreenBounds(el)
+      if (!guest || !full) return
 
       if (activeBrowserCaptureIdRef.current && activeBrowserCaptureIdRef.current !== el.id) {
         await deactivateSearchBrowser()
       }
 
-      const sceneEl = apiRef.current?.getSceneElements().find((e) => e.id === el.id)
+      const api = apiRef.current
+      const sceneEl = api?.getSceneElements().find((e) => e.id === el.id)
       const url = resolveSearchCaptureOpenUrl(el, sceneEl)
 
+      // Image captures lock aspect ratio in Excalidraw — demote while browsing.
+      let demotedFromImage = false
+      if (sceneEl && isPdfSearchCapture(sceneEl) && sceneEl.type === 'image' && api) {
+        demotedFromImage = true
+        const demoted = demoteSearchCaptureToEmbeddable(sceneEl)
+        api.updateScene({
+          elements: api.getSceneElements().map((e) => (e.id === el.id ? demoted : e)),
+          appState: { selectedElementIds: { [el.id]: true } },
+          captureUpdate: CaptureUpdateAction.NEVER
+        })
+      } else if (api) {
+        api.updateScene({
+          appState: { selectedElementIds: { [el.id]: true } },
+          captureUpdate: CaptureUpdateAction.NEVER
+        })
+      }
+
       activeBrowserCaptureIdRef.current = el.id
-      browserBoundsRef.current = bounds
+      browserBoundsRef.current = guest
       browserOpenedAtRef.current = Date.now()
-      syncBrowserChromeHud(bounds)
+      userZoomFactorRef.current = SEARCH_CAPTURE_DEFAULT_USER_ZOOM
+      const effective = guestEffectiveZoom(SEARCH_CAPTURE_DEFAULT_USER_ZOOM, canvasZoom())
+      lastRequestedEffectiveZoomRef.current = effective
+      syncBrowserChromeHud(full)
+      setZoomPercentLabel(SEARCH_CAPTURE_DEFAULT_USER_ZOOM)
       try {
-        const zoomFactor = await browserOpen(url, bounds)
-        setZoomPercentLabel(zoomFactor)
+        await browserOpen(url, guest, effective)
       } catch (err) {
         console.error('Failed to open search browser', err)
         activeBrowserCaptureIdRef.current = null
         browserBoundsRef.current = null
+        lastRequestedEffectiveZoomRef.current = null
         hideBrowserChromeHud()
         void browserClose()
+        // Roll back demote so the user keeps the screenshot image.
+        if (demotedFromImage && api) {
+          const cur = api.getSceneElements().find((e) => e.id === el.id)
+          const fileId = cur ? getSearchCaptureFileId(cur) : null
+          if (cur && fileId) {
+            const restored = applySearchCaptureScreenshot(cur, {
+              fileId,
+              url: getSearchCaptureUrl(cur),
+              capturedAt:
+                typeof cur.customData?.capturedAt === 'string'
+                  ? cur.customData.capturedAt
+                  : new Date().toISOString()
+            })
+            api.updateScene({
+              elements: api.getSceneElements().map((e) => (e.id === el.id ? restored : e)),
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
+          }
+        }
       }
     },
     [
       apiRef,
+      canvasZoom,
       deactivateSearchBrowser,
       elementScreenBounds,
+      guestScreenBounds,
       hideBrowserChromeHud,
       setZoomPercentLabel,
       syncBrowserChromeHud
@@ -207,35 +324,33 @@ export function useSearchCaptureBrowser({
   const syncActiveBrowserBounds = useCallback(() => {
     const id = activeBrowserCaptureIdRef.current
     if (!id) return
-    const el = apiRef.current?.getSceneElements().find((e) => e.id === id)
+    const api = apiRef.current
+    if (!api) return
+    const el = api.getSceneElements().find((e) => e.id === id)
     if (!el || el.isDeleted) return
-    const bounds = elementScreenBounds(el)
-    if (!bounds) return
-    browserBoundsRef.current = bounds
-    syncBrowserChromeHud(bounds)
-    void browserSetBounds(bounds)
-  }, [apiRef, elementScreenBounds, syncBrowserChromeHud])
+    // Live-follow resize/move — inset keeps handles outside the WCV.
+    syncGuestToElement(el)
+  }, [apiRef, syncGuestToElement])
 
   /** Tear down guest without capturePage (leave PDF / destroy session). */
   const disposeBrowser = useCallback(() => {
     if (!activeBrowserCaptureIdRef.current) return
     activeBrowserCaptureIdRef.current = null
     browserBoundsRef.current = null
+    lastRequestedEffectiveZoomRef.current = null
     hideBrowserChromeHud()
     void browserClose()
   }, [hideBrowserChromeHud])
 
   const isBrowsing = useCallback(() => activeBrowserCaptureIdRef.current != null, [])
 
-  const zoomIn = useCallback(async () => {
-    if (!activeBrowserCaptureIdRef.current) return
-    setZoomPercentLabel(await browserZoomIn())
-  }, [setZoomPercentLabel])
+  const zoomIn = useCallback(() => {
+    stepUserZoom(1)
+  }, [stepUserZoom])
 
-  const zoomOut = useCallback(async () => {
-    if (!activeBrowserCaptureIdRef.current) return
-    setZoomPercentLabel(await browserZoomOut())
-  }, [setZoomPercentLabel])
+  const zoomOut = useCallback(() => {
+    stepUserZoom(-1)
+  }, [stepUserZoom])
 
   /** Resize active capture about its center; guest bounds follow via sync. */
   const resizeActiveBrowser = useCallback(
@@ -262,14 +377,9 @@ export function useSearchCaptureBrowser({
       dirtyRef.current = true
       syncSaveChip('unsaved')
       // onChange also syncs; call now so guest moves before next frame.
-      const bounds = elementScreenBounds(updated)
-      if (bounds) {
-        browserBoundsRef.current = bounds
-        syncBrowserChromeHud(bounds)
-        void browserSetBounds(bounds)
-      }
+      syncGuestToElement(updated)
     },
-    [apiRef, dirtyRef, elementScreenBounds, syncBrowserChromeHud, syncSaveChip]
+    [apiRef, dirtyRef, syncGuestToElement, syncSaveChip]
   )
 
   // Escape from guest WebContentsView (focus is in the guest webContents).
@@ -281,17 +391,16 @@ export function useSearchCaptureBrowser({
     return window.electron.ipcRenderer.on('browser:escape', onEscape)
   }, [deactivateSearchBrowser])
 
-  // Keyboard zoom in guest pushes factor to host chrome (imperative — no setState).
+  // Cmd/Ctrl± in guest → step user zoom (same path as BrowserChrome).
   useEffect(() => {
     return window.electron.ipcRenderer.on(
-      'browser:zoom',
-      (_event: unknown, payload: { zoomFactor?: unknown }) => {
-        if (!activeBrowserCaptureIdRef.current) return
-        const z = payload?.zoomFactor
-        if (typeof z === 'number' && Number.isFinite(z)) setZoomPercentLabel(z)
+      'browser:zoom-step',
+      (_event: unknown, payload: { delta?: unknown }) => {
+        const d = payload?.delta
+        if (typeof d === 'number' && Number.isFinite(d) && d !== 0) stepUserZoom(Math.sign(d))
       }
     )
-  }, [setZoomPercentLabel])
+  }, [stepUserZoom])
 
   // Center-click opens the guest; click outside closes it.
   // Host-owned so native `image` captures (post-screenshot) activate too.
@@ -318,8 +427,11 @@ export function useSearchCaptureBrowser({
           void deactivateSearchBrowser()
           return
         }
-        const inside = x >= el.x && x <= el.x + el.width && y >= el.y && y <= el.y + el.height
-        if (!inside) void deactivateSearchBrowser()
+        const zoom = api.getAppState().zoom?.value ?? 1
+        // Pad keeps transform handles from counting as outside-click.
+        if (!isActiveSearchCapturePointerHit(el, x, y, zoom)) {
+          void deactivateSearchBrowser()
+        }
         return
       }
 
@@ -351,10 +463,11 @@ export function useSearchCaptureBrowser({
     }
 
     host.addEventListener('pointerdown', onPointerDownCapture, true)
-    host.addEventListener('pointerup', onPointerUpCapture, true)
+    // pointerup on window: Excalidraw may release outside the host.
+    window.addEventListener('pointerup', onPointerUpCapture, true)
     return () => {
       host.removeEventListener('pointerdown', onPointerDownCapture, true)
-      host.removeEventListener('pointerup', onPointerUpCapture, true)
+      window.removeEventListener('pointerup', onPointerUpCapture, true)
     }
   }, [apiRef, deactivateSearchBrowser, excalidrawHostRef, openSearchBrowser])
 

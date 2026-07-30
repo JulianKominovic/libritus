@@ -622,6 +622,89 @@ test('open grace ignores outside click for 800ms', async () => {
   }
 })
 
+test('while browsing, edge resize keeps guest and free aspect', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-search-resize-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const capX = 80
+  const capY = 40
+  const capW = 300
+  const capH = 300
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedSearchCaptureElement({
+        id: 'cap-resize',
+        x: capX,
+        y: capY,
+        width: capW,
+        height: capH,
+        query: 'resize',
+        url: 'https://example.com'
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
+
+    // Select via right-edge hit (outside center-third — does not activate).
+    await clickScene(page, capX + capW - 10, capY + capH / 2)
+    await clickScene(page, capX + capW / 2, capY + capH / 2)
+    await expectBrowserChromeVisible(page)
+    await page.waitForTimeout(1200)
+
+    // Guest WCV aligns to chrome left/width (chrome sits just above the card).
+    const chromeBox = await page.locator('[data-browser-chrome]').boundingBox()
+    if (!chromeBox) throw new Error('no chrome box')
+    const edgeX = chromeBox.x + chromeBox.width + 6
+    const midY = chromeBox.y + chromeBox.height + capH / 2
+    await page.mouse.move(edgeX, midY)
+    await page.mouse.down()
+    await page.mouse.move(edgeX + 100, midY, { steps: 12 })
+    await page.mouse.up()
+    await expectBrowserChromeVisible(page)
+
+    await clickScene(page, 20, 20)
+    await expectBrowserChromeHidden(page)
+    await expectUnsaved(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => {
+        const cap = liveElements(s).find(isSearchCapture)
+        return (
+          !!cap &&
+          cap.type === 'image' &&
+          typeof (cap.customData as { fileId?: string })?.fileId === 'string' &&
+          typeof cap.width === 'number' &&
+          (cap.width as number) > capW + 40
+        )
+      }
+    )
+
+    const cap = liveElements(snap).find(isSearchCapture)!
+    expect(cap.type).toBe('image')
+    expect(cap.width as number).toBeGreaterThan(capW + 40)
+    // Free axis: height must not grow with the diagonal aspect lock (~same as seed).
+    expect(Math.abs((cap.height as number) - capH)).toBeLessThan(20)
+  } finally {
+    await close()
+  }
+})
+
 test('session restore keeps image search capture with attachment', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-search-restore-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })

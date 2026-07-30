@@ -6,6 +6,7 @@ import type {
 } from '@excalidraw/excalidraw/element/types'
 import { arrowBetweenRects, unionRect } from './arrowBetweenRects'
 import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
+import { elementContainsPoint } from './sceneHit'
 
 export type PdfSearchCaptureData = {
   pdfSearchCapture: true
@@ -75,6 +76,23 @@ export function isPdfSearchCaptureCenterHit(
   )
 }
 
+/** Screen-px pad around the active capture so Excalidraw transform handles don't count as outside-click. */
+export const SEARCH_CAPTURE_TRANSFORM_PAD_PX = 20
+
+/**
+ * True when a pointer on the active browse card (or its transform chrome) should keep the guest open.
+ * `zoom` is Excalidraw zoom.value (scene → screen).
+ */
+export function isActiveSearchCapturePointerHit(
+  el: Pick<ExcalidrawElement, 'x' | 'y' | 'width' | 'height'>,
+  sceneX: number,
+  sceneY: number,
+  zoom: number
+): boolean {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  return elementContainsPoint(el, sceneX, sceneY, SEARCH_CAPTURE_TRANSFORM_PAD_PX / z)
+}
+
 export const SEARCH_CAPTURE_WIDTH = 430
 export const SEARCH_CAPTURE_HEIGHT = 930
 /** Portrait preset (chrome resize). */
@@ -87,7 +105,39 @@ export const SEARCH_CAPTURE_STROKE = 'transparent'
 export const SEARCH_CAPTURE_EMBED_LINK = 'libritus://pdf-search-capture'
 /** Excalidraw ROUNDNESS.ADAPTIVE_RADIUS — 16px corner clip. */
 export const SEARCH_CAPTURE_ROUNDNESS = { type: 3 as const, value: 16 }
+/** Default BrowserChrome user zoom (independent of Excalidraw camera). */
+export const SEARCH_CAPTURE_DEFAULT_USER_ZOOM = 0.8
+/** Chromium-style step: zoomFactor ≈ 1.2^level (user space only). */
+export const GUEST_USER_ZOOM_STEP = 1.2
+export const GUEST_USER_ZOOM_MIN = 0.25
+export const GUEST_USER_ZOOM_MAX = 5
 const SEARCH_GAP = 48
+
+function clampGuestUserZoom(userZoom: number): number {
+  if (!Number.isFinite(userZoom)) return SEARCH_CAPTURE_DEFAULT_USER_ZOOM
+  return Math.min(GUEST_USER_ZOOM_MAX, Math.max(GUEST_USER_ZOOM_MIN, userZoom))
+}
+
+/**
+ * Chromium zoomFactor that keeps page content locked to the capture card
+ * while the Excalidraw camera zooms (bounds scale with canvasZoom).
+ */
+export function guestEffectiveZoom(userZoom: number, canvasZoom: number): number {
+  const z = canvasZoom > 0 && Number.isFinite(canvasZoom) ? canvasZoom : 1
+  return userZoom * z
+}
+
+/** Back-compute chrome % from effective (tests / diagnostics). */
+export function guestUserZoomFromEffective(effectiveZoom: number, canvasZoom: number): number {
+  const z = canvasZoom > 0 && Number.isFinite(canvasZoom) ? canvasZoom : 1
+  return effectiveZoom / z
+}
+
+/** Step chrome user zoom by ±1 Chromium level; clamp in user space. */
+export function stepGuestUserZoom(userZoom: number, deltaLevel: number): number {
+  const stepped = userZoom * Math.pow(GUEST_USER_ZOOM_STEP, deltaLevel)
+  return clampGuestUserZoom(stepped)
+}
 
 /** Host-managed highlight→search-capture connector (no Excalidraw bindings). */
 export type PdfSearchArrowData = {
@@ -253,6 +303,37 @@ export function applySearchCaptureScreenshot(
     roundness: SEARCH_CAPTURE_ROUNDNESS,
     customData
   } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
+}
+
+/**
+ * Image → embeddable placeholder while browsing so Excalidraw free-resizes (images lock aspect).
+ * Keeps customData (incl. fileId); deactivate re-promotes via applySearchCaptureScreenshot.
+ * ponytail: live scene must not call normalizePdfSearchCapture while browsing — normalize
+ * re-promotes any embeddable that still has customData.fileId (persist/open only today).
+ * Never leave `scale: undefined` — `"scale" in el` stays true and Excalidraw
+ * resizeSingleElement crashes on `origElement.scale[0]`.
+ */
+export function demoteSearchCaptureToEmbeddable(
+  el: OrderedExcalidrawElement
+): OrderedExcalidrawElement {
+  if (!isPdfSearchCapture(el) || el.type !== 'image') return el
+  const next = newElementWith(el, {
+    type: 'embeddable',
+    link: SEARCH_CAPTURE_EMBED_LINK,
+    backgroundColor: SEARCH_CAPTURE_FILL,
+    strokeColor: SEARCH_CAPTURE_STROKE,
+    strokeWidth: 0,
+    fileId: null,
+    crop: null,
+    roundness: null
+  } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement & {
+    scale?: unknown
+    status?: unknown
+  }
+  // Strip image-only keys (delete, don't assign undefined).
+  delete next.scale
+  delete next.status
+  return next as OrderedExcalidrawElement
 }
 
 /**

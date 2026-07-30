@@ -21,6 +21,8 @@ const GUEST_PARTITION = 'persist:web-browser'
 type OpenPayload = {
   url: string
   bounds: BrowserBounds
+  /** Absolute Chromium zoomFactor (renderer applies userZoom × canvasZoom). */
+  zoomFactor?: number
 }
 
 /** App window that hosts the PDF canvas. */
@@ -34,8 +36,12 @@ let ignoreDeactivateUntil = 0
 const OPEN_GRACE_MS = 800
 /** Page zoom inside the guest overlay (more layout in the mobile-sized frame). */
 const GUEST_ZOOM_FACTOR = 0.8
-const ZOOM_MIN = 0.25
-const ZOOM_MAX = 5
+/**
+ * Effective = user × canvasZoom needs headroom beyond user chrome range (0.25–5)
+ * so lock-to-card still works when the Excalidraw camera is zoomed in/out.
+ */
+const EFFECTIVE_ZOOM_MIN = 0.05
+const EFFECTIVE_ZOOM_MAX = 50
 let guestSessionConfigured = false
 
 /**
@@ -154,37 +160,16 @@ function getGuestZoomFactor(): number {
   }
 }
 
-function notifyZoom(zoomFactor: number): void {
-  resolveHost()?.webContents.send('browser:zoom', { zoomFactor })
-}
-
 function setGuestZoomFactor(factor: number): number {
   const wc = guestContents()
   if (!wc) return GUEST_ZOOM_FACTOR
-  const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, factor))
+  const clamped = Math.min(EFFECTIVE_ZOOM_MAX, Math.max(EFFECTIVE_ZOOM_MIN, factor))
   wc.setZoomFactor(clamped)
-  const next = getGuestZoomFactor()
-  notifyZoom(next)
-  return next
+  return getGuestZoomFactor()
 }
 
-/** Chromium-style step: zoomFactor ≈ 1.2^level. */
-function zoomGuestBy(deltaLevel: number): number {
-  const wc = guestContents()
-  if (!wc) return GUEST_ZOOM_FACTOR
-  let level: number
-  try {
-    level = wc.getZoomLevel()
-  } catch {
-    return GUEST_ZOOM_FACTOR
-  }
-  wc.setZoomLevel(level + deltaLevel)
-  const factor = getGuestZoomFactor()
-  if (factor < ZOOM_MIN || factor > ZOOM_MAX) {
-    return setGuestZoomFactor(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, factor)))
-  }
-  notifyZoom(factor)
-  return factor
+function notifyZoomStep(delta: number): void {
+  resolveHost()?.webContents.send('browser:zoom-step', { delta })
 }
 
 function ensureGuest(parent: BrowserWindow): WebContentsView {
@@ -202,6 +187,7 @@ function ensureGuest(parent: BrowserWindow): WebContentsView {
       sandbox: false
     }
   })
+  guest.setBorderRadius(12)
 
   const wc = guest.webContents
   wc.setZoomFactor(GUEST_ZOOM_FACTOR)
@@ -235,12 +221,13 @@ function ensureGuest(parent: BrowserWindow): WebContentsView {
     if (!(input.meta || input.control)) return
     if (input.key === '+' || input.key === '=' || input.key === 'Add') {
       event.preventDefault()
-      zoomGuestBy(1)
+      // Renderer owns user zoom; host steps userZoom then applies user×canvas.
+      notifyZoomStep(1)
       return
     }
     if (input.key === '-' || input.key === '_' || input.key === 'Subtract') {
       event.preventDefault()
-      zoomGuestBy(-1)
+      notifyZoomStep(-1)
     }
   })
 
@@ -288,7 +275,12 @@ export function attachWebBrowserIpc(): void {
     if (!win) throw new Error('No browser window')
 
     const view = ensureGuest(win)
-    const zoomFactor = setGuestZoomFactor(GUEST_ZOOM_FACTOR)
+    const initialZoom =
+      typeof payload.zoomFactor === 'number' && Number.isFinite(payload.zoomFactor)
+        ? payload.zoomFactor
+        : GUEST_ZOOM_FACTOR
+    // Silent — renderer owns chrome % (user zoom); this is effective = user × canvas.
+    const zoomFactor = setGuestZoomFactor(initialZoom)
     ignoreDeactivateUntil = Date.now() + OPEN_GRACE_MS
     applyBounds(payload.bounds)
     // ponytail: hide-not-detach — never removeChildView mid-load (historical ERR_FAILED).
@@ -303,14 +295,13 @@ export function attachWebBrowserIpc(): void {
     return { ok: true as const }
   })
 
-  ipcMain.handle('browser:zoomIn', () => {
+  // Absolute effective zoom (user × canvas). Silent — do not spam chrome on pan/zoom sync.
+  ipcMain.handle('browser:setZoom', (_e, zoomFactor: number) => {
     if (!guestContents()) return { zoomFactor: GUEST_ZOOM_FACTOR }
-    return { zoomFactor: zoomGuestBy(1) }
-  })
-
-  ipcMain.handle('browser:zoomOut', () => {
-    if (!guestContents()) return { zoomFactor: GUEST_ZOOM_FACTOR }
-    return { zoomFactor: zoomGuestBy(-1) }
+    if (typeof zoomFactor !== 'number' || !Number.isFinite(zoomFactor)) {
+      return { zoomFactor: getGuestZoomFactor() }
+    }
+    return { zoomFactor: setGuestZoomFactor(zoomFactor) }
   })
 
   ipcMain.handle('browser:getZoom', () => {

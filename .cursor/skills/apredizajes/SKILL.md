@@ -643,4 +643,20 @@ Con selection tool + miss AABB → `.pdf-text-pass`, el canvas interactivo queda
 
 En el gate de pass-through: si hay `selectedElementIds` o `editingLinearElement`, forzar pass off (Excalidraw posee el pointer hasta deseleccionar). E2E: flecha horizontal unlocked seleccionada + hover sobre texto → pass sigue off.
 
+### Search capture: resize/move desactiva browse + aspect lock
+
+#### Descripción más detallada
+
+Con el guest activo, un `pointerdown` fuera del AABB del capture llamaba `deactivateSearchBrowser` → `capturePage` → promote a `image`. Los handles de resize/move de Excalidraw viven justo fuera del AABB (el `WebContentsView` solo cubre el rect), así que al redimensionar se perdía el browse y el resize quedaba con aspect lock de imagen.
+
+Además, `demoteSearchCaptureToEmbeddable` hacía `scale: undefined`. Excalidraw `resizeSingleElement` chequea `"scale" in el` (true) y lee `origElement.scale[0]` → TypeError en cada pointermove → drag “tildado”.
+
+Ocultar el WCV en hover/pointerdown para “proteger” el drag rompía la UX (no se ve el contenido al resizear) y `setVisible` mid-gesto puede abortar el pointer capture del host.
+
+#### Corrección
+
+- Hit de “inside” mientras browsing: `isActiveSearchCapturePointerHit` con pad ~20 CSS px / zoom.
+- Al activar un capture `image`, demote a embeddable; **delete** `scale`/`status` (no `undefined`); deactivate vuelve a promover.
+- Guest **sigue visible** y `setBounds` live-follow durante resize; inset ~12px para que los handles no caigan bajo el WCV.
+
 

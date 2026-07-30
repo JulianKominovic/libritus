@@ -66,12 +66,16 @@ const {
   clipboardHasImageOrFiles,
   createSearchCapture,
   createSearchCaptureFromHighlight,
+  demoteSearchCaptureToEmbeddable,
   findPdfSearchCaptureAt,
   fixDuplicatedPdfSearchCaptures,
   getSearchCaptureFileId,
   getSearchCaptureQuery,
   getSearchCaptureUrl,
   googleSearchUrl,
+  guestEffectiveZoom,
+  guestUserZoomFromEffective,
+  isActiveSearchCapturePointerHit,
   isPdfSearchArrow,
   isPdfSearchCapture,
   isPdfSearchCaptureCenterHit,
@@ -80,6 +84,7 @@ const {
   pastedHttpUrlForSearchCapture,
   resolveSearchCaptureOpenUrl,
   searchCaptureIdsForHighlight,
+  stepGuestUserZoom,
   syncPdfSearchArrows
 } = await import('./pdfSearchCapture')
 
@@ -126,6 +131,48 @@ describe('googleSearchUrl', () => {
 
   test('empty falls back to search', () => {
     expect(googleSearchUrl('  ')).toBe('https://www.google.com/search?q=search')
+  })
+})
+
+describe('guestEffectiveZoom / guestUserZoomFromEffective', () => {
+  test('scales user zoom by canvas zoom', () => {
+    expect(guestEffectiveZoom(0.8, 2)).toBe(1.6)
+  })
+
+  test('back-computes user zoom from effective', () => {
+    expect(guestUserZoomFromEffective(1.6, 2)).toBe(0.8)
+  })
+
+  test('round-trips at canvas zoom 1', () => {
+    const effective = guestEffectiveZoom(0.8, 1)
+    expect(effective).toBe(0.8)
+    expect(guestUserZoomFromEffective(effective, 1)).toBe(0.8)
+  })
+
+  test('canvasZoom 0 / negative falls back to 1', () => {
+    expect(guestEffectiveZoom(0.8, 0)).toBe(0.8)
+    expect(guestEffectiveZoom(0.8, -2)).toBe(0.8)
+    expect(guestUserZoomFromEffective(1.6, 0)).toBe(1.6)
+    expect(guestUserZoomFromEffective(1.6, -2)).toBe(1.6)
+  })
+})
+
+describe('stepGuestUserZoom', () => {
+  test('steps by Chromium 1.2 factor', () => {
+    expect(stepGuestUserZoom(0.8, 1)).toBeCloseTo(0.96)
+    expect(stepGuestUserZoom(0.96, -1)).toBeCloseTo(0.8)
+  })
+
+  test('clamps in user space (does not rewrite via effective)', () => {
+    expect(stepGuestUserZoom(5, 1)).toBe(5)
+    expect(stepGuestUserZoom(0.25, -1)).toBe(0.25)
+  })
+
+  test('user step stays independent of canvas zoom product', () => {
+    // Canvas zoom 10 → effective would be huge; user chrome still steps 0.8 → 0.96.
+    const user = stepGuestUserZoom(0.8, 1)
+    expect(user).toBeCloseTo(0.96)
+    expect(guestEffectiveZoom(user, 10)).toBeCloseTo(9.6)
   })
 })
 
@@ -338,6 +385,70 @@ describe('search capture model', () => {
     expect(isPdfSearchCaptureCenterHit(el, 50, 150)).toBe(false)
     expect(isPdfSearchCaptureCenterHit(el, 150, 50)).toBe(false)
     expect(isPdfSearchCaptureCenterHit(el, 250, 250)).toBe(false)
+  })
+
+  test('isActiveSearchCapturePointerHit includes transform pad', () => {
+    const el = { x: 0, y: 0, width: 300, height: 300 }
+    // Just outside AABB but within 20px pad at zoom 1
+    expect(isActiveSearchCapturePointerHit(el, 308, 150, 1)).toBe(true)
+    expect(isActiveSearchCapturePointerHit(el, 150, -10, 1)).toBe(true)
+    // Outside pad
+    expect(isActiveSearchCapturePointerHit(el, 330, 150, 1)).toBe(false)
+    // Zoom 2 → scene pad = 10
+    expect(isActiveSearchCapturePointerHit(el, 312, 150, 2)).toBe(false)
+    expect(isActiveSearchCapturePointerHit(el, 305, 150, 2)).toBe(true)
+  })
+})
+
+describe('demoteSearchCaptureToEmbeddable', () => {
+  test('image → embeddable keeps customData.fileId for free resize while browsing', () => {
+    const el = createSearchCapture({
+      x: 10,
+      y: 20,
+      width: 400,
+      height: 500,
+      query: 'q',
+      url: 'https://example.com'
+    })
+    const image = applySearchCaptureScreenshot(el, {
+      fileId: 'att-1',
+      url: 'https://example.com/page',
+      capturedAt: '2026-01-01T00:00:00.000Z'
+    })
+    expect(image.type).toBe('image')
+
+    const demoted = demoteSearchCaptureToEmbeddable(image)
+    expect(demoted.type).toBe('embeddable')
+    expect(demoted.link).toBe(SEARCH_CAPTURE_EMBED_LINK)
+    expect(demoted.backgroundColor).toBe(SEARCH_CAPTURE_FILL)
+    expect(demoted.customData?.fileId).toBe('att-1')
+    expect(demoted.width).toBe(image.width)
+    expect(demoted.height).toBe(image.height)
+    // Excalidraw resizeSingleElement: `"scale" in el` + undefined scale → crash.
+    expect('scale' in demoted).toBe(false)
+    expect('status' in demoted).toBe(false)
+
+    // No-op for non-image
+    expect(demoteSearchCaptureToEmbeddable(el)).toBe(el)
+  })
+
+  test('normalize re-promotes demoted embeddable (persist contract)', () => {
+    const el = createSearchCapture({
+      x: 0,
+      y: 0,
+      query: 'q',
+      url: 'https://example.com'
+    })
+    const image = applySearchCaptureScreenshot(el, {
+      fileId: 'att-1',
+      url: 'https://example.com/page',
+      capturedAt: '2026-01-01T00:00:00.000Z'
+    })
+    const demoted = demoteSearchCaptureToEmbeddable(image)
+    expect(demoted.type).toBe('embeddable')
+    const normalized = normalizePdfSearchCapture(demoted)
+    expect(normalized.type).toBe('image')
+    expect((normalized as { fileId?: string }).fileId).toBe('att-1')
   })
 })
 

@@ -33,9 +33,9 @@ Out of scope (for now):
 | **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight (initial L/R parity; sync re-anchors to shortest AABB segment on drag). Selects the card; does **not** auto-activate. Google search URL from highlight text. |
 | **Place browser** | Toolbar toggle (like Place note). Next canvas click places the same embeddable at the pointer, **no** arrow / no `sourceHighlightId`. Initial URL `https://www.google.com`. Selects only — does not auto-activate. |
 | **Paste URL** | Paste a single http(s) URL on the canvas → same unanchored embeddable at viewport center with that URL (no arrow), then **auto-activates** the guest browser so the page is previewed immediately. Skips when clipboard also has image/files (leave Excalidraw image paste alone). Non-URL paste stays Excalidraw default. |
-| **Activate** | Center click (same as notes) → one `WebContentsView` child of the host, aligned to the shape in content coords (default page zoom 0.8). Clips to the app window; no separate OS window / `alwaysOnTop`. Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± zooms the guest. |
-| **Exit** | Escape or click outside → `capturePage` PNG under `attachments/` → native Excalidraw `image` with 16px rounded corners. |
-| **Resize / drag** | Excalidraw owns geometry (like notes). Arrows sync via host (no Excalidraw bindings). |
+| **Activate** | Center click (same as notes) → one `WebContentsView` child of the host, aligned to the shape in content coords (default **user** page zoom 0.8). Clips to the app window; no separate OS window / `alwaysOnTop`. Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± and chrome ± step **user** zoom (×1.2, clamped 0.25–5); Chromium gets `userZoom × canvasZoom` so page content stays locked to the card while the canvas camera moves. |
+| **Exit** | Escape or click outside (beyond transform-handle pad) → `capturePage` PNG under `attachments/` → native Excalidraw `image` with 16px rounded corners. |
+| **Resize / drag** | While browsing: Excalidraw owns geometry; transform handles do **not** deactivate; free axis resize (no aspect lock). Guest `WebContentsView` **live-follows** `setBounds` + zoom compensation; inset (~12px) keeps handles outside the WCV so it cannot steal the pointer. Image captures demote to embeddable on activate (`scale` key removed — not `undefined`) so resize stays free; deactivate re-promotes to `image` (aspect lock only in reading mode). Arrows sync via host (no Excalidraw bindings). |
 | **Style panel** | Host activate/deactivate ignores Excalidraw `.layer-ui__wrapper` (and menus) so clicks on stroke/fill chrome do not open a capture sitting under the panel in scene space. |
 | **Catalog stats** | Live `pdfSearchCapture` count writebacked as `canvasStats.searches` (category / home card globe pill). |
 
@@ -45,9 +45,9 @@ Out of scope (for now):
 
 ```
 Buscar / Place browser / Paste URL → create embeddable (libritus://pdf-search-capture) [+ arrow if from highlight]
-  → user activates → IPC browser:open({ url, bounds })
+  → user activates → IPC browser:open({ url, bounds, zoomFactor: user×canvas })
   → main shows WebContentsView on host contentView (partition persist:web-browser)
-  → pan/zoom/resize → browser:setBounds
+  → pan/zoom/resize → browser:setBounds + browser:setZoom (compensate user×canvas)
   → deactivate → capturePage PNG → hide view (no removeChildView mid-load)
   → promote shape to native Excalidraw image (customData.fileId / url / capturedAt)
 ```
