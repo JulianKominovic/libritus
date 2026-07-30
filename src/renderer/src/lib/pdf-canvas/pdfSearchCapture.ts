@@ -23,11 +23,11 @@ export function isPdfSearchCapture(el: ExcalidrawElement): el is OrderedExcalidr
   return el.customData?.pdfSearchCapture === true
 }
 
-export function getSearchCaptureQuery(el: ExcalidrawElement): string {
+export function getSearchCaptureQuery(el: Pick<ExcalidrawElement, 'customData'>): string {
   return typeof el.customData?.query === 'string' ? el.customData.query : ''
 }
 
-export function getSearchCaptureUrl(el: ExcalidrawElement): string {
+export function getSearchCaptureUrl(el: Pick<ExcalidrawElement, 'customData'>): string {
   return typeof el.customData?.url === 'string' ? el.customData.url : ''
 }
 
@@ -105,6 +105,42 @@ export function isPdfSearchArrow(el: ExcalidrawElement): boolean {
 export function googleSearchUrl(query: string): string {
   const q = query.trim()
   return `https://www.google.com/search?q=${encodeURIComponent(q || 'search')}`
+}
+
+/** True when clipboard text is exactly one http(s) URL (after trim). */
+export function parsePastedHttpUrl(text: string): string | null {
+  const t = text.trim()
+  if (!t || /\s/.test(t)) return null
+  try {
+    const u = new URL(t)
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null
+  } catch {
+    return null
+  }
+}
+
+/** True when clipboard also carries image/file payload (do not steal Excalidraw image paste). */
+export function clipboardHasImageOrFiles(data: DataTransfer | null | undefined): boolean {
+  if (!data) return false
+  if (data.files?.length) return true
+  return Array.from(data.types ?? []).some((t) => t === 'Files' || t.startsWith('image/'))
+}
+
+/** URL to turn into a search capture, or null if paste should stay with Excalidraw. */
+export function pastedHttpUrlForSearchCapture(data: DataTransfer | null | undefined): string | null {
+  if (!data || clipboardHasImageOrFiles(data)) return null
+  return parsePastedHttpUrl(data.getData('text/plain') ?? '')
+}
+
+/** Prefer in-memory element URL, then scene, then Google from query. */
+export function resolveSearchCaptureOpenUrl(
+  el: Pick<ExcalidrawElement, 'customData'>,
+  sceneEl?: Pick<ExcalidrawElement, 'customData'> | null
+): string {
+  const url = getSearchCaptureUrl(el) || (sceneEl ? getSearchCaptureUrl(sceneEl) : '')
+  if (url) return url
+  const q = getSearchCaptureQuery(el) || (sceneEl ? getSearchCaptureQuery(sceneEl) : '')
+  return googleSearchUrl(q)
 }
 
 function geomClose(

@@ -58,6 +58,7 @@ import {
   isPdfSearchCapture,
   isPdfSearchCaptureCenterHit,
   normalizePdfSearchCapture,
+  pastedHttpUrlForSearchCapture,
   SEARCH_CAPTURE_EMBED_LINK,
   SEARCH_CAPTURE_HEIGHT,
   SEARCH_CAPTURE_LANDSCAPE,
@@ -278,6 +279,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     resizeActiveBrowser,
     isBrowsing,
     syncActiveBrowserBounds,
+    openSearchBrowser,
     deactivateSearchBrowser,
     disposeBrowser
   } = useSearchCaptureBrowser({
@@ -1569,6 +1571,76 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [])
 
   useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const root = containerRef.current
+      if (!root) return
+
+      const active = document.activeElement
+      const inCanvas =
+        (event.target instanceof Node && root.contains(event.target)) ||
+        (active instanceof Node && root.contains(active))
+      if (!inCanvas) return
+
+      const url = pastedHttpUrlForSearchCapture(event.clipboardData)
+      if (!url) return
+
+      const focusEl = active instanceof HTMLElement ? active : null
+      if (focusEl) {
+        const tag = focusEl.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        if (focusEl.isContentEditable || focusEl.closest('[contenteditable="true"]')) return
+      }
+
+      const api = apiRef.current
+      if (!api) return
+
+      const appState = api.getAppState() as {
+        activeEmbeddable?: { state?: string } | null
+        editingTextElement?: unknown
+        width: number
+        height: number
+        scrollX: number
+        scrollY: number
+        zoom: { value: number }
+      }
+      if (appState.activeEmbeddable?.state === 'active') return
+      if (appState.editingTextElement) return
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      const z = appState.zoom.value || 1
+      const sceneX = -appState.scrollX + appState.width / (2 * z)
+      const sceneY = -appState.scrollY + appState.height / (2 * z)
+      const capture = createSearchCapture({
+        x: sceneX - SEARCH_CAPTURE_WIDTH / 2,
+        y: sceneY - SEARCH_CAPTURE_HEIGHT / 2,
+        query: '',
+        url
+      })
+      api.updateScene({
+        elements: [...api.getSceneElements(), capture],
+        appState: {
+          selectedElementIds: { [capture.id]: true },
+          activeTool: {
+            type: 'selection',
+            locked: false,
+            lastActiveTool: null,
+            customType: null
+          }
+        },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      queueStripPdfNoteLinks()
+      markUnsaved()
+      void openSearchBrowser(capture)
+    }
+
+    window.addEventListener('paste', onPaste, true)
+    return () => window.removeEventListener('paste', onPaste, true)
+  }, [markUnsaved, openSearchBrowser, queueStripPdfNoteLinks])
+
+  useEffect(() => {
     if (!textSelectMode) return
     const el = containerRef.current
     if (!el) return
@@ -1693,6 +1765,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     <div
       ref={containerRef}
       data-pdf-canvas-root
+      tabIndex={-1}
       className={`relative h-full w-full overflow-hidden bg-morphing-50${
         textSelectMode ? ' text-select-mode' : ''
       }`}

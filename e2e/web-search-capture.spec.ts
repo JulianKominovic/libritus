@@ -115,6 +115,70 @@ test('Place browser creates unanchored search capture without arrow', async () =
   }
 })
 
+test('Paste http(s) URL creates unanchored search capture', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-paste-url-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const pastedUrl = 'https://example.com/pasted-page'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: []
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await clickScene(page, 400, 300)
+    await page.evaluate((url) => {
+      const root = document.querySelector('[data-pdf-canvas-root]')
+      if (!(root instanceof HTMLElement)) throw new Error('missing canvas root')
+      root.focus()
+      const dt = new DataTransfer()
+      dt.setData('text/plain', url)
+      const event = new Event('paste', { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'clipboardData', { value: dt })
+      window.dispatchEvent(event)
+    }, pastedUrl)
+
+    await expectUnsaved(page)
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+    await expectBrowserChromeVisible(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => liveElements(s).some(isSearchCapture)
+    )
+
+    const els = liveElements(snap)
+    const captures = els.filter(isSearchCapture)
+    expect(captures).toHaveLength(1)
+    const capture = captures[0]!
+    expect(capture.type).toBe('embeddable')
+    expect(capture.link).toBe('libritus://pdf-search-capture')
+    const data = capture.customData as {
+      query?: string
+      url?: string
+      sourceHighlightId?: string
+    }
+    expect(data.query).toBe('')
+    expect(data.url).toBe(pastedUrl)
+    expect(data.sourceHighlightId).toBeUndefined()
+    expect(els.filter(isSearchArrow)).toHaveLength(0)
+  } finally {
+    await close()
+  }
+})
+
 test('Buscar from highlight creates search capture + host-managed arrow', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-buscar-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })

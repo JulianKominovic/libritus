@@ -3,6 +3,7 @@ import {
   newElementWith,
   sceneCoordsToViewportCoords
 } from '@excalidraw/excalidraw'
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import {
   browserClose,
@@ -18,10 +19,10 @@ import { loadBinaryFiles } from '@renderer/lib/pdf-canvas/attachments'
 import {
   applySearchCaptureScreenshot,
   findPdfSearchCaptureAt,
-  getSearchCaptureQuery,
   getSearchCaptureUrl,
   isPdfSearchCapture,
-  isPdfSearchCaptureCenterHit
+  isPdfSearchCaptureCenterHit,
+  resolveSearchCaptureOpenUrl
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
 import { clientToSceneCoords } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
@@ -160,7 +161,14 @@ export function useSearchCaptureBrowser({
   ])
 
   const openSearchBrowser = useCallback(
-    async (el: { id: string; x: number; y: number; width: number; height: number }) => {
+    async (el: {
+      id: string
+      x: number
+      y: number
+      width: number
+      height: number
+      customData?: ExcalidrawElement['customData']
+    }) => {
       const bounds = elementScreenBounds(el)
       if (!bounds) return
 
@@ -169,11 +177,7 @@ export function useSearchCaptureBrowser({
       }
 
       const sceneEl = apiRef.current?.getSceneElements().find((e) => e.id === el.id)
-      const url =
-        (sceneEl && getSearchCaptureUrl(sceneEl)) ||
-        `https://www.google.com/search?q=${encodeURIComponent(
-          (sceneEl && getSearchCaptureQuery(sceneEl)) || 'search'
-        )}`
+      const url = resolveSearchCaptureOpenUrl(el, sceneEl)
 
       activeBrowserCaptureIdRef.current = el.id
       browserBoundsRef.current = bounds
@@ -362,6 +366,7 @@ export function useSearchCaptureBrowser({
     resizeActiveBrowser,
     isBrowsing,
     syncActiveBrowserBounds,
+    openSearchBrowser,
     deactivateSearchBrowser,
     disposeBrowser
   }

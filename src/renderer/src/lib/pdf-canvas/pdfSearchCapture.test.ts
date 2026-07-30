@@ -63,6 +63,7 @@ const {
   SEARCH_CAPTURE_WIDTH,
   applySearchCaptureScreenshot,
   attachmentFileIdsFromSearchCaptures,
+  clipboardHasImageOrFiles,
   createSearchCapture,
   createSearchCaptureFromHighlight,
   findPdfSearchCaptureAt,
@@ -75,6 +76,9 @@ const {
   isPdfSearchCapture,
   isPdfSearchCaptureCenterHit,
   normalizePdfSearchCapture,
+  parsePastedHttpUrl,
+  pastedHttpUrlForSearchCapture,
+  resolveSearchCaptureOpenUrl,
   searchCaptureIdsForHighlight,
   syncPdfSearchArrows
 } = await import('./pdfSearchCapture')
@@ -122,6 +126,109 @@ describe('googleSearchUrl', () => {
 
   test('empty falls back to search', () => {
     expect(googleSearchUrl('  ')).toBe('https://www.google.com/search?q=search')
+  })
+})
+
+describe('parsePastedHttpUrl', () => {
+  test('accepts https and trims', () => {
+    expect(parsePastedHttpUrl('  https://example.com/path  ')).toBe('https://example.com/path')
+  })
+
+  test('accepts http', () => {
+    expect(parsePastedHttpUrl('http://example.com')).toBe('http://example.com/')
+  })
+
+  test('rejects javascript:', () => {
+    expect(parsePastedHttpUrl('javascript:alert(1)')).toBeNull()
+  })
+
+  test('rejects bare hostname', () => {
+    expect(parsePastedHttpUrl('example.com')).toBeNull()
+  })
+
+  test('rejects mixed / multi-line text', () => {
+    expect(parsePastedHttpUrl('see https://example.com')).toBeNull()
+    expect(parsePastedHttpUrl('https://example.com\nmore')).toBeNull()
+  })
+})
+
+function stubClipboard(opts: {
+  text?: string
+  types?: string[]
+  filesLength?: number
+}): DataTransfer {
+  const text = opts.text ?? ''
+  const types = opts.types ?? ['text/plain']
+  return {
+    types,
+    files: { length: opts.filesLength ?? 0 } as FileList,
+    getData: (format: string) => (format === 'text/plain' ? text : '')
+  } as DataTransfer
+}
+
+describe('pastedHttpUrlForSearchCapture', () => {
+  test('plain URL becomes search-capture URL', () => {
+    expect(
+      pastedHttpUrlForSearchCapture(stubClipboard({ text: 'https://example.com/page' }))
+    ).toBe('https://example.com/page')
+  })
+
+  test('image/* + URL text does not steal image paste', () => {
+    expect(
+      pastedHttpUrlForSearchCapture(
+        stubClipboard({
+          text: 'https://cdn.example.com/shot.png',
+          types: ['text/plain', 'image/png']
+        })
+      )
+    ).toBeNull()
+    expect(
+      clipboardHasImageOrFiles(
+        stubClipboard({
+          text: 'https://cdn.example.com/shot.png',
+          types: ['text/plain', 'image/png']
+        })
+      )
+    ).toBe(true)
+  })
+
+  test('Files type / non-empty files does not steal', () => {
+    expect(
+      pastedHttpUrlForSearchCapture(
+        stubClipboard({
+          text: 'https://example.com',
+          types: ['text/plain', 'Files'],
+          filesLength: 1
+        })
+      )
+    ).toBeNull()
+  })
+
+  test('non-URL text returns null', () => {
+    expect(pastedHttpUrlForSearchCapture(stubClipboard({ text: 'hello' }))).toBeNull()
+  })
+})
+
+describe('resolveSearchCaptureOpenUrl', () => {
+  test('prefers in-memory el URL when scene missing', () => {
+    expect(
+      resolveSearchCaptureOpenUrl({ customData: { url: 'https://pasted.example/a' } }, null)
+    ).toBe('https://pasted.example/a')
+  })
+
+  test('falls back to scene URL when el has none', () => {
+    expect(
+      resolveSearchCaptureOpenUrl(
+        { customData: {} },
+        { customData: { url: 'https://scene.example/b' } }
+      )
+    ).toBe('https://scene.example/b')
+  })
+
+  test('both empty + query → Google search', () => {
+    expect(
+      resolveSearchCaptureOpenUrl({ customData: { query: 'quantum' } }, null)
+    ).toBe('https://www.google.com/search?q=quantum')
   })
 })
 

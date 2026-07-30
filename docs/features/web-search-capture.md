@@ -4,7 +4,7 @@ Select text (or a highlight), search the web in an in-app browser surface, and p
 
 **Status:** implemented (hybrid embed).
 
-Aligns with [`product-north.md`](product-north.md) (“record searches”, pin external references). First shipped piece of roadmap “Canvas research artifacts”; remaining artifacts (vocab, YouTube, …) still later. Triggers: **Buscar** on `HighlightToolbar`, or **Place browser** on the PDF tools toolbar (unanchored).
+Aligns with [`product-north.md`](product-north.md) (“record searches”, pin external references). First shipped piece of roadmap “Canvas research artifacts”; remaining artifacts (vocab, YouTube, …) still later. Triggers: **Buscar** on `HighlightToolbar`, **Place browser** on the PDF tools toolbar (unanchored), or **paste** an http(s) URL onto the canvas.
 
 ---
 
@@ -32,6 +32,7 @@ Out of scope (for now):
 |------|----------|
 | **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight (initial L/R parity; sync re-anchors to shortest AABB segment on drag). Selects the card; does **not** auto-activate. Google search URL from highlight text. |
 | **Place browser** | Toolbar toggle (like Place note). Next canvas click places the same embeddable at the pointer, **no** arrow / no `sourceHighlightId`. Initial URL `https://www.google.com`. Selects only — does not auto-activate. |
+| **Paste URL** | Paste a single http(s) URL on the canvas → same unanchored embeddable at viewport center with that URL (no arrow), then **auto-activates** the guest browser so the page is previewed immediately. Skips when clipboard also has image/files (leave Excalidraw image paste alone). Non-URL paste stays Excalidraw default. |
 | **Activate** | Center click (same as notes) → one frameless guest `BrowserWindow` aligned to the shape in screen space (default page zoom 0.8, `alwaysOnTop` while open). Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± zooms the guest. |
 | **Exit** | Escape or click outside → `capturePage` PNG under `attachments/` → native Excalidraw `image` with 16px rounded corners. |
 | **Resize / drag** | Excalidraw owns geometry (like notes). Arrows sync via host (no Excalidraw bindings). |
@@ -43,7 +44,7 @@ Out of scope (for now):
 ## Architecture (hybrid)
 
 ```
-Buscar / Place browser → create embeddable (libritus://pdf-search-capture) [+ arrow if from highlight]
+Buscar / Place browser / Paste URL → create embeddable (libritus://pdf-search-capture) [+ arrow if from highlight]
   → user activates → IPC browser:open({ url, bounds })
   → main shows frameless BrowserWindow (partition persist:web-browser)
   → pan/zoom/resize → browser:setBounds
