@@ -25,6 +25,7 @@ import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
 import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { cn } from '@renderer/lib/utils'
 import { EmbeddingJobsIndicator } from '@renderer/organisms/embeddings/EmbeddingJobsIndicator'
+import { UpdateAvailableIndicator } from '@renderer/organisms/UpdateAvailableIndicator'
 import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
@@ -411,6 +412,7 @@ function Sidebar() {
         </div>
         <footer className="flex flex-col gap-1 pb-4 pt-1">
           <EmbeddingJobsIndicator />
+          <UpdateAvailableIndicator />
           <Link
             to="/settings"
             className={(isActive) =>
