@@ -54,7 +54,9 @@ mac:
   notarize: false
 linux:
   target:
-    - AppImage
+    - target: AppImage
+      arch:
+        - x64
   maintainer: jkominovic.dev
   category: Productivity
 npmRebuild: false
