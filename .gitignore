@@ -7,3 +7,4 @@ out
 test-results
 src/renderer/public/fonts
 *.tsbuildinfo
+.env

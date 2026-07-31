@@ -30,6 +30,18 @@ The previous lector-based vertical reader has been removed; the canvas viewer is
 
 Progress notes: https://jkominovic.dev
 
+## Download (macOS)
+
+Grab the latest `.dmg` from [Releases](https://github.com/JulianKominovic/libritus/releases) (Apple Silicon: `*-mac-arm64-setup.dmg`), open it, and drag **Libritus** into Applications.
+
+macOS may say the app is **damaged** and offer to move it to the Trash. That is Gatekeeper blocking an unsigned build — the app is fine. In Terminal:
+
+```bash
+xattr -cr /Applications/Libritus.app
+```
+
+Then open Libritus again. (Right-click → Open, or **System Settings → Privacy & Security → Open Anyway**, can also work.)
+
 ## Development
 
 ```bash

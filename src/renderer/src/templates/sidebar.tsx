@@ -395,7 +395,7 @@ function Sidebar() {
           className={(isActive) =>
             cn(
               buttonVariants({ variant: 'none' }),
-              'w-full justify-start !p-0 mb-0',
+              'w-full justify-start !p-0 mb-0 active:scale-100 hover:font-semibold transition-[transform,font-weight] duration-100',
               isActive ? 'font-semibold' : ''
             )
           }

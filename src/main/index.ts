@@ -4,6 +4,7 @@ import fs from 'fs/promises'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import attachIPCListeners from './listeners'
+import { setupAutoUpdater } from './updater'
 import { prepareWebBrowserCookies } from './web-browser'
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
@@ -157,6 +158,7 @@ app.whenReady().then(async () => {
   attachIPCListeners()
 
   createWindow()
+  setupAutoUpdater()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

@@ -19,6 +19,8 @@ files:
 compression: maximum
 asarUnpack:
   - resources/**
+# Shared so dmg/zip/nsis/AppImage all get os+arch in the filename.
+artifactName: ${name}-${version}-${os}-${arch}-setup.${ext}
 win:
   executableName: libritus
   target:
@@ -27,7 +29,6 @@ win:
         - x64
   icon: build/icon.ico
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -35,23 +36,29 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
 mac:
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    # zip required for electron-updater on macOS (dmg is install-only).
+    - target: zip
+      arch:
+        - arm64
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  # ponytail: unsigned Mac updates are not production-safe — enable when CSC / notarize env is set.
   notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
 linux:
   target:
     - AppImage
   maintainer: jkominovic.dev
   category: Productivity
-appImage:
-  artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: JulianKominovic
+  repo: libritus

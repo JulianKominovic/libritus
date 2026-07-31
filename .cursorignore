@@ -7,3 +7,4 @@ coverage/
 skills-lock.json
 out/
 *.tsbuildinfo
+.env
