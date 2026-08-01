@@ -2,10 +2,15 @@ import { randomUUID } from 'crypto'
 import {
   app,
   BrowserWindow,
+  clipboard,
+  dialog,
   ipcMain,
+  Menu,
   session,
   shell,
   WebContentsView,
+  type ContextMenuParams,
+  type MenuItemConstructorOptions,
   type Session,
   type WebContents
 } from 'electron'
@@ -172,6 +177,172 @@ function notifyZoomStep(delta: number): void {
   resolveHost()?.webContents.send('browser:zoom-step', { delta })
 }
 
+/** Save guest image via http(s) or data: — blob: is copy-only (copyImageAt). */
+async function saveGuestImage(wc: WebContents, srcURL: string): Promise<void> {
+  const win = resolveHost()
+  if (!win || wc.isDestroyed()) return
+
+  let name = 'image.png'
+  try {
+    const base = path.basename(new URL(srcURL).pathname)
+    if (base.includes('.')) name = base
+  } catch {
+    // keep default
+  }
+
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    defaultPath: name,
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }]
+  })
+  if (canceled || !filePath || wc.isDestroyed()) return
+
+  if (srcURL.startsWith('data:')) {
+    const m = /^data:[^;]+;base64,(.+)$/i.exec(srcURL)
+    if (!m) return
+    await fs.writeFile(filePath, Buffer.from(m[1], 'base64'))
+    return
+  }
+
+  if (!isHttpUrl(srcURL)) return
+  // Guest partition cookies — not default session / net.fetch.
+  const res = await wc.session.fetch(srcURL)
+  if (!res.ok) throw new Error(`save image failed: ${res.status}`)
+  await fs.writeFile(filePath, Buffer.from(await res.arrayBuffer()))
+}
+
+function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void {
+  const win = resolveHost()
+  if (!win || win.isDestroyed()) return
+
+  const alive = (): boolean => !wc.isDestroyed()
+  const hist = wc.navigationHistory
+  const items: MenuItemConstructorOptions[] = [
+    {
+      label: 'Back',
+      enabled: hist.canGoBack(),
+      click: () => {
+        if (alive()) hist.goBack()
+      }
+    },
+    {
+      label: 'Forward',
+      enabled: hist.canGoForward(),
+      click: () => {
+        if (alive()) hist.goForward()
+      }
+    },
+    {
+      label: 'Reload',
+      click: () => {
+        if (alive()) wc.reload()
+      }
+    },
+    { type: 'separator' }
+  ]
+
+  if (params.selectionText.trim()) {
+    items.push({
+      label: 'Copy',
+      click: () => clipboard.writeText(params.selectionText)
+    })
+  }
+
+  if (params.linkURL) {
+    items.push(
+      {
+        label: 'Open Link',
+        enabled: isHttpUrl(params.linkURL),
+        click: () => {
+          if (alive() && isHttpUrl(params.linkURL)) void wc.loadURL(params.linkURL)
+        }
+      },
+      {
+        label: 'Copy Link',
+        click: () => clipboard.writeText(params.linkURL)
+      }
+    )
+  }
+
+  if (params.mediaType === 'image' && params.srcURL) {
+    const canSave = isHttpUrl(params.srcURL) || params.srcURL.startsWith('data:')
+    items.push(
+      {
+        label: 'Copy Image',
+        click: () => {
+          if (alive()) wc.copyImageAt(params.x, params.y)
+        }
+      },
+      {
+        label: 'Copy Image Address',
+        click: () => clipboard.writeText(params.srcURL)
+      },
+      {
+        label: 'Save Image As…',
+        enabled: canSave,
+        click: () => {
+          if (!alive()) return
+          void saveGuestImage(wc, params.srcURL).catch((err) =>
+            console.error('guest save image failed', err)
+          )
+        }
+      }
+    )
+  }
+
+  if (params.isEditable) {
+    // Explicit wc.* — Menu roles use focused WebContents and miss the guest WCV.
+    items.push(
+      { type: 'separator' },
+      {
+        label: 'Cut',
+        enabled: params.editFlags.canCut,
+        click: () => {
+          if (alive()) wc.cut()
+        }
+      },
+      {
+        label: 'Copy',
+        enabled: params.editFlags.canCopy,
+        click: () => {
+          if (alive()) wc.copy()
+        }
+      },
+      {
+        label: 'Paste',
+        enabled: params.editFlags.canPaste,
+        click: () => {
+          if (alive()) wc.paste()
+        }
+      },
+      {
+        label: 'Select All',
+        enabled: params.editFlags.canSelectAll,
+        click: () => {
+          if (alive()) wc.selectAll()
+        }
+      }
+    )
+  }
+
+  items.push(
+    { type: 'separator' },
+    {
+      label: 'Open in System Browser',
+      click: () => {
+        if (!alive()) return
+        try {
+          const url = wc.getURL()
+          if (isHttpUrl(url)) void shell.openExternal(url)
+        } catch {
+          // destroyed mid-popup
+        }
+      }
+    }
+  )
+
+  Menu.buildFromTemplate(items).popup({ window: win })
+}
+
 function ensureGuest(parent: BrowserWindow): WebContentsView {
   host = parent
   if (guestAlive() && guest) {
@@ -229,6 +400,11 @@ function ensureGuest(parent: BrowserWindow): WebContentsView {
       event.preventDefault()
       notifyZoomStep(-1)
     }
+  })
+
+  // Electron has no default Chromium context menu — wire one for the guest.
+  wc.on('context-menu', (_e, params) => {
+    popupGuestContextMenu(wc, params)
   })
 
   wc.on('destroyed', () => {
