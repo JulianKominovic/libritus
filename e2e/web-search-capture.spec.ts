@@ -61,6 +61,16 @@ async function expectBrowserChromeHidden(page: import('playwright').Page): Promi
   await expect(page.locator('[data-browser-chrome]')).toBeHidden({ timeout: 15_000 })
 }
 
+/**
+ * Outside-click for deactivate. Must land on the Excalidraw canvas inside
+ * `.excalidraw-host` — not PDF tools (`top-12` centered toolbar) and not
+ * Excalidraw `@next` `.compact-shape-actions` (covers top-left when selected).
+ * Seeded captures in these tests sit near (80,40)+(300×300).
+ */
+async function clickOutsideCapture(page: import('playwright').Page): Promise<void> {
+  await clickScene(page, 200, 400)
+}
+
 test('Place browser creates unanchored search capture without arrow', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-place-browser-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
@@ -85,6 +95,7 @@ test('Place browser creates unanchored search capture without arrow', async () =
     await clickScene(page, 450, 400)
     await expectUnsaved(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+    await expectBrowserChromeVisible(page)
 
     await leaveToHome(page)
 
@@ -205,6 +216,7 @@ test('Buscar from highlight creates search capture + host-managed arrow', async 
     await page.getByRole('button', { name: 'Buscar' }).click({ timeout: 10_000 })
     await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+    await expectBrowserChromeVisible(page)
 
     await leaveToHome(page)
 
@@ -545,7 +557,7 @@ test('center-click activates browse; outside click captures PNG as native image'
 
     // Let guest load a bit, then wait out open grace and click outside.
     await page.waitForTimeout(1200)
-    await clickScene(page, 20, 20)
+    await clickOutsideCapture(page)
     await expectBrowserChromeHidden(page)
     await expectUnsaved(page)
 
@@ -611,11 +623,11 @@ test('open grace ignores outside click for 800ms', async () => {
     await expectBrowserChromeVisible(page)
 
     // Immediate outside click must not close (renderer + main grace).
-    await clickScene(page, 20, 20)
+    await clickOutsideCapture(page)
     await expectBrowserChromeVisible(page)
 
     await page.waitForTimeout(900)
-    await clickScene(page, 20, 20)
+    await clickOutsideCapture(page)
     await expectBrowserChromeHidden(page)
   } finally {
     await close()
@@ -675,7 +687,7 @@ test('while browsing, edge resize keeps guest and free aspect', async () => {
     await page.mouse.up()
     await expectBrowserChromeVisible(page)
 
-    await clickScene(page, 20, 20)
+    await clickOutsideCapture(page)
     await expectBrowserChromeHidden(page)
     await expectUnsaved(page)
 
@@ -800,7 +812,7 @@ test('center-click re-activates browse on native image capture', async () => {
     await expectBrowserChromeVisible(page)
 
     await page.waitForTimeout(1200)
-    await clickScene(page, 20, 20)
+    await clickOutsideCapture(page)
     await expectBrowserChromeHidden(page)
 
     // Re-activate the image-backed capture (not an embeddable).
@@ -879,14 +891,14 @@ test('Excalidraw style panel click does not activate search capture underneath',
 
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
 
-    // Select free rectangle → left style panel opens over the capture.
+    // Select free rectangle → style panel opens over the capture (scene-left).
     await clickScene(page, rectX + 70, rectY + 45)
-    const panel = page.locator('.App-menu__left')
+    // Excalidraw @next: `.selected-shape-actions` / compact (was `.App-menu__left`).
+    const panel = page.getByRole('region', { name: 'Selected shape actions' })
     await expect(panel).toBeVisible({ timeout: 10_000 })
 
-    const swatch = panel.locator('[data-testid^="color-top-pick-"]').first()
-    await expect(swatch).toBeVisible({ timeout: 5_000 })
-    await swatch.click()
+    // Click stroke chrome over the capture — must not activate browse underneath.
+    await panel.getByRole('button', { name: 'Stroke', description: 'Show stroke color picker' }).click()
 
     // Regression: host scene hit-test must ignore .layer-ui__wrapper.
     await page.waitForTimeout(600)

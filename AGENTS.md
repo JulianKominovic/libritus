@@ -126,6 +126,7 @@ Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md
 | Camera outside React | Excalidraw owns camera; host syncs pools via refs |
 | Spatial index | Linear element scan (`findPdfHighlightAt`) |
 | Whole PDF in RAM | Open = ArrayBuffer → `getDocument({ data })` |
+| Native text edit off-screen growth | Editing Excalidraw text, pan so it leaves the viewport, then type → container can grow/overflow via WYSIWYG `scrollIntoView` ([upstream #8936](https://github.com/excalidraw/excalidraw/issues/8936)). **Do not** host-mitigate or patch Excalidraw — wait for [#11056](https://github.com/excalidraw/excalidraw/pull/11056) (or successor) to land and bump `@excalidraw/excalidraw` when a release includes it. |
 
 ---
 

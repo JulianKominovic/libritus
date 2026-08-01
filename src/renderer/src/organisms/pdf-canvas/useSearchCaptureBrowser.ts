@@ -33,6 +33,7 @@ import { clientToSceneCoords } from '@renderer/lib/pdf-canvas/selectionToHighlig
 import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
 import type { SaveStatus } from '@renderer/lib/pdf-canvas/session'
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import { liveExcalidrawApi } from './selectionTool'
 
 type UseSearchCaptureBrowserArgs = {
   apiRef: RefObject<ExcalidrawImperativeAPI | null>
@@ -81,7 +82,7 @@ export function useSearchCaptureBrowser({
   }, [])
 
   const canvasZoom = useCallback((): number => {
-    const z = apiRef.current?.getAppState().zoom?.value
+    const z = liveExcalidrawApi(apiRef.current)?.getAppState().zoom?.value
     return typeof z === 'number' && z > 0 && Number.isFinite(z) ? z : 1
   }, [apiRef])
 
@@ -113,7 +114,7 @@ export function useSearchCaptureBrowser({
 
   const elementScreenBounds = useCallback(
     (el: { x: number; y: number; width: number; height: number }): BrowserBounds | null => {
-      const api = apiRef.current
+      const api = liveExcalidrawApi(apiRef.current)
       if (!api) return null
       const appState = api.getAppState()
       const tl = sceneCoordsToViewportCoords({ sceneX: el.x, sceneY: el.y }, appState)
@@ -198,7 +199,7 @@ export function useSearchCaptureBrowser({
       return
     }
 
-    const api = apiRef.current
+    const api = liveExcalidrawApi(apiRef.current)
     if (!api) return
     const scene = api.getSceneElements()
     const el = scene.find((e) => e.id === captureId)
@@ -250,7 +251,7 @@ export function useSearchCaptureBrowser({
         await deactivateSearchBrowser()
       }
 
-      const api = apiRef.current
+      const api = liveExcalidrawApi(apiRef.current)
       const sceneEl = api?.getSceneElements().find((e) => e.id === el.id)
       const url = resolveSearchCaptureOpenUrl(el, sceneEl)
 
@@ -281,6 +282,22 @@ export function useSearchCaptureBrowser({
       setZoomPercentLabel(SEARCH_CAPTURE_DEFAULT_USER_ZOOM)
       try {
         await browserOpen(url, guest, effective)
+        // Left / swapped capture while open was in flight — do not touch a dead session.
+        if (activeBrowserCaptureIdRef.current !== el.id) return
+        // Chromium may reset zoom after setVisible/navigate; dedupe would skip a same-value
+        // re-apply — clear and force so guest matches user×canvas (fixes "too large until resize").
+        lastRequestedEffectiveZoomRef.current = null
+        applyEffectiveGuestZoom(userZoomFactorRef.current)
+        const live = liveExcalidrawApi(apiRef.current)
+          ?.getSceneElements()
+          .find((e) => e.id === el.id)
+        if (live) syncGuestToElement(live)
+        // Navigate can reset zoom after IPC returns — one delayed re-apply if still browsing.
+        window.setTimeout(() => {
+          if (activeBrowserCaptureIdRef.current !== el.id) return
+          lastRequestedEffectiveZoomRef.current = null
+          applyEffectiveGuestZoom(userZoomFactorRef.current)
+        }, 200)
       } catch (err) {
         console.error('Failed to open search browser', err)
         activeBrowserCaptureIdRef.current = null
@@ -311,20 +328,22 @@ export function useSearchCaptureBrowser({
     },
     [
       apiRef,
+      applyEffectiveGuestZoom,
       canvasZoom,
       deactivateSearchBrowser,
       elementScreenBounds,
       guestScreenBounds,
       hideBrowserChromeHud,
       setZoomPercentLabel,
-      syncBrowserChromeHud
+      syncBrowserChromeHud,
+      syncGuestToElement
     ]
   )
 
   const syncActiveBrowserBounds = useCallback(() => {
     const id = activeBrowserCaptureIdRef.current
     if (!id) return
-    const api = apiRef.current
+    const api = liveExcalidrawApi(apiRef.current)
     if (!api) return
     const el = api.getSceneElements().find((e) => e.id === id)
     if (!el || el.isDeleted) return
@@ -356,7 +375,7 @@ export function useSearchCaptureBrowser({
   const resizeActiveBrowser = useCallback(
     (width: number, height: number) => {
       const id = activeBrowserCaptureIdRef.current
-      const api = apiRef.current
+      const api = liveExcalidrawApi(apiRef.current)
       if (!id || !api) return
       const scene = api.getSceneElements()
       const el = scene.find((e) => e.id === id)
@@ -415,7 +434,7 @@ export function useSearchCaptureBrowser({
       if (event.button !== 0) return
       if (isExcalidrawUiPointerTarget(event.target)) return
 
-      const api = apiRef.current
+      const api = liveExcalidrawApi(apiRef.current)
       if (!api) return
       const { x, y } = clientToSceneCoords(event.clientX, event.clientY, api.getAppState())
 
@@ -455,7 +474,7 @@ export function useSearchCaptureBrowser({
       const dy = event.clientY - down.clientY
       if (dx * dx + dy * dy > 25) return // drag, not click
 
-      const api = apiRef.current
+      const api = liveExcalidrawApi(apiRef.current)
       if (!api) return
       const el = api.getSceneElements().find((e) => e.id === down.id)
       if (!el || el.isDeleted || !isPdfSearchCapture(el)) return

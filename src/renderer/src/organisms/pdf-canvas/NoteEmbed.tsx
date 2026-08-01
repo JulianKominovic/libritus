@@ -19,7 +19,7 @@ export function NoteStaticBody({ value }: { value: Value }) {
   // PlateStatic has no Plate store → crash. createSlateEditor = static-only core.
   const editor = useMemo(() => createSlateEditor({ plugins: BaseEditorKit, value }), [value])
   return (
-    <EditorStatic editor={editor} variant="none" className="h-full overflow-hidden p-2 text-sm" />
+    <EditorStatic editor={editor} variant="none" className="h-full overflow-hidden p-4 text-sm" />
   )
 }
 
@@ -100,7 +100,7 @@ function NoteEditableBody({
         }}
       >
         <EditorContainer className="h-full min-h-0 overflow-auto">
-          <Editor autoFocus variant="none" className="min-h-full p-2 text-sm" />
+          <Editor autoFocus variant="none" className="min-h-full p-4 text-sm" />
         </EditorContainer>
       </Plate>
     </div>

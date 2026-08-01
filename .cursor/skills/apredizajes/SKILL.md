@@ -670,4 +670,73 @@ Ocultar el WCV en hover/pointerdown para “proteger” el drag rompía la UX (n
 - Al activar un capture `image`, demote a embeddable; **delete** `scale`/`status` (no `undefined`); deactivate vuelve a promover.
 - Guest **sigue visible** y `setBounds` live-follow durante resize; inset ~12px para que los handles no caigan bajo el WCV.
 
+### Excalidraw text edit off-screen: no host mitagation
+
+#### Descripción más detallada
+
+Al editar texto nativo de Excalidraw, panear fuera de viewport y tipear, el container puede crecer (`scrollIntoView` del WYSIWYG). Approach tentativo: listener `scroll` + `scrollTop/Left = 0` en el host (patrón de [#11056](https://github.com/excalidraw/excalidraw/pull/11056)).
+
+#### Corrección
+
+**No** mitigar en el host ni parchear Excalidraw. Anotado en `AGENTS.md` conscious gaps; esperar el PR upstream y bump de `@excalidraw/excalidraw`.
+
+### Search capture: zoom incorrecto al abrir hasta resize
+
+#### Descripción más detallada
+
+Tras Buscar → activate, el guest a veces quedaba en ~100% Chromium aunque el chrome mostrara 80%. Causa: `lastRequestedEffectiveZoomRef` se setea antes del IPC y `applyEffectiveGuestZoom` dedupea; si Chromium resetea el zoom tras `setVisible`/`navigate`, el host no re-enviaba el mismo effective.
+
+#### Corrección
+
+Tras `browserOpen`: clear `lastRequested` + re-aplicar zoom + `syncGuestToElement`. En main, `setGuestZoomFactor` otra vez después de `setVisible(true)`.
+
+### Search capture: Buscar / Place auto-center + auto-activate
+
+#### Descripción más detallada
+
+Buscar y Place browser solo seleccionaban la card; paste URL ya abría el guest. UX pedía centrar cámara y entrar en browse al crear.
+
+#### Corrección
+
+Tras crear: `goToAnnotation(id)` luego `openSearchBrowser(capture)`. Notes siguen select-only (auto-edit rompe drag).
+
+### Image insert CSP `blob:` + undo
+
+#### Descripción más detallada
+
+`img-src` sin `blob:` → ImageBlobReduce falla al crear `Image()` desde `blob:file://…` (CSP). Insert “funcionaba” por fallback pero el path de resize/history quedaba incompleto.
+
+#### Corrección
+
+Añadir `blob:` a `img-src` en `index.html`. Undo nativo de Excalidraw debería capturar la inserción una vez el resize path no falla.
+
+### `bun run dev` → `Error: Electron uninstall`
+
+#### Descripción más detallada
+
+electron-vite falla en `getElectronPath` con `Error: Electron uninstall` aunque `electron` esté en `package.json` / `node_modules`. Causa: el paquete npm está, pero falta el binario (`path.txt` + `dist/`) — postinstall no lo bajó (install parcial, red, o `ELECTRON_SKIP_BINARY_DOWNLOAD`).
+
+#### Corrección
+
+Re-descargar el binary: `cd node_modules/electron && bun run install.js` (o `bun install` limpio). No hace falta tocar código.
+
+### Excalidraw `@next` (`0.18.0-<hash>`) vs stable `0.18.1`
+
+#### Descripción más detallada
+
+`0.18.0-1acf66e` es `@next` (~364 commits *adelante* de `0.18.1`). Parece “más viejo” por el número pero es tip de master. Subir sin adaptar el host deja el canvas muerto: el prop `excalidrawAPI` ya no existe → `apiRef` nunca se setea.
+
+#### Corrección (host adaptado a next)
+
+- Pin exacto `"@excalidraw/excalidraw": "0.18.0-1acf66e"`.
+- `excalidrawAPI` → `onExcalidrawAPI` (recibe `null` en unmount; `apiRef` ya era nullable).
+- Types: `@excalidraw/excalidraw/data/transform` → `@excalidraw/excalidraw/element/transform`.
+- `activeTool` requiere `fromSelection`.
+- Casts más estrictos (`LocalPoint`, `isDeleted: true` en `newElementWith`, `NonDeleted` en `activeEmbeddable`).
+- Leave-flush: `@next` stubbea `get*` y llama `onExcalidrawAPI(null)` *antes* del cleanup del host → cachear escena (`sceneCacheRef`) + `liveExcalidrawApi` (`!isDestroyed`).
+- Pass-through: tratar `lasso` como `selection` (re-click selection → lasso en next).
+- E2E: `.App-menu__left` ya no existe → `getByRole('region', { name: 'Selected shape actions' })` / `.selected-shape-actions` (también `.compact-shape-actions` top-left).
+- E2E outside-click deactivate: no `(20,20)` (compact shape actions) ni `(520,80)` (PDF tools toolbar `top-12`); usar canvas debajo del card p.ej. `(200,400)`.
+- E2E color pick: swatches ya no viven inline en compact UI — para "click panel no activa capture" basta el botón Stroke (`Show stroke color picker`).
+
 

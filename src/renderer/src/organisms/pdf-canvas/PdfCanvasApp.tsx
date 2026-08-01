@@ -5,14 +5,13 @@ import {
   newElementWith,
   sceneCoordsToViewportCoords
 } from '@excalidraw/excalidraw'
-import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/element/transform'
 import type {
   BinaryFiles,
   ExcalidrawImperativeAPI,
   NormalizedZoomValue
 } from '@excalidraw/excalidraw/types'
 import { readFile } from '@renderer/integrations/fs'
-import { enqueueRagIndex } from '@renderer/lib/ai/ipc'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import {
@@ -55,7 +54,8 @@ import {
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
 import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
-import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
+// RAG parked — restore with enqueue in open effect (see src/main/ai/index.ts).
+// import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
 import {
   attachmentFileIdsFromSearchCaptures,
   createSearchCapture,
@@ -114,7 +114,7 @@ import { PdfFindBar } from './PdfFindBar'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 import { PdfSidebar, type PdfSidebarHandle } from './PdfSidebar'
 import { SearchCaptureEmbed } from './SearchCaptureEmbed'
-import { setSelectionToolLocked } from './selectionTool'
+import { liveExcalidrawApi, setSelectionToolLocked } from './selectionTool'
 import { usePdfFindBar } from './usePdfFindBar'
 import { useSearchCaptureBrowser } from './useSearchCaptureBrowser'
 
@@ -170,6 +170,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const excalidrawHostRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<RuntimeSession | null>(null)
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
+  /** Last live scene for leave-flush after @next destroys get* / nulls onExcalidrawAPI. */
+  const sceneCacheRef = useRef<unknown[] | null>(null)
   const cameraRef = useRef<CameraState>(INITIAL_CAMERA)
   const pdfLayerRef = useRef<PdfLayerHandle>(null)
   const pageNavigatorRef = useRef<PageNavigatorHandle>(null)
@@ -396,19 +398,26 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
   /** Persist notes/captures with link restored (UI may have stripped it after embed validate). */
   const sceneElementsForPersist = useCallback(() => {
-    const api = apiRef.current
-    if (!api) return null
+    const api = liveExcalidrawApi(apiRef.current)
     const pending = pendingPlateByNoteIdRef.current
-    return api
-      .getSceneElements()
-      .filter((el) => !el.isDeleted)
-      .map((el) => {
-        let normalized = normalizePdfNote(el)
-        normalized = normalizePdfSearchCapture(normalized)
-        const plate = pending.get(el.id)
-        // ponytail: merge unsynced Plate edits so autosave/flush see live text
-        return plate !== undefined ? withNotePlateValue(normalized, plate) : normalized
-      })
+    const live = api
+      ? api
+          .getSceneElements()
+          .filter((el) => !el.isDeleted)
+          .map((el) => {
+            let normalized = normalizePdfNote(el)
+            normalized = normalizePdfSearchCapture(normalized)
+            return normalized
+          })
+      : null
+    if (live) sceneCacheRef.current = live
+    const base = live ?? (sceneCacheRef.current as typeof live)
+    if (!base) return null
+    return base.map((el) => {
+      const plate = pending.get(el.id)
+      // ponytail: merge unsynced Plate edits so autosave/flush see live text
+      return plate !== undefined ? withNotePlateValue(el, plate) : el
+    })
   }, [])
 
   /**
@@ -420,7 +429,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
    * Placeholders keep their link; do not strip them here.
    */
   const stripPdfNoteLinksAfterValidate = useCallback(() => {
-    const api = apiRef.current
+    const api = liveExcalidrawApi(apiRef.current)
     if (!api) return
     const elements = api.getSceneElements()
     let changed = false
@@ -435,11 +444,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     // fall through to the canvas and exit edit.
     const active = api.getAppState().activeEmbeddable
     const activeId = active?.state === 'active' ? (active.element?.id ?? null) : null
-    const activeEl = activeId ? next.find((el) => el.id === activeId) : null
+    const activeEl = activeId ? next.find((el) => el.id === activeId && !el.isDeleted) : null
     api.updateScene({
       elements: next,
       ...(activeEl
-        ? { appState: { activeEmbeddable: { element: activeEl, state: 'active' } } }
+        ? {
+            appState: {
+              activeEmbeddable: {
+                element: activeEl as typeof activeEl & { isDeleted: false },
+                state: 'active'
+              }
+            }
+          }
         : {}),
       captureUpdate: CaptureUpdateAction.NEVER
     })
@@ -658,23 +674,32 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         sessionRef.current = next
         setSession(next)
 
-        // Start RAG as soon as the doc exists. Leave-PDF does not cancel main queue;
-        // extract may still fail if the doc is destroyed mid-read.
+        // Outline for sidebar. RAG enqueue parked — see src/main/ai/index.ts.
+        // void (async () => {
+        //   try {
+        //     const nodes = await loadOutline(doc)
+        //     if (shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
+        //       setOutline(nodes)
+        //     }
+        //     const pageTexts = await extractPageTexts(doc)
+        //     const { chunks, fingerprint } = buildTextChunks(pageTexts, nodes)
+        //     const title = usePdfs
+        //       .getState()
+        //       .categories.find((c) => c.id === categoryId)
+        //       ?.pdfs.find((p) => p.id === pdfId)?.name
+        //     await enqueueRagIndex({ pdfId, fingerprint, chunks, title })
+        //   } catch (err) {
+        //     console.error('RAG enqueue failed', err)
+        //   }
+        // })()
         void (async () => {
           try {
             const nodes = await loadOutline(doc)
             if (shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
               setOutline(nodes)
             }
-            const pageTexts = await extractPageTexts(doc)
-            const { chunks, fingerprint } = buildTextChunks(pageTexts, nodes)
-            const title = usePdfs
-              .getState()
-              .categories.find((c) => c.id === categoryId)
-              ?.pdfs.find((p) => p.id === pdfId)?.name
-            await enqueueRagIndex({ pdfId, fingerprint, chunks, title })
           } catch (err) {
-            console.error('RAG enqueue failed', err)
+            console.error('Outline load failed', err)
           }
         })()
 
@@ -804,7 +829,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       // Frozen after ErrorBoundary crash — do not flush empty/corrupt scene over disk.
       // Do not require readyRef — open-effect cleanup may clear it while dirty still holds
       // pending Plate; still merge via sceneElementsForPersist.
-      if (dirtyRef.current && apiRef.current && !isSessionPersistFrozen()) {
+      // @next: onExcalidrawAPI(null) runs before this cleanup (get* already stubbed) —
+      // sceneElementsForPersist falls back to sceneCacheRef.
+      if (dirtyRef.current && !isSessionPersistFrozen()) {
         const elements = sceneElementsForPersist()
         if (elements) {
           const cam = cameraRef.current
@@ -937,7 +964,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       }
 
       if (!restoringRef.current) {
-        const api = apiRef.current
+        const api = liveExcalidrawApi(apiRef.current)
         if (api) {
           // Undo / delete: drop highlight toolbar when the active rect is gone.
           const hlId = activeHighlightIdRef.current
@@ -1242,6 +1269,16 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         hideHighlightToolbar()
         queueStripPdfNoteLinks()
         markUnsaved()
+        // Defer center+open past Excalidraw's pointer gesture (camera jump mid-down races drag).
+        const captureId = capture.id
+        queueMicrotask(() => {
+          requestAnimationFrame(() => {
+            const live = apiRef.current?.getSceneElements().find((e) => e.id === captureId)
+            if (!live || !isPdfSearchCapture(live)) return
+            goToAnnotation(live.id)
+            void openSearchBrowser(live)
+          })
+        })
         return
       }
 
@@ -1254,8 +1291,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     },
     [
       exitPlaceModes,
+      goToAnnotation,
       hideHighlightToolbar,
       markUnsaved,
+      openSearchBrowser,
       queueStripPdfNoteLinks,
       showHighlightToolbar
     ]
@@ -1293,7 +1332,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const addArtifactFromHighlight = useCallback(
     (
       create: typeof createNoteFromHighlight | typeof createSearchCaptureFromHighlight,
-      selectPred: typeof isPdfNote | typeof isPdfSearchCapture
+      selectPred: typeof isPdfNote | typeof isPdfSearchCapture,
+      opts?: { openBrowser?: boolean }
     ) => {
       const api = apiRef.current
       // Pending text selection: commit default-color highlight first, then artifact.
@@ -1323,8 +1363,23 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       hideHighlightToolbar()
       queueStripPdfNoteLinks()
       markUnsaved()
+
+      if (opts?.openBrowser) {
+        const capture = newElements.find(isPdfSearchCapture)
+        if (capture) {
+          goToAnnotation(capture.id)
+          void openSearchBrowser(capture)
+        }
+      }
     },
-    [commitPendingHighlight, hideHighlightToolbar, markUnsaved, queueStripPdfNoteLinks]
+    [
+      commitPendingHighlight,
+      goToAnnotation,
+      hideHighlightToolbar,
+      markUnsaved,
+      openSearchBrowser,
+      queueStripPdfNoteLinks
+    ]
   )
 
   const addNoteToActiveHighlight = useCallback(() => {
@@ -1332,7 +1387,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [addArtifactFromHighlight])
 
   const addSearchCaptureToActiveHighlight = useCallback(() => {
-    addArtifactFromHighlight(createSearchCaptureFromHighlight, isPdfSearchCapture)
+    addArtifactFromHighlight(createSearchCaptureFromHighlight, isPdfSearchCapture, {
+      openBrowser: true
+    })
   }, [addArtifactFromHighlight])
 
   const copyActiveHighlightText = useCallback(() => {
@@ -1375,7 +1432,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
     api.updateScene({
       elements: scene.map((el) =>
-        toDelete.has(el.id) ? (newElementWith(el, { isDeleted: true }) as typeof el) : el
+        toDelete.has(el.id)
+          ? (newElementWith(el, {
+              isDeleted: true
+            } as Parameters<typeof newElementWith>[1]) as typeof el)
+          : el
       ),
       captureUpdate: CaptureUpdateAction.IMMEDIATELY
     })
@@ -1673,13 +1734,15 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         setPdfTextPass(false)
         return
       }
-      const api = apiRef.current
+      const api = liveExcalidrawApi(apiRef.current)
       if (!api) {
         setPdfTextPass(false)
         return
       }
       const appState = api.getAppState()
-      if (!appState.zoom?.value || appState.activeTool.type !== 'selection') {
+      // @next: re-click selection → lasso; treat both as text-pass tools
+      const tool = appState.activeTool.type
+      if (!appState.zoom?.value || (tool !== 'selection' && tool !== 'lasso')) {
         setPdfTextPass(false)
         return
       }
@@ -1866,7 +1929,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
       <div ref={excalidrawHostRef} className="excalidraw-host absolute inset-0 z-10">
         <Excalidraw
-          excalidrawAPI={(api) => {
+          onExcalidrawAPI={(api) => {
             apiRef.current = api
           }}
           // PDF text pass-through / toolbar clicks leave focus outside `.excalidraw`;

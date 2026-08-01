@@ -30,8 +30,8 @@ Out of scope (for now):
 
 | Step | Behavior |
 |------|----------|
-| **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight (initial L/R parity; sync re-anchors to shortest AABB segment on drag). Selects the card; does **not** auto-activate. Google search URL from highlight text. |
-| **Place browser** | Toolbar toggle (like Place note). Next canvas click places the same embeddable at the pointer, **no** arrow / no `sourceHighlightId`. Initial URL `https://www.google.com`. Selects only — does not auto-activate. |
+| **Buscar** | Creates a mobile-sized (430×930) embeddable + host-managed arrow from the highlight (initial L/R parity; sync re-anchors to shortest AABB segment on drag). Centers the camera on the card and **auto-activates** the guest browser (same as paste). Google search URL from highlight text. |
+| **Place browser** | Toolbar toggle (like Place note). Next canvas click places the same embeddable at the pointer, **no** arrow / no `sourceHighlightId`. Initial URL `https://www.google.com`. Centers camera and **auto-activates** the guest. |
 | **Paste URL** | Paste a single http(s) URL on the canvas → same unanchored embeddable at viewport center with that URL (no arrow), then **auto-activates** the guest browser so the page is previewed immediately. Skips when clipboard also has image/files (leave Excalidraw image paste alone). Non-URL paste stays Excalidraw default. |
 | **Activate** | Center click (same as notes) → one `WebContentsView` child of the host, aligned to the shape in content coords (default **user** page zoom 0.8). Clips to the app window; no separate OS window / `alwaysOnTop`. Chrome above: back / forward / zoom % (−/⌘−, +/⌘+) / portrait (430×932) / landscape (1200×800). Cmd/Ctrl± and chrome ± step **user** zoom (×1.2, clamped 0.25–5); Chromium gets `userZoom × canvasZoom` so page content stays locked to the card while the canvas camera moves. |
 | **Exit** | Escape or click outside (beyond transform-handle pad) → `capturePage` PNG under `attachments/` → native Excalidraw `image` with 16px rounded corners. |

@@ -231,6 +231,7 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
       return cat
     })
     await get().setCategories(categories)
+    // RAG parked — cancel is a no-op stub in main until the feature is redone.
     void cancelRagIndex(pdfId)
   },
   updateCategory: async (categoryId = 'default', category: Partial<Category>) => {
