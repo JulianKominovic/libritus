@@ -13,6 +13,17 @@ No es un archivo de aprendizajes para usar siempre, sino que se usa para evitar 
 
 Este archivo es mantenido y actualizado por el agente.
 
+### pdf.js 6: JBIG2 / scanned PDFs need `wasmUrl`
+
+#### Descripción más detallada
+
+PDFs escaneados (imágenes JBIG2/JPEG2000) abrían páginas en blanco con warnings: `#instantiateWasm: Ensure that the wasmUrl API parameter is provided`, `nulljbig2_nowasm_fallback.js`, `JBig2 failed to initialize`, `Dependent image isn't ready yet`. El worker ya estaba configurado; faltaba el directorio `pdfjs-dist/wasm/`.
+
+#### Corrección
+
+- Copiar `node_modules/pdfjs-dist/wasm` → `src/renderer/public/wasm` en `postinstall` (mismo patrón que fonts de Excalidraw).
+- Envolver `getDocument` en `pdfjs.ts` con `wasmUrl`: en `http(s)` → `${location.origin}/wasm/` (no `document.baseURI` — con rutas `/pdf/…` caería en `/pdf/wasm/`); en `file:` → `new URL('wasm/', document.baseURI)` (como `EXCALIDRAW_ASSET_PATH`).
+
 ### Windows: create category no-op + no DevTools
 
 #### Descripción más detallada

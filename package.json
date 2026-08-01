@@ -15,7 +15,7 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
-    "postinstall": "electron-builder install-app-deps && mkdir -p src/renderer/public && rm -rf src/renderer/public/fonts && mkdir -p src/renderer/public/fonts && for f in Assistant Cascadia ComicShanns Excalifont Liberation Lilita Nunito Virgil; do cp -R \"node_modules/@excalidraw/excalidraw/dist/prod/fonts/$f\" src/renderer/public/fonts/; done",
+    "postinstall": "electron-builder install-app-deps && mkdir -p src/renderer/public && rm -rf src/renderer/public/fonts && mkdir -p src/renderer/public/fonts && for f in Assistant Cascadia ComicShanns Excalifont Liberation Lilita Nunito Virgil; do cp -R \"node_modules/@excalidraw/excalidraw/dist/prod/fonts/$f\" src/renderer/public/fonts/; done && rm -rf src/renderer/public/wasm && cp -R node_modules/pdfjs-dist/wasm src/renderer/public/wasm",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win --x64",
     "build:mac": "npm run build && electron-builder --mac --arm64",
