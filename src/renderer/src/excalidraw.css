@@ -120,6 +120,13 @@
   top: 2px;
 }
 
+/* Footer islands: match app chrome (default surface-low is #ececf4) */
+.excalidraw .zoom-button,
+.excalidraw .undo-redo-buttons button,
+.excalidraw .help-icon {
+  background-color: #fff !important;
+}
+
 .excalidraw [title='Elbow arrow'] {
   display: none !important;
 }

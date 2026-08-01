@@ -241,7 +241,10 @@ test('selected arrow endpoint drag over PDF text transforms', async () => {
 
     // Select before arming pass (cold click — Excalidraw PE still on).
     await clickScene(page, arrowX + arrowW / 2, arrowY)
-    await expect(page.locator('.App-menu__left')).toBeVisible({ timeout: 10_000 })
+    // Excalidraw @next: SelectedShapeActions is `.selected-shape-actions` (was `.App-menu__left`).
+    await expect(page.getByRole('region', { name: 'Selected shape actions' })).toBeVisible({
+      timeout: 10_000
+    })
 
     const sb = await span.boundingBox()
     if (!sb) throw new Error('missing span box')

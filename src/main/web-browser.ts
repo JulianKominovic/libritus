@@ -461,6 +461,8 @@ export function attachWebBrowserIpc(): void {
     applyBounds(payload.bounds)
     // ponytail: hide-not-detach — never removeChildView mid-load (historical ERR_FAILED).
     view.setVisible(true)
+    // Re-apply after visible — Chromium sometimes drops the pre-show zoomFactor.
+    setGuestZoomFactor(zoomFactor)
     navigate(payload.url)
     return { ok: true as const, zoomFactor }
   })

@@ -20,6 +20,9 @@ function pdfTitle(
 /**
  * Global RAG embed queue status above Settings.
  * Hidden when idle.
+ *
+ * RAG/embeddings currently disabled in main (`src/main/ai/index.ts`); this
+ * always stays idle until the feature is redone.
  */
 export function EmbeddingJobsIndicator() {
   const [snapshot, setSnapshot] = useState<RagQueueSnapshot>(IDLE)

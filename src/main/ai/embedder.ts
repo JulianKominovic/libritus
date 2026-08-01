@@ -1,3 +1,6 @@
+// DISABLED: RAG/embeddings parked — see attachAiIpcListeners in ./index.ts.
+// Keep this module for a future rewrite; main no longer imports it at runtime.
+
 import type { FeatureExtractionPipeline } from '@huggingface/transformers'
 import path from 'path'
 import { APP_DATA_DIR } from '..'

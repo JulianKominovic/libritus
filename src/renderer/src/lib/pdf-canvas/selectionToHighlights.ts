@@ -1,5 +1,5 @@
 import { newElementWith } from '@excalidraw/excalidraw'
-import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/element/transform'
 import type {
   ExcalidrawElement,
   OrderedExcalidrawElement
