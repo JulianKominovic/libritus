@@ -80,6 +80,7 @@ import {
   SEARCH_CAPTURE_WIDTH,
   syncPdfSearchArrows
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
+import { PASS_HIT_PAD_PX } from '@renderer/lib/pdf-canvas/pdfTextPassHitPad'
 import { findSceneElementAt, holdsPdfTextPassOff } from '@renderer/lib/pdf-canvas/sceneHit'
 import {
   clientToSceneCoords,
@@ -91,7 +92,6 @@ import {
   setHighlightGroupColor,
   withHighlightSkeletonColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
-import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlockPopup'
 import {
   readSession,
   SESSION_VERSION,
@@ -105,6 +105,7 @@ import {
   clearSessionPersistFreeze,
   isSessionPersistFrozen
 } from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
+import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlockPopup'
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
@@ -1740,8 +1741,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const el = containerRef.current
     if (!el) return
 
-    /** Screen px → scene pad so hover clears pass before entering the element. */
-    const PASS_HIT_PAD_PX = 12
     let forwardingPointer = false
 
     const isOverTextLayerBox = (clientX: number, clientY: number): boolean => {
