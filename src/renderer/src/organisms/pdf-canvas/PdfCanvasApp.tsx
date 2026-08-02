@@ -100,7 +100,6 @@ import {
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
-import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
 import { Globe, Search, StickyNote } from 'lucide-react'
 import type { Value } from 'platejs'
@@ -1967,11 +1966,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         ></Excalidraw>
       </div>
       {session && pageCount > 0 ? (
-        <div className="pointer-events-auto absolute left-0 top-12 z-10 grid grid-cols-[1fr_2fr_1fr] gap-8 2xl:grid-cols-3 w-full h-10 items-center 2xl:gap-12">
+        <div className="pointer-events-none absolute left-0 top-12 z-10 grid grid-cols-[1fr_2fr_1fr] gap-8 2xl:grid-cols-3 w-full h-10 items-center 2xl:gap-12">
           <div
             role="toolbar"
             aria-label="PDF tools"
-            className="flex h-full w-fit rounded-xl bg-neutral-100 p-1 shadow-md shadow-morphing-900/10 border border-black/10 py-1 col-[2/3] mx-auto"
+            className="pointer-events-auto flex h-full w-fit rounded-xl bg-neutral-100 p-1 shadow-md shadow-morphing-900/10 border border-black/10 py-1 col-[2/3] mx-auto"
           >
             <PageNavigator
               ref={pageNavigatorRef}

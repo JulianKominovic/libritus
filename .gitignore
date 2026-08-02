@@ -9,3 +9,4 @@ src/renderer/public/fonts
 src/renderer/public/wasm
 *.tsbuildinfo
 .env
+ignored/
