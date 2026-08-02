@@ -433,6 +433,57 @@ test('deleting search capture cascades arrow', async () => {
   }
 })
 
+test('deleting search capture while browsing disposes guest', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-search-del-browse-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const capX = 80
+  const capY = 40
+  const capW = 300
+  const capH = 300
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedSearchCaptureElement({
+        id: 'cap-del-browse',
+        x: capX,
+        y: capY,
+        width: capW,
+        height: capH,
+        query: 'dispose',
+        url: 'https://example.com'
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
+
+    await clickScene(page, capX + capW / 2, capY + capH / 2)
+    await expectBrowserChromeVisible(page)
+    await page.waitForTimeout(900)
+
+    // Edge select keeps guest; Backspace must dispose without an outside click.
+    await clickScene(page, capX + 4, capY + 4)
+    await page.keyboard.press('Backspace')
+
+    await expectBrowserChromeHidden(page)
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(0, { timeout: 10_000 })
+  } finally {
+    await close()
+  }
+})
+
 test('undo delete search capture restores arrow', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-search-undo-arrow-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
