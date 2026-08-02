@@ -1865,13 +1865,58 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       setPdfTextPass(false)
     }
 
+    // OS file drag: pointermove freezes, so pass can stay on over PDF text and
+    // Excalidraw's onDrop never fires (host PE-none). Clear pass on dragover so
+    // the next hit-test reaches Excalidraw. If drop still lands on .textLayer
+    // (same-tick PE), re-dispatch to .excalidraw with the live dataTransfer.
+    const dataTransferHasFiles = (dt: DataTransfer | null): boolean =>
+      !!dt && Array.from(dt.types ?? []).includes('Files')
+
+    const onDragOver = (event: DragEvent) => {
+      if (!dataTransferHasFiles(event.dataTransfer)) return
+      setPdfTextPass(false)
+    }
+
+    let forwardingDrop = false
+    const onDropCapture = (event: DragEvent) => {
+      if (forwardingDrop) return
+      if (!dataTransferHasFiles(event.dataTransfer)) return
+      setPdfTextPass(false)
+      const target = event.target
+      if (!(target instanceof Element) || !target.closest('.textLayer')) return
+      const excal = el.querySelector('.excalidraw')
+      if (!(excal instanceof HTMLElement)) return
+      event.preventDefault()
+      event.stopPropagation()
+      forwardingDrop = true
+      try {
+        excal.dispatchEvent(
+          new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            screenX: event.screenX,
+            screenY: event.screenY,
+            dataTransfer: event.dataTransfer
+          })
+        )
+      } finally {
+        forwardingDrop = false
+      }
+    }
+
     el.addEventListener('pointermove', onPointerMove, true)
     el.addEventListener('pointerdown', onPointerDown, true)
+    el.addEventListener('dragover', onDragOver, true)
+    el.addEventListener('drop', onDropCapture, true)
     window.addEventListener('pointerup', onPointerUp)
     window.addEventListener('blur', onBlur)
     return () => {
       el.removeEventListener('pointermove', onPointerMove, true)
       el.removeEventListener('pointerdown', onPointerDown, true)
+      el.removeEventListener('dragover', onDragOver, true)
+      el.removeEventListener('drop', onDropCapture, true)
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('blur', onBlur)
     }
