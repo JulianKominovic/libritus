@@ -55,7 +55,7 @@ describe('suppressUnlockPopup', () => {
             [10, 0]
           ],
           customData: { pdfNoteArrow: true, noteId: 'n' }
-        } as Partial<OrderedExcalidrawElement> & { id: string })
+        } as unknown as Partial<OrderedExcalidrawElement> & { id: string })
       )
     ).toBe(true)
     expect(
@@ -68,7 +68,7 @@ describe('suppressUnlockPopup', () => {
             [10, 0]
           ],
           customData: { pdfSearchArrow: true, captureId: 'c' }
-        } as Partial<OrderedExcalidrawElement> & { id: string })
+        } as unknown as Partial<OrderedExcalidrawElement> & { id: string })
       )
     ).toBe(true)
     expect(isHostLockedPdfArtifact(baseEl({ id: 'plain' }))).toBe(false)
@@ -91,7 +91,7 @@ describe('suppressUnlockPopup', () => {
         [10, 0]
       ],
       customData: { pdfNoteArrow: true, noteId: 'n' }
-    } as Partial<OrderedExcalidrawElement> & { id: string })
+    } as unknown as Partial<OrderedExcalidrawElement> & { id: string })
     const searchArrow = baseEl({
       id: 'sa',
       type: 'arrow',
@@ -100,7 +100,7 @@ describe('suppressUnlockPopup', () => {
         [10, 0]
       ],
       customData: { pdfSearchArrow: true, captureId: 'c' }
-    } as Partial<OrderedExcalidrawElement> & { id: string })
+    } as unknown as Partial<OrderedExcalidrawElement> & { id: string })
     const elements = [highlight, noteArrow, searchArrow]
 
     expect(shouldSuppressUnlockPopup('h1', elements)).toBe(true)

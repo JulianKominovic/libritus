@@ -10,6 +10,7 @@ import {
   waitForSession
 } from './helpers/canvas'
 import { openPdf, readSessionFile, seedLibrary, seedSession } from './helpers/seed'
+import { PASS_HIT_PAD_PX } from '../src/renderer/src/lib/pdf-canvas/pdfTextPassHitPad'
 
 /** Scene → client assuming restored camera scroll≈0 zoom≈1. */
 async function sceneToClient(
@@ -21,6 +22,42 @@ async function sceneToClient(
   const box = await canvas.boundingBox()
   if (!box) throw new Error('no canvas box')
   return { x: box.x + sceneX, y: box.y + sceneY }
+}
+
+function unlockedRect(opts: {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+}): Record<string, unknown> {
+  return {
+    id: opts.id,
+    type: 'rectangle',
+    x: opts.x,
+    y: opts.y,
+    width: opts.width,
+    height: opts.height,
+    angle: 0,
+    strokeColor: '#1e1e1e',
+    backgroundColor: '#a5d8ff',
+    fillStyle: 'solid',
+    strokeWidth: 2,
+    strokeStyle: 'solid',
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    frameId: null,
+    roundness: null,
+    seed: 1,
+    version: 1,
+    versionNonce: 1,
+    isDeleted: false,
+    boundElements: null,
+    updated: 1,
+    link: null,
+    locked: false
+  }
 }
 
 function unlockedArrow(opts: {
@@ -79,6 +116,18 @@ async function expectPassOff(page: Parameters<typeof clickScene>[0]): Promise<vo
     .toBe(false)
 }
 
+async function expectPassOn(page: Parameters<typeof clickScene>[0]): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() =>
+          document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
+        ),
+      { timeout: 3_000 }
+    )
+    .toBe(true)
+}
+
 function arrowGeometryMoved(el: Record<string, unknown>): boolean {
   const height = typeof el.height === 'number' ? el.height : 0
   if (Math.abs(height) > 10) return true
@@ -89,6 +138,61 @@ function arrowGeometryMoved(el: Record<string, unknown>): boolean {
   )
 }
 
+/**
+ * Hover halo around scene AABBs (PASS_HIT_PAD_PX): pass must stay off inside the
+ * element and on over text beyond AABB+pad. Keeps the constant honest when tuned.
+ */
+test('hover pad: inside shape pass off; outside AABB+pad over text pass on', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-pass-pad-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+
+  const rect = { id: 'r-pad', x: 100, y: 120, width: 140, height: 90 }
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [unlockedRect(rect)]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await page.locator('.textLayer').first().waitFor({ state: 'visible', timeout: 60_000 })
+
+    const midY = rect.y + rect.height / 2
+    // Beyond pad: text-pass should arm (over page textLayer box).
+    const beyond = await sceneToClient(page, rect.x - (PASS_HIT_PAD_PX + 10), midY)
+    await page.mouse.move(beyond.x, beyond.y)
+    await expectPassOn(page)
+
+    const inside = await sceneToClient(page, rect.x + 30, rect.y + 30)
+    await page.mouse.move(inside.x, inside.y)
+    await expectPassOff(page)
+
+    if (PASS_HIT_PAD_PX > 0) {
+      const halo = await sceneToClient(
+        page,
+        rect.x - Math.max(1, Math.floor(PASS_HIT_PAD_PX / 2)),
+        midY
+      )
+      await page.mouse.move(halo.x, halo.y)
+      await expectPassOff(page)
+    } else {
+      // pad 0: 1px outside AABB must arm pass (no anticipatory halo).
+      const justOutside = await sceneToClient(page, rect.x - 1, midY)
+      await page.mouse.move(justOutside.x, justOutside.y)
+      await expectPassOn(page)
+    }
+  } finally {
+    await close()
+  }
+})
 
 /**
  * Regression: while `.pdf-text-pass` is on, a pointerdown on a scene element is
@@ -107,35 +211,7 @@ test('pointerdown on shape while pdf-text-pass still on selects', async () => {
     docId: pdfId,
     updatedAt: new Date().toISOString(),
     camera: { scrollX: 0, scrollY: 0, zoom: 1 },
-    elements: [
-      {
-        id: 'r1',
-        type: 'rectangle',
-        x: 500,
-        y: 150,
-        width: 120,
-        height: 80,
-        angle: 0,
-        strokeColor: '#1e1e1e',
-        backgroundColor: '#a5d8ff',
-        fillStyle: 'solid',
-        strokeWidth: 2,
-        strokeStyle: 'solid',
-        roughness: 0,
-        opacity: 100,
-        groupIds: [],
-        frameId: null,
-        roundness: null,
-        seed: 1,
-        version: 1,
-        versionNonce: 1,
-        isDeleted: false,
-        boundElements: null,
-        updated: 1,
-        link: null,
-        locked: false
-      }
-    ]
+    elements: [unlockedRect({ id: 'r1', x: 500, y: 150, width: 120, height: 80 })]
   })
 
   const { page, close } = await launchApp({ appDataDir })
@@ -155,15 +231,7 @@ test('pointerdown on shape while pdf-text-pass still on selects', async () => {
 
     // Arm pass-through on PDF text; stay there (do not move onto the rect).
     await page.mouse.move(sb.x + 4, sb.y + 4)
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(() =>
-            document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
-          ),
-        { timeout: 3_000 }
-      )
-      .toBe(true)
+    await expectPassOn(page)
 
     const rx = cb.x + 560
     const ry = cb.y + 190
@@ -249,7 +317,7 @@ test('selected arrow endpoint drag over PDF text transforms', async () => {
     const sb = await span.boundingBox()
     if (!sb) throw new Error('missing span box')
 
-    // Outside hairline AABB+pad (~12px) but over PDF text — latch must keep PE.
+    // Outside hairline AABB+pad but over PDF text — latch must keep PE.
     await page.mouse.move(sb.x + 4, sb.y + 4)
     await expectPassOff(page)
 

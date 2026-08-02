@@ -109,11 +109,12 @@ describe('sceneHit', () => {
       y: 3050814.5,
       width: 253.39,
       height: 268.33,
+      // Excalidraw brands LocalPoint; tuples are fine at runtime.
       points: [
         [0, 0],
         [-225.3, -130.08],
         [-253.39, -268.33]
-      ]
+      ] as never
     })
     expect(findSceneElementAt([arrow], 150, 3050900)).toBeNull()
     expect(findSceneElementAt([arrow], 31.77, 3050814.5)?.id).toBe('arr')
