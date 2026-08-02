@@ -1,16 +1,51 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
+import { BrowserWindow, ipcMain, net, shell } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import { APP_DATA_DIR } from '..'
 import { attachAiIpcListeners } from '../ai'
 import { atomicWriteFile } from '../atomicWrite'
+import { readBodyCapped } from '../fetchImageBody'
 import { attachWebBrowserIpc } from '../web-browser'
+import { isHttpUrl } from '../web-browser-url'
 //@ts-expect-error - this is a raw file
 import PROSE_CSS_INJECTABLE from '../assets/prose-injectable.css?raw'
+
+/** Chrome image drop — keep renderer CSP tight; fetch in main. */
+const MAX_FETCH_IMAGE_BYTES = 30 * 1024 * 1024
+
+function isImageMime(contentType: string | null): boolean {
+  if (!contentType) return false
+  const mime = contentType.split(';')[0]?.trim().toLowerCase() ?? ''
+  return mime.startsWith('image/')
+}
 
 const attachIPCListeners = (): void => {
   attachAiIpcListeners()
   attachWebBrowserIpc()
+
+  ipcMain.handle('fetch-image-url', async (_, { url }: { url: string }) => {
+    if (typeof url !== 'string' || !isHttpUrl(url)) return null
+    try {
+      const res = await net.fetch(url)
+      if (!res.ok) return null
+      const mimeType = res.headers.get('content-type')
+      if (!isImageMime(mimeType)) return null
+      const buf = await readBodyCapped(
+        res.body,
+        MAX_FETCH_IMAGE_BYTES,
+        res.headers.get('content-length')
+      )
+      if (!buf) return null
+      return {
+        bytes: buf,
+        mimeType: mimeType!.split(';')[0]!.trim().toLowerCase()
+      }
+    } catch (err) {
+      console.error('fetch-image-url failed', url, err)
+      return null
+    }
+  })
+
   ipcMain.handle('download-url-as-pdf', async (_, { url }) => {
     // Load the URL in a new window
     const win = new BrowserWindow({ show: false, width: 1920, height: 1080 })

@@ -135,3 +135,124 @@ test('drop PNG over PDF text with pdf-text-pass inserts image + attachment', asy
     await close()
   }
 })
+
+/**
+ * Chrome image drag: text/html + text/uri-list, no Files. Host parses img src,
+ * fetches via IPC (stubbed), re-dispatches File drop to Excalidraw.
+ */
+test('Chrome-like HTML image drop over PDF text inserts image + attachment', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-chrome-img-drop-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
+    await span.waitFor({ state: 'visible', timeout: 60_000 })
+    const box = await span.boundingBox()
+    if (!box) throw new Error('text span has no box')
+    const clientX = box.x + box.width / 2
+    const clientY = box.y + box.height / 2
+
+    await page.mouse.move(clientX, clientY)
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() =>
+            document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
+          ),
+        { timeout: 5_000 }
+      )
+      .toBe(true)
+
+    // Stub main fetch — no network; return tiny PNG for any fetch-image-url.
+    await page.evaluate((b64) => {
+      const electron = (
+        window as unknown as {
+          electron: { ipcRenderer: { invoke: (...args: unknown[]) => Promise<unknown> } }
+        }
+      ).electron
+      const prev = electron.ipcRenderer.invoke.bind(electron.ipcRenderer)
+      electron.ipcRenderer.invoke = async (channel: unknown, ...args: unknown[]) => {
+        if (channel === 'fetch-image-url') {
+          const binary = atob(b64)
+          const bytes = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+          return { bytes, mimeType: 'image/png' }
+        }
+        return prev(channel, ...args)
+      }
+    }, TINY_PNG_B64)
+
+    const dropResult = await page.evaluate(
+      ({ x, y }) => {
+        const root = document.querySelector('[data-pdf-canvas-root]')
+        if (!(root instanceof HTMLElement)) return { ok: false as const, reason: 'no-root' }
+
+        const html =
+          '<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">' +
+          '<img class="avatar" src="https://avatars.githubusercontent.com/u/70329467?s=80&amp;v=4" width="40" height="40">'
+        const uri = 'https://github.com/JulianKominovic'
+
+        const dt = new DataTransfer()
+        dt.setData('text/html', html)
+        dt.setData('text/uri-list', uri)
+        // No Files — mirrors Chrome image drag.
+
+        const hit = document.elementFromPoint(x, y)
+        if (!(hit instanceof Element)) return { ok: false as const, reason: 'no-hit' }
+
+        const over = new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          dataTransfer: dt
+        })
+        if (!over.dataTransfer) return { ok: false as const, reason: 'dragover-no-dt' }
+        hit.dispatchEvent(over)
+
+        const hit2 = document.elementFromPoint(x, y)
+        const dropTarget = hit2 instanceof Element ? hit2 : hit
+        const drop = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          dataTransfer: dt
+        })
+        if (!drop.dataTransfer) return { ok: false as const, reason: 'drop-no-dt' }
+        dropTarget.dispatchEvent(drop)
+
+        return {
+          ok: true as const,
+          types: [...dt.types],
+          files: dt.files.length,
+          passAfter: root.classList.contains('pdf-text-pass')
+        }
+      },
+      { x: clientX, y: clientY }
+    )
+
+    expect(dropResult.ok, JSON.stringify(dropResult)).toBe(true)
+    expect(dropResult.files).toBe(0)
+
+    await expectUnsaved(page)
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => liveElements(s).some(isDroppedImage)
+    )
+    const img = liveElements(snap).find(isDroppedImage)!
+    const fileId = img.fileId as string
+    await access(path.join(appDataDir, 'attachments', `${fileId}.png`))
+  } finally {
+    await close()
+  }
+})
