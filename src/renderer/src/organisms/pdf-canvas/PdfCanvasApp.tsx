@@ -12,6 +12,7 @@ import type {
   NormalizedZoomValue
 } from '@excalidraw/excalidraw/types'
 import { readFile } from '@renderer/integrations/fs'
+import { fetchImageUrl } from '@renderer/integrations/ipc'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import {
@@ -23,8 +24,13 @@ import {
 import {
   fileIdsFromElements,
   loadBinaryFiles,
+  mimeToExt,
   persistNewBinaryFiles
 } from '@renderer/lib/pdf-canvas/attachments'
+import {
+  dataTransferLooksLikeBrowserImageDrag,
+  imageUrlFromDataTransfer
+} from '@renderer/lib/pdf-canvas/browserImageDrop'
 import { syncCanvasStats, syncReadingProgress } from '@renderer/lib/pdf-canvas/catalogWriteback'
 import { isExcalidrawUiPointerTarget } from '@renderer/lib/pdf-canvas/excalidrawUiTarget'
 import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
@@ -1865,13 +1871,123 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       setPdfTextPass(false)
     }
 
+    // OS file drag: pointermove freezes, so pass can stay on over PDF text and
+    // Excalidraw's onDrop never fires (host PE-none). Clear pass on dragover so
+    // the next hit-test reaches Excalidraw. If drop still lands on .textLayer
+    // (same-tick PE), re-dispatch to .excalidraw with the live dataTransfer.
+    // Chrome image drag: html/uri-list only (no Files) — clear pass + fetch in
+    // main (renderer CSP), then re-dispatch a File drop for insertImages.
+    const dataTransferHasFiles = (dt: DataTransfer | null): boolean =>
+      !!dt && Array.from(dt.types ?? []).includes('Files')
+
+    let forwardingDrop = false
+
+    const dispatchFileDropToExcalidraw = (
+      file: File,
+      clientX: number,
+      clientY: number,
+      screenX: number,
+      screenY: number
+    ) => {
+      const excal = el.querySelector('.excalidraw')
+      if (!(excal instanceof HTMLElement)) return
+      const dt = new DataTransfer()
+      dt.items.add(file)
+      if (dt.files.length !== 1) return
+      forwardingDrop = true
+      try {
+        excal.dispatchEvent(
+          new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+            clientX,
+            clientY,
+            screenX,
+            screenY,
+            dataTransfer: dt
+          })
+        )
+      } finally {
+        forwardingDrop = false
+      }
+    }
+
+    const onDragOver = (event: DragEvent) => {
+      if (dataTransferHasFiles(event.dataTransfer)) {
+        setPdfTextPass(false)
+        return
+      }
+      if (dataTransferLooksLikeBrowserImageDrag(event.dataTransfer)) {
+        event.preventDefault()
+        setPdfTextPass(false)
+      }
+    }
+
+    const onDropCapture = (event: DragEvent) => {
+      if (forwardingDrop) return
+
+      if (dataTransferHasFiles(event.dataTransfer)) {
+        setPdfTextPass(false)
+        const target = event.target
+        if (!(target instanceof Element) || !target.closest('.textLayer')) return
+        const excal = el.querySelector('.excalidraw')
+        if (!(excal instanceof HTMLElement)) return
+        event.preventDefault()
+        event.stopPropagation()
+        forwardingDrop = true
+        try {
+          excal.dispatchEvent(
+            new DragEvent('drop', {
+              bubbles: true,
+              cancelable: true,
+              clientX: event.clientX,
+              clientY: event.clientY,
+              screenX: event.screenX,
+              screenY: event.screenY,
+              dataTransfer: event.dataTransfer
+            })
+          )
+        } finally {
+          forwardingDrop = false
+        }
+        return
+      }
+
+      const imageUrl = imageUrlFromDataTransfer(event.dataTransfer)
+      // Always cancel html/uri-list drops: dragover already preventDefault'd so
+      // Chromium treats us as a drop target; without this, a non-image URL drop
+      // can navigate webContents and wipe the unsaved canvas.
+      if (dataTransferLooksLikeBrowserImageDrag(event.dataTransfer)) {
+        event.preventDefault()
+        event.stopPropagation()
+        setPdfTextPass(false)
+        if (!imageUrl) return
+        const { clientX, clientY, screenX, screenY } = event
+        void (async () => {
+          const fetched = await fetchImageUrl(imageUrl)
+          if (!fetched) {
+            console.warn('browser image drop: fetch failed', imageUrl)
+            return
+          }
+          const ext = mimeToExt(fetched.mimeType)
+          const bytes = new Uint8Array(fetched.bytes)
+          const file = new File([bytes], `drop.${ext}`, { type: fetched.mimeType })
+          dispatchFileDropToExcalidraw(file, clientX, clientY, screenX, screenY)
+        })()
+      }
+    }
+
     el.addEventListener('pointermove', onPointerMove, true)
     el.addEventListener('pointerdown', onPointerDown, true)
+    el.addEventListener('dragover', onDragOver, true)
+    el.addEventListener('drop', onDropCapture, true)
     window.addEventListener('pointerup', onPointerUp)
     window.addEventListener('blur', onBlur)
     return () => {
       el.removeEventListener('pointermove', onPointerMove, true)
       el.removeEventListener('pointerdown', onPointerDown, true)
+      el.removeEventListener('dragover', onDragOver, true)
+      el.removeEventListener('drop', onDropCapture, true)
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('blur', onBlur)
     }

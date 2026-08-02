@@ -739,4 +739,18 @@ Re-descargar el binary: `cd node_modules/electron && bun run install.js` (o `bun
 - E2E outside-click deactivate: no `(20,20)` (compact shape actions) ni `(520,80)` (PDF tools toolbar `top-12`); usar canvas debajo del card p.ej. `(200,400)`.
 - E2E color pick: swatches ya no viven inline en compact UI — para "click panel no activa capture" basta el botón Stroke (`Show stroke color picker`).
 
+### Chrome image drop ≠ Finder Files / pass-through
+
+#### Descripción más detallada
+
+Arrastrar una `<img>` desde Chrome al canvas no insertaba nada (incluso sobre canvas vacío, `pass: false`). El approach del fix de Finder (clear `.pdf-text-pass` cuando `types` incluye `Files`) no aplica: Chrome manda `text/html` + `text/uri-list` + `chromium/x-drag-id`, **sin Files**. El `uri-list` suele ser la **página** (p.ej. perfil de GitHub); la URL de la imagen está en el `<img src>` del HTML. Excalidraw solo hace `insertImages` con file items; el fallback a embeddable por URL falla porque `validateEmbeddable` solo acepta `libritus://…`. Además el CSP del renderer (`connect-src` / `img-src`) no deja fetchear CDNs arbitrarios.
+
+#### Corrección
+
+- Parsear `img src` http(s) del HTML (preferido) o `uri-list` con extensión de imagen (`browserImageDrop.ts`).
+- Fetch en main vía `net.fetch` + IPC `fetch-image-url` (http(s), `image/*`, cap ~10MB).
+- Re-despachar un `drop` sintético con `File` a `.excalidraw` → `insertImages` + `persistNewBinaryFiles` existente.
+- En `dragover`, clear pass también para html/uri-list (no solo Files).
+- No ampliar CSP. URL sola → web embed sigue fuera de alcance.
+
 
