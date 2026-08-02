@@ -340,18 +340,7 @@ export function useSearchCaptureBrowser({
     ]
   )
 
-  const syncActiveBrowserBounds = useCallback(() => {
-    const id = activeBrowserCaptureIdRef.current
-    if (!id) return
-    const api = liveExcalidrawApi(apiRef.current)
-    if (!api) return
-    const el = api.getSceneElements().find((e) => e.id === id)
-    if (!el || el.isDeleted) return
-    // Live-follow resize/move — inset keeps handles outside the WCV.
-    syncGuestToElement(el)
-  }, [apiRef, syncGuestToElement])
-
-  /** Tear down guest without capturePage (leave PDF / destroy session). */
+  /** Tear down guest without capturePage (leave PDF / destroy session / element deleted). */
   const disposeBrowser = useCallback(() => {
     if (!activeBrowserCaptureIdRef.current) return
     activeBrowserCaptureIdRef.current = null
@@ -360,6 +349,20 @@ export function useSearchCaptureBrowser({
     hideBrowserChromeHud()
     void browserClose()
   }, [hideBrowserChromeHud])
+
+  const syncActiveBrowserBounds = useCallback(() => {
+    const id = activeBrowserCaptureIdRef.current
+    if (!id) return
+    const api = liveExcalidrawApi(apiRef.current)
+    if (!api) return
+    const el = api.getSceneElements().find((e) => e.id === id)
+    if (!el || el.isDeleted) {
+      disposeBrowser()
+      return
+    }
+    // Live-follow resize/move — inset keeps handles outside the WCV.
+    syncGuestToElement(el)
+  }, [apiRef, disposeBrowser, syncGuestToElement])
 
   const isBrowsing = useCallback(() => activeBrowserCaptureIdRef.current != null, [])
 
@@ -443,7 +446,7 @@ export function useSearchCaptureBrowser({
         if (Date.now() - browserOpenedAtRef.current < OPEN_GRACE_MS) return
         const el = api.getSceneElements().find((e) => e.id === browsingId)
         if (!el || el.isDeleted) {
-          void deactivateSearchBrowser()
+          disposeBrowser()
           return
         }
         const zoom = api.getAppState().zoom?.value ?? 1
@@ -488,7 +491,7 @@ export function useSearchCaptureBrowser({
       host.removeEventListener('pointerdown', onPointerDownCapture, true)
       window.removeEventListener('pointerup', onPointerUpCapture, true)
     }
-  }, [apiRef, deactivateSearchBrowser, excalidrawHostRef, openSearchBrowser])
+  }, [apiRef, deactivateSearchBrowser, disposeBrowser, excalidrawHostRef, openSearchBrowser])
 
   return {
     browserChromeRef,
