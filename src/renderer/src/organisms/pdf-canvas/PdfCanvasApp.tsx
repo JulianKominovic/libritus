@@ -100,7 +100,6 @@ import {
 import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
-import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
 import { Globe, Search, StickyNote } from 'lucide-react'
 import type { Value } from 'platejs'
