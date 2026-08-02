@@ -86,10 +86,12 @@ import {
   findPdfHighlightAt,
   HIGHLIGHT_FILL,
   highlightGroupId,
+  isPdfHighlight,
   selectionToHighlightSkeletons,
   setHighlightGroupColor,
   withHighlightSkeletonColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
+import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlockPopup'
 import {
   readSession,
   SESSION_VERSION,
@@ -205,6 +207,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const noteIdsRef = useRef(new Set<string>())
   /** Live Plate edits not yet written to the Excalidraw scene (avoid updateScene per keystroke). */
   const pendingPlateByNoteIdRef = useRef(new Map<string, Value>())
+  /** Clears UnlockPopup for host-locked PDF artifacts (highlights / note+search arrows). */
+  const unlockSuppressUnsubRef = useRef<(() => void) | null>(null)
 
   const showPdfOutline = useSettings((s) => s.showPdfOutline)
 
@@ -827,6 +831,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     syncSaveChip
   ])
 
+  useEffect(() => {
+    return () => {
+      unlockSuppressUnsubRef.current?.()
+      unlockSuppressUnsubRef.current = null
+    }
+  }, [])
+
   // Flush + tear down when leaving the route (sidebar nav, etc.).
   useEffect(() => {
     return () => {
@@ -1009,10 +1020,27 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             })
           }
 
+          // Host highlights stay locked (arrows already re-locked by sync above).
+          let relockedHighlights = false
+          if (scene.some((el) => !el.isDeleted && isPdfHighlight(el) && !el.locked)) {
+            scene = scene.map((el) =>
+              !el.isDeleted && isPdfHighlight(el) && !el.locked
+                ? (newElementWith(el, {
+                    locked: true
+                  } as Parameters<typeof newElementWith>[1]) as typeof el)
+                : el
+            )
+            relockedHighlights = true
+            api.updateScene({
+              elements: scene,
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
+          }
+
           // Excalidraw setStates activeEmbeddable "hover" on every pointermove over the
           // note center third (no equality guard) → onChange spam. Skip the rest.
           if (appState.activeEmbeddable?.state === 'hover') {
-            if (syncedNotes.changed || syncedCaptures.changed) markUnsaved()
+            if (syncedNotes.changed || syncedCaptures.changed || relockedHighlights) markUnsaved()
             return
           }
 
@@ -2046,6 +2074,16 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         <Excalidraw
           onExcalidrawAPI={(api) => {
             apiRef.current = api
+          }}
+          onInitialize={(api) => {
+            unlockSuppressUnsubRef.current?.()
+            unlockSuppressUnsubRef.current = api.onStateChange('activeLockedId', (id) => {
+              if (!shouldSuppressUnlockPopup(id, api.getSceneElements())) return
+              api.updateScene({
+                appState: { activeLockedId: null },
+                captureUpdate: CaptureUpdateAction.NEVER
+              })
+            })
           }}
           // PDF text pass-through / toolbar clicks leave focus outside `.excalidraw`;
           // without this, Cmd/Ctrl+Z (undo) only works after clicking the canvas.
