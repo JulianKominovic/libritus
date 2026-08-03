@@ -60,14 +60,18 @@ export function SettingsDialog() {
     // Update AI chat options
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chatOptions = (editor.getOptions(aiChatPlugin) as any).chatOptions ?? {}
-    editor.setOption(aiChatPlugin, 'chatOptions' as never, {
-      ...chatOptions,
-      body: {
-        ...chatOptions.body,
-        apiKey: tempKeys.openai,
-        model: tempModel.value
-      }
-    } as never)
+    editor.setOption(
+      aiChatPlugin,
+      'chatOptions' as never,
+      {
+        ...chatOptions,
+        body: {
+          ...chatOptions.body,
+          apiKey: tempKeys.openai,
+          model: tempModel.value
+        }
+      } as never
+    )
 
     setOpen(false)
 
@@ -167,10 +171,7 @@ export function SettingsDialog() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="size-8 rounded-full bg-morphing-100 p-2">
-                <DynamicIcon
-                  name="wand-2"
-                  className="size-4 text-morphing-700"
-                />
+                <DynamicIcon name="wand-2" className="size-4 text-morphing-700" />
               </div>
               <h4 className="font-semibold">AI</h4>
             </div>

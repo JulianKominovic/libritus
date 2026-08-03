@@ -18,18 +18,18 @@ Canvas shape (how the workspace is laid out):
 
 ---
 
-## Current architecture (Excalidraw + virtualized pdf.js)
+## Current architecture (Excalidraw + virtualized PDFium)
 
 Excalidraw is the **camera and annotation surface**. We are **not** planning a custom visual engine (Pixi / own canvas) while Excalidraw continues to work well. Scale and memory work stays in the **host**: page culling, pools, render density, and session model — not a renderer rewrite.
 
-| Layer | Technology | Role |
-|-------|------------|------|
-| App / shell | Electron + Vite + React + TypeScript | Toolbar, library, side panels, settings |
-| PDF | `pdfjs-dist` (worker, via `lib/pdf-canvas/pdfjs.ts`) | Parse, `getPage`, render to canvas |
-| Canvas + tools | **Excalidraw** | Camera, freehand, shapes, undo, embeddables |
-| PDF layer | Virtualized DOM under Excalidraw | `PageLayout` + `PagePool` / `TextLayerPool` / `PdfLayer` |
-| UI state | React + Zustand (settings, categories) | Tools chrome, library, prefs |
-| Persistence | Disk (appData) | `{pdfId}.pdf`, `{pdfId}.session.json`, `attachments/` |
+| Layer          | Technology                                                 | Role                                                               |
+| -------------- | ---------------------------------------------------------- | ------------------------------------------------------------------ |
+| App / shell    | Electron + Vite + React + TypeScript                       | Toolbar, library, side panels, settings                            |
+| PDF            | `@embedpdf/engines` (PDFium WASM, via `embedpdfEngine.ts`) | Parse, renderPageRaw, text/search/bookmarks                        |
+| Canvas + tools | **Excalidraw**                                             | Camera, freehand, shapes, undo, embeddables                        |
+| PDF layer      | Virtualized DOM under Excalidraw                           | `PageLayout` + `PagePool` / EmbedPDF `SelectionLayer` / `PdfLayer` |
+| UI state       | React + Zustand (settings, categories)                     | Tools chrome, library, prefs                                       |
+| Persistence    | Disk (appData)                                             | `{pdfId}.pdf`, `{pdfId}.session.json`, `attachments/`              |
 
 ### Integration approach
 
@@ -53,11 +53,11 @@ Rule of thumb: **pan/zoom should not rebuild React state for geometry**. Prefer 
 
 ### Coordinate system (today)
 
-| Space | Description |
-|-------|-------------|
-| **Screen** | Viewport pixels (`clientX/Y`) |
-| **Scene / world** | Excalidraw plane (`scrollX` / `scrollY` / `zoom`) |
-| **Page** | Local to a page via `PageLayout` (used for visibility, search hits, thumbs) |
+| Space             | Description                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| **Screen**        | Viewport pixels (`clientX/Y`)                                               |
+| **Scene / world** | Excalidraw plane (`scrollX` / `scrollY` / `zoom`)                           |
+| **Page**          | Local to a page via `PageLayout` (used for visibility, search hits, thumbs) |
 
 PDF layout in world space (column):
 
@@ -72,12 +72,12 @@ Annotations (highlights, notes, captures) live in **scene coords** in the sessio
 
 ### PDF pipeline
 
-1. **Open**: `readFile` → `getDocument({ data })` in worker.
+1. **Open**: `readFile` → DocumentManager `openDocumentBuffer` on the shared PDFium engine.
 2. **Metadata pass**: sizes for each page → `PageLayout` (+ `pageWorldScale`).
 3. **Visible set**: viewport ∩ page rects → `pageIndex` list (+ buffer).
 4. **Page pool**: reusable slots; LRU / cancel; `renderScaleForWorld(worldScale)`.
 5. **Zoom**: same bitmap; CSS / camera transform only (no re-raster on zoom tick).
-6. **Text layer**: visible pages when needed for selection.
+6. **Text selection**: visible pages — EmbedPDF `SelectionLayer` + `PagePointerProvider` (glyph hit-test); highlights from `getFormattedSelection()`.
 
 ### Scene layer model (conceptual)
 
@@ -93,31 +93,31 @@ Excalidraw stage
 
 These improve scale **without** replacing the whiteboard:
 
-| Lever | Intent |
-|-------|--------|
-| Shrink / hard-cap visible set | Memory independent of zoom-out buffer |
-| Adaptive / LOD render density | Sharp reading zoom; cheaper overview |
-| Evict release | Zero canvas buffers / `page.cleanup()` on pool evict |
-| Streaming / range / OPFS (later) | Do not keep entire PDF ArrayBuffer forever |
-| Optional page-space annotations | Stable anchors if layout constants change; better list order |
+| Lever                            | Intent                                                       |
+| -------------------------------- | ------------------------------------------------------------ |
+| Shrink / hard-cap visible set    | Memory independent of zoom-out buffer                        |
+| Adaptive / LOD render density    | Sharp reading zoom; cheaper overview                         |
+| Evict release                    | Zero canvas buffers / `page.cleanup()` on pool evict         |
+| Streaming / range / OPFS (later) | Do not keep entire PDF ArrayBuffer forever                   |
+| Optional page-space annotations  | Stable anchors if layout constants change; better list order |
 
 ### Performance targets
 
-| Metric | Target |
-|--------|--------|
-| Pan/zoom | Smooth with warm pool |
-| Visible page change | texture ready < 100–200 ms (cache hit ≪) |
-| Bitmap memory | configurable hard cap + LRU |
-| Open metadata 3000 pages | usable skeleton in a few seconds |
+| Metric                   | Target                                   |
+| ------------------------ | ---------------------------------------- |
+| Pan/zoom                 | Smooth with warm pool                    |
+| Visible page change      | texture ready < 100–200 ms (cache hit ≪) |
+| Bitmap memory            | configurable hard cap + LRU              |
+| Open metadata 3000 pages | usable skeleton in a few seconds         |
 
 ### Risks and mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| GPU / RAM from page bitmaps | Density clamp + visible cap + LRU |
-| Fast scroll = render thrashing | cancel jobs; buffer; avoid React on every tick |
-| Whole PDF in RAM | later: range / OPFS |
-| Linear annotation hit-test | acceptable while element counts stay modest; index later if needed |
+| Risk                           | Mitigation                                                         |
+| ------------------------------ | ------------------------------------------------------------------ |
+| GPU / RAM from page bitmaps    | Density clamp + visible cap + LRU                                  |
+| Fast scroll = render thrashing | cancel jobs; buffer; avoid React on every tick                     |
+| Whole PDF in RAM               | later: range / OPFS                                                |
+| Linear annotation hit-test     | acceptable while element counts stay modest; index later if needed |
 
 ### “Done” criteria for scale (host work)
 
@@ -132,4 +132,4 @@ These improve scale **without** replacing the whiteboard:
 
 > Performance is not defined by the whiteboard UI library, but by **page culling + LOD + sparse annotations**.
 
-Excalidraw is the canvas stack. Improve the pdf.js host and session model; do not invent a second engine unless Excalidraw itself becomes the bottleneck and product decides otherwise.
+Excalidraw is the canvas stack. Improve the PDFium host and session model; do not invent a second camera engine unless Excalidraw itself becomes the bottleneck and product decides otherwise.

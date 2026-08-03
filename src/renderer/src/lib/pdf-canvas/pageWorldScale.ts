@@ -7,12 +7,12 @@ export const REFERENCE_PAGE_WIDTH = 612
 /** Device pixels per world CSS px at zoom 1 (Letter @ FIXED_RENDER_SCALE). */
 export const TARGET_WORLD_DENSITY = 2
 
-/** pdf.js scale bounds relative to native page points. */
+/** Render scale bounds relative to native page points. */
 const MIN_RENDER_SCALE = 1
 const MAX_RENDER_SCALE = 4
 
 /**
- * pdf.js viewport scale so bitmaps stay ~TARGET_WORLD_DENSITY in world CSS space.
+ * Render scale so bitmaps stay ~TARGET_WORLD_DENSITY in world CSS space.
  * Letter worldScale=1 → 2; small pages raise scale; huge pages lower it (clamped).
  */
 export function renderScaleForWorld(
@@ -31,7 +31,7 @@ export type PageWorldScale = {
 }
 
 /**
- * Scale native pdf.js page sizes so the widest page matches REFERENCE_PAGE_WIDTH.
+ * Scale native PDF page sizes so the widest page matches REFERENCE_PAGE_WIDTH.
  * Keeps aspect ratios; scale ≈ 1 for Letter/A4.
  */
 export function pageWorldScale(

@@ -24,8 +24,7 @@ const buttonGroupVariants = cva('flex sm:items-center max-sm:gap-1 bg-background
 })
 
 export interface ButtonGroupProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof buttonGroupVariants> {
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof buttonGroupVariants> {
   separated?: boolean
 }
 

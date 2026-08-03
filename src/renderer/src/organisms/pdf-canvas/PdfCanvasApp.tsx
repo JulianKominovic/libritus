@@ -85,13 +85,19 @@ import { findSceneElementAt, holdsPdfTextPassOff } from '@renderer/lib/pdf-canva
 import {
   clientToSceneCoords,
   findPdfHighlightAt,
+  formattedSelectionToHighlightSkeletons,
   HIGHLIGHT_FILL,
   highlightGroupId,
   isPdfHighlight,
-  selectionToHighlightSkeletons,
   setHighlightGroupColor,
   withHighlightSkeletonColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
+import { EMBEDPDF_CANVAS_PLUGINS } from '@renderer/lib/pdf-canvas/embedpdfPlugins'
+import { getPdfEngine } from '@renderer/lib/pdf-canvas/embedpdfEngine'
+import type { PdfEngine } from '@embedpdf/engines'
+import { EmbedPDF } from '@embedpdf/core/react'
+import { useDocumentManagerCapability } from '@embedpdf/plugin-document-manager/react'
+import { useSelectionCapability } from '@embedpdf/plugin-selection/react'
 import {
   readSession,
   SESSION_VERSION,
@@ -106,7 +112,6 @@ import {
   isSessionPersistFrozen
 } from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
 import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlockPopup'
-import { TextLayerPool } from '@renderer/lib/pdf-canvas/TextLayerPool'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { useSettings } from '@renderer/stores/settings'
@@ -128,7 +133,6 @@ import { useSearchCaptureBrowser } from './useSearchCaptureBrowser'
 
 import '@excalidraw/excalidraw/index.css'
 import '@renderer/excalidraw.css'
-import '@renderer/lib/pdf-canvas/textLayer.css'
 
 const INITIAL_CAMERA: CameraState = {
   scrollX: 100,
@@ -149,15 +153,49 @@ const SAVE_STATUS_LABEL: Record<SaveStatus, string> = {
 
 type RuntimeSession = {
   doc: PdfDocument
+  documentId: string
   layout: PageLayout
   pool: PagePool
-  textPool: TextLayerPool
   thumbPool: ThumbPool
 }
 
 type PdfCanvasAppProps = {
   categoryId: string
   pdfId: string
+}
+
+/**
+ * Engine + EmbedPDF host (DocumentManager / InteractionManager / Selection).
+ * Inner session opens the buffer via DocumentManager so Selection can resolve it.
+ */
+export function PdfCanvasApp(props: PdfCanvasAppProps) {
+  const [engine, setEngine] = useState<PdfEngine<Blob> | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void getPdfEngine()
+      .then((e) => {
+        if (!cancelled) setEngine(e)
+      })
+      .catch((err) => {
+        console.error('PDFium engine failed', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!engine) {
+    return (
+      <div data-pdf-canvas-root className="relative h-full w-full overflow-hidden bg-morphing-50" />
+    )
+  }
+
+  return (
+    <EmbedPDF engine={engine} plugins={EMBEDPDF_CANVAS_PLUGINS}>
+      <PdfCanvasAppInner {...props} engine={engine} />
+    </EmbedPDF>
+  )
 }
 
 /**
@@ -170,13 +208,31 @@ type PdfCanvasAppProps = {
  *
  * Everything else (camera, page, highlight chip, text pass-through) is ref + DOM.
  * Notes: Excalidraw embeddable + renderEmbeddable (no parallel HUD).
- * Text select: selection tool + miss → `.pdf-text-pass` (host PE-none → text layer).
+ * Text select: selection tool + miss → `.pdf-text-pass` (host PE-none → SelectionLayer).
  */
-export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
+function PdfCanvasAppInner({
+  categoryId,
+  pdfId,
+  engine
+}: PdfCanvasAppProps & { engine: PdfEngine<Blob> }) {
   const [, setLocation] = useLocation()
+  const { provides: documentManager } = useDocumentManagerCapability()
+  const { provides: selectionCapability } = useSelectionCapability()
+  const documentManagerRef = useRef(documentManager)
+  const selectionCapabilityRef = useRef(selectionCapability)
+  documentManagerRef.current = documentManager
+  selectionCapabilityRef.current = selectionCapability
+
   const containerRef = useRef<HTMLDivElement>(null)
   const excalidrawHostRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<RuntimeSession | null>(null)
+
+  const clearEmbedSelection = useCallback(() => {
+    const id = sessionRef.current?.documentId
+    const cap = selectionCapabilityRef.current
+    if (id && cap) cap.clear(id)
+  }, [])
+
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   /** Last live scene for leave-flush after @next destroys get* / nulls onExcalidrawAPI. */
   const sceneCacheRef = useRef<unknown[] | null>(null)
@@ -192,6 +248,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const placeBrowserModeRef = useRef(false)
   /** Keep PE pass-through until pointerup so mid-drag over a shape doesn't steal text select. */
   const textSelectGestureRef = useRef(false)
+  /** Primary-button (or any) pointer down — cheap onChange path while dragging embeds. */
+  const pointerButtonsDownRef = useRef(false)
+  /** Coalesce host arrow updateScene to one per animation frame. */
+  const arrowSyncRafRef = useRef<number | null>(null)
   const pdfTextPassRef = useRef(false)
   const currentPageRef = useRef(1)
   const saveStatusRef = useRef<SaveStatus>('saved')
@@ -536,8 +596,23 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     }
   }, [buildSnapshot, categoryId, pdfId, syncSaveChip])
 
+  const armAutosaveTimer = useCallback(() => {
+    clearSaveTimer()
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null
+      void writeSnapshotNow()
+    }, AUTOSAVE_DEBOUNCE_MS)
+  }, [clearSaveTimer, writeSnapshotNow])
+
   const markUnsaved = useCallback(() => {
     if (!readyRef.current || restoringRef.current) return
+
+    // During drag with session already dirty: skip full-scene JSON stringify.
+    if (pointerButtonsDownRef.current && dirtyRef.current) {
+      armAutosaveTimer()
+      return
+    }
+
     const sig = currentPersistSignature()
     if (sig == null) return
 
@@ -561,12 +636,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     dirtyRef.current = true
     pendingSigRef.current = gate.pending
     syncSaveChip('unsaved')
-    clearSaveTimer()
-    saveTimerRef.current = setTimeout(() => {
-      saveTimerRef.current = null
-      void writeSnapshotNow()
-    }, AUTOSAVE_DEBOUNCE_MS)
-  }, [clearSaveTimer, currentPersistSignature, syncSaveChip, writeSnapshotNow])
+    armAutosaveTimer()
+  }, [armAutosaveTimer, clearSaveTimer, currentPersistSignature, syncSaveChip])
 
   const flushSave = useCallback(async () => {
     clearSaveTimer()
@@ -597,6 +668,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   const destroyRuntimeSession = useCallback(async () => {
     const prev = sessionRef.current
     if (!prev) return
+    hideHighlightToolbar()
+    clearEmbedSelection()
     disposeBrowser()
     // Drop React/session refs before tearing down the worker so a stale PdfLayer
     // syncVisible cannot call getPage on a destroyed transport.
@@ -604,10 +677,17 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     setSession(null)
     setOutline([])
     prev.pool.destroy()
-    prev.textPool.destroy()
     prev.thumbPool.destroy()
+    const docs = documentManagerRef.current
+    if (docs?.isDocumentOpen(prev.documentId)) {
+      try {
+        await docs.closeDocument(prev.documentId).toPromise()
+      } catch {
+        /* already closed */
+      }
+    }
     await prev.doc.destroy()
-  }, [disposeBrowser])
+  }, [clearEmbedSelection, disposeBrowser, hideHighlightToolbar])
 
   const clearScene = useCallback(() => {
     apiRef.current?.updateScene({
@@ -634,6 +714,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
   }, [pushCamera])
 
   useEffect(() => {
+    if (!documentManager) return
+
     const generation = ++openGenerationRef.current
     let cancelled = false
     clearSessionPersistFreeze()
@@ -663,24 +745,52 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           return
         }
 
-        // Copy into a fresh ArrayBuffer — pdf.js may transfer the buffer to the worker.
+        // Copy into a fresh ArrayBuffer — engine may transfer the buffer to the worker.
         const ab = bytes.buffer.slice(
           bytes.byteOffset,
           bytes.byteOffset + bytes.byteLength
         ) as ArrayBuffer
 
-        const doc = await PdfDocument.open(ab)
-        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
-          await doc.destroy()
+        const docs = documentManagerRef.current
+        if (!docs) {
+          setLoadError('PDF document manager not ready')
           return
         }
 
+        const openResp = await docs
+          .openDocumentBuffer({
+            buffer: ab,
+            name: `${pdfId}.pdf`,
+            documentId: pdfId,
+            autoActivate: true
+          })
+          .toPromise()
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
+          try {
+            await docs.closeDocument(openResp.documentId).toPromise()
+          } catch {
+            /* ignore */
+          }
+          return
+        }
+
+        const handle = await openResp.task.toPromise()
+        if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) {
+          try {
+            await docs.closeDocument(openResp.documentId).toPromise()
+          } catch {
+            /* ignore */
+          }
+          return
+        }
+
+        const doc = PdfDocument.wrap(engine, handle, { ownsClose: false })
+        const documentId = openResp.documentId
         const { scale: worldScale, sizes: worldSizes } = pageWorldScale(doc.pageSizes)
         const layout = new PageLayout(worldSizes, undefined, worldScale)
         const pool = new PagePool(doc, { renderScale: renderScaleForWorld(worldScale) })
-        const textPool = new TextLayerPool(doc, { scale: worldScale })
         const thumbPool = new ThumbPool(doc)
-        const next: RuntimeSession = { doc, layout, pool, textPool, thumbPool }
+        const next: RuntimeSession = { doc, documentId, layout, pool, thumbPool }
         sessionRef.current = next
         setSession(next)
 
@@ -825,6 +935,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     clearScene,
     currentPersistSignature,
     destroyRuntimeSession,
+    documentManager,
+    engine,
     pdfId,
     pushCamera,
     stripPdfNoteLinksAfterValidate,
@@ -876,13 +988,29 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       disposeBrowser()
       const current = sessionRef.current
       if (!current) return
+      hideHighlightToolbar()
+      clearEmbedSelection()
       sessionRef.current = null
       current.pool.destroy()
-      current.textPool.destroy()
       current.thumbPool.destroy()
+      const docs = documentManagerRef.current
+      if (docs?.isDocumentOpen(current.documentId)) {
+        void docs
+          .closeDocument(current.documentId)
+          .toPromise()
+          .catch(() => {})
+      }
       void current.doc.destroy()
     }
-  }, [categoryId, clearSaveTimer, disposeBrowser, pdfId, sceneElementsForPersist])
+  }, [
+    categoryId,
+    clearEmbedSelection,
+    clearSaveTimer,
+    disposeBrowser,
+    hideHighlightToolbar,
+    pdfId,
+    sceneElementsForPersist
+  ])
 
   useEffect(() => {
     if (!session) return
@@ -968,6 +1096,124 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     [markUnsaved, pushCamera]
   )
 
+  const flushHostArrowSync = useCallback((): boolean => {
+    arrowSyncRafRef.current = null
+    const api = liveExcalidrawApi(apiRef.current)
+    if (!api || restoringRef.current) return false
+    if (api.getAppState().newElement != null || api.getAppState().multiElement != null) return false
+
+    let scene = api.getSceneElementsIncludingDeleted()
+    let changed = false
+    const syncedNotes = syncPdfNoteArrows(scene, { migrateBoundArrows: false })
+    if (syncedNotes.changed) {
+      scene = syncedNotes.elements
+      changed = true
+    }
+    const syncedCaptures = syncPdfSearchArrows(scene)
+    if (syncedCaptures.changed) {
+      scene = syncedCaptures.elements
+      changed = true
+    }
+    if (!changed) return false
+    api.updateScene({
+      elements: scene,
+      captureUpdate: CaptureUpdateAction.NEVER
+    })
+    return true
+  }, [])
+
+  const scheduleHostArrowSync = useCallback(() => {
+    if (arrowSyncRafRef.current != null) return
+    arrowSyncRafRef.current = requestAnimationFrame(() => {
+      flushHostArrowSync()
+    })
+  }, [flushHostArrowSync])
+
+  /** Relock / repair / annotation list — skipped during drag, run once on pointerup. */
+  const runHostSceneMaintenance = useCallback(() => {
+    const api = liveExcalidrawApi(apiRef.current)
+    if (!api || restoringRef.current) return
+
+    let scene = api.getSceneElementsIncludingDeleted()
+
+    if (scene.some((el) => !el.isDeleted && isPdfHighlight(el) && !el.locked)) {
+      scene = scene.map((el) =>
+        !el.isDeleted && isPdfHighlight(el) && !el.locked
+          ? (newElementWith(el, {
+              locked: true
+            } as Parameters<typeof newElementWith>[1]) as typeof el)
+          : el
+      )
+      api.updateScene({
+        elements: scene,
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+    }
+
+    const repairedNotes = repairUnvalidatedPdfNotes(scene, noteIdsRef.current)
+    noteIdsRef.current = repairedNotes.knownIds
+    if (repairedNotes.changed) {
+      scene = repairedNotes.elements
+      api.updateScene({
+        elements: scene,
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+    }
+
+    if (scene.some((el) => !el.isDeleted && el.link && isPdfNote(el))) {
+      queueStripPdfNoteLinks()
+    }
+
+    const active = api.getAppState().activeEmbeddable
+    const editingNote =
+      active?.state === 'active' && active.element != null && isPdfNote(active.element)
+
+    if (editingNote && isBrowsing()) {
+      void deactivateSearchBrowser()
+    }
+
+    if (isBrowsing()) {
+      syncActiveBrowserBounds()
+    }
+
+    if (!editingNote) {
+      const pending = pendingPlateByNoteIdRef.current
+      if (pending.size > 0) {
+        const merged = scene.map((el) => {
+          const v = pending.get(el.id)
+          return v !== undefined ? withNotePlateValue(el, v) : el
+        })
+        pending.clear()
+        api.updateScene({
+          elements: merged,
+          captureUpdate: CaptureUpdateAction.NEVER
+        })
+        syncAnnotations(merged)
+      } else {
+        syncAnnotations(scene)
+      }
+    }
+  }, [
+    deactivateSearchBrowser,
+    isBrowsing,
+    queueStripPdfNoteLinks,
+    syncActiveBrowserBounds,
+    syncAnnotations
+  ])
+
+  const endPointerGesture = useCallback(() => {
+    const wasDown = pointerButtonsDownRef.current
+    pointerButtonsDownRef.current = false
+    if (!wasDown) return
+    if (arrowSyncRafRef.current != null) {
+      cancelAnimationFrame(arrowSyncRafRef.current)
+      arrowSyncRafRef.current = null
+    }
+    flushHostArrowSync()
+    runHostSceneMaintenance()
+    markUnsaved()
+  }, [flushHostArrowSync, markUnsaved, runHostSceneMaintenance])
+
   const handleExcalidrawChange = useCallback(
     (
       _elements: unknown,
@@ -990,9 +1236,6 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             if (!stillThere) hideHighlightToolbar()
           }
 
-          // Host arrows always — delete cascade + undo revive must not skip on embed hover spam.
-          // IncludingDeleted: soft-deleted arrows stay in the store for revive after Ctrl+Z.
-          let scene = api.getSceneElementsIncludingDeleted()
           // ponytail: never host-updateScene mid-draw — fights Excalidraw's in-progress
           // linear element (bindings to notes stay intact; we just don't rewrite the scene).
           const drawing =
@@ -1002,109 +1245,36 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
             return
           }
 
-          // ponytail: never migrateBoundArrows on live onChange — mid-draw endBinding
-          // to a note embeddable + updateScene → Maximum update depth. Legacy migrate on open.
-          const syncedNotes = syncPdfNoteArrows(scene, { migrateBoundArrows: false })
-          if (syncedNotes.changed) {
-            scene = syncedNotes.elements
-            api.updateScene({
-              elements: scene,
-              captureUpdate: CaptureUpdateAction.NEVER
-            })
-          }
-          const syncedCaptures = syncPdfSearchArrows(scene)
-          if (syncedCaptures.changed) {
-            scene = syncedCaptures.elements
-            api.updateScene({
-              elements: scene,
-              captureUpdate: CaptureUpdateAction.NEVER
-            })
-          }
-
-          // Host highlights stay locked (arrows already re-locked by sync above).
-          let relockedHighlights = false
-          if (scene.some((el) => !el.isDeleted && isPdfHighlight(el) && !el.locked)) {
-            scene = scene.map((el) =>
-              !el.isDeleted && isPdfHighlight(el) && !el.locked
-                ? (newElementWith(el, {
-                    locked: true
-                  } as Parameters<typeof newElementWith>[1]) as typeof el)
-                : el
-            )
-            relockedHighlights = true
-            api.updateScene({
-              elements: scene,
-              captureUpdate: CaptureUpdateAction.NEVER
-            })
-          }
+          // Host arrows: rAF-coalesced (one updateScene per frame while dragging embeds).
+          // IncludingDeleted so soft-deleted arrows revive after Ctrl+Z.
+          scheduleHostArrowSync()
 
           // Excalidraw setStates activeEmbeddable "hover" on every pointermove over the
-          // note center third (no equality guard) → onChange spam. Skip the rest.
+          // note center third (no equality guard) → onChange spam. Skip the rest
+          // (including markUnsaved — pure hover must not stringify the scene).
           if (appState.activeEmbeddable?.state === 'hover') {
-            if (syncedNotes.changed || syncedCaptures.changed || relockedHighlights) markUnsaved()
             return
           }
 
-          const repairedNotes = repairUnvalidatedPdfNotes(scene, noteIdsRef.current)
-          noteIdsRef.current = repairedNotes.knownIds
-          if (repairedNotes.changed) {
-            scene = repairedNotes.elements
-            api.updateScene({
-              elements: scene,
-              captureUpdate: CaptureUpdateAction.NEVER
-            })
+          // Drag hot path: arrows scheduled; skip O(n) scans + full persist until pointerup.
+          if (pointerButtonsDownRef.current) {
+            if (isBrowsing()) syncActiveBrowserBounds()
+            markUnsaved()
+            return
           }
 
-          // onDuplicate restores link without rematerializing (changed=false).
-          // Still strip note links after validate so the canvas link icon stays hidden.
-          // Search captures keep their link (sticky embedsValidationStatus).
-          if (scene.some((el) => !el.isDeleted && el.link && isPdfNote(el))) {
-            queueStripPdfNoteLinks()
-          }
-          // Skip list sync while typing — pending plate lives in a ref, not the scene.
-          // On exit edit, flush pending → scene then sync the sidebar.
-          const active = api.getAppState().activeEmbeddable
-          const editingNote =
-            active?.state === 'active' && active.element != null && isPdfNote(active.element)
-
-          // Browser lifetime is host-owned (center-click / Escape / outside).
-          if (editingNote && isBrowsing()) {
-            void deactivateSearchBrowser()
-          }
-
-          if (isBrowsing()) {
-            syncActiveBrowserBounds()
-          }
-
-          if (!editingNote) {
-            const pending = pendingPlateByNoteIdRef.current
-            if (pending.size > 0) {
-              const merged = scene.map((el) => {
-                const v = pending.get(el.id)
-                return v !== undefined ? withNotePlateValue(el, v) : el
-              })
-              pending.clear()
-              api.updateScene({
-                elements: merged,
-                captureUpdate: CaptureUpdateAction.NEVER
-              })
-              syncAnnotations(merged)
-            } else {
-              syncAnnotations(scene)
-            }
-          }
+          runHostSceneMaintenance()
         }
       }
       markUnsaved()
     },
     [
-      deactivateSearchBrowser,
       hideHighlightToolbar,
       isBrowsing,
       markUnsaved,
-      queueStripPdfNoteLinks,
-      syncActiveBrowserBounds,
-      syncAnnotations
+      runHostSceneMaintenance,
+      scheduleHostArrowSync,
+      syncActiveBrowserBounds
     ]
   )
 
@@ -1341,15 +1511,18 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       const pending = pendingHighlightRef.current
       if (!api || !pending?.length) return null
 
+      // Drop pending before clearEmbedSelection so onSelectionChange(null) does not
+      // race-hide and wipe the skeletons we are about to commit.
+      pendingHighlightRef.current = null
+      setHighlightToolbarPending(false)
+      clearEmbedSelection()
+
       const colored = withHighlightSkeletonColor(pending, color)
       const newElements = convertToExcalidrawElements(colored)
       api.updateScene({
         elements: [...api.getSceneElements(), ...newElements],
         captureUpdate: CaptureUpdateAction.IMMEDIATELY
       })
-      window.getSelection()?.removeAllRanges()
-      pendingHighlightRef.current = null
-      setHighlightToolbarPending(false)
 
       const first = newElements[0]
       if (!first) return null
@@ -1360,7 +1533,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       focusCanvasRoot()
       return first.id
     },
-    [focusCanvasRoot, markUnsaved]
+    [clearEmbedSelection, focusCanvasRoot, markUnsaved]
   )
 
   const addArtifactFromHighlight = useCallback(
@@ -1433,7 +1606,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (typeof text === 'string' && text.trim()) {
         void navigator.clipboard.writeText(text)
         hideHighlightToolbar()
-        window.getSelection()?.removeAllRanges()
+        clearEmbedSelection()
       }
       return
     }
@@ -1450,7 +1623,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
     void navigator.clipboard.writeText(text)
     hideHighlightToolbar()
-  }, [hideHighlightToolbar])
+  }, [clearEmbedSelection, hideHighlightToolbar])
 
   const removeActiveHighlight = useCallback(() => {
     const api = apiRef.current
@@ -1535,13 +1708,13 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         }
         if (activeHighlightIdRef.current || pendingHighlightRef.current) {
           hideHighlightToolbar()
-          window.getSelection()?.removeAllRanges()
+          clearEmbedSelection()
           event.preventDefault()
         }
         return
       }
 
-      // Cmd/Ctrl+A → Excalidraw select-all (not browser select-all on .textLayer).
+      // Cmd/Ctrl+A → Excalidraw select-all (not EmbedPDF select-all).
       if (
         (event.metaKey || event.ctrlKey) &&
         (event.key === 'a' || event.key === 'A') &&
@@ -1553,26 +1726,70 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         if (api?.getAppState().activeEmbeddable?.state === 'active') return
         if (api?.getAppState().editingTextElement) return
         event.preventDefault()
-        window.getSelection()?.removeAllRanges()
+        clearEmbedSelection()
         // Do not stopPropagation — Excalidraw's select-all must still run.
       }
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [exitPlaceModes, hideHighlightToolbar])
+  }, [clearEmbedSelection, exitPlaceModes, hideHighlightToolbar])
 
-  // Pending toolbar: hide when the DOM selection collapses / is cleared.
+  // EmbedPDF selection → pending highlight toolbar; clear → hide pending.
   useEffect(() => {
-    const onSelectionChange = () => {
+    if (!selectionCapability || !session) return
+    const documentId = session.documentId
+    const scope = selectionCapability.forDocument(documentId)
+    const layout = session.layout
+
+    const unsubEnd = scope.onEndSelection(() => {
+      void (async () => {
+        const formatted = scope.getFormattedSelection()
+        if (formatted.length === 0) return
+        let text = ''
+        try {
+          const lines = await scope.getSelectedText().toPromise()
+          text = lines.join('\n')
+        } catch (err) {
+          console.error('Failed to get selected PDF text', err)
+        }
+        // Open-race / leave: ignore stale async after document switch.
+        if (sessionRef.current?.documentId !== documentId) return
+        const skeletons = formattedSelectionToHighlightSkeletons(formatted, text, layout)
+        if (!skeletons) return
+        showPendingHighlightToolbar(skeletons)
+        focusCanvasRoot()
+      })()
+    })
+
+    const unsubChange = scope.onSelectionChange((sel) => {
+      if (sel != null) return
       if (!pendingHighlightRef.current) return
-      const sel = window.getSelection()
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-        hideHighlightToolbar()
-      }
+      hideHighlightToolbar()
+    })
+
+    return () => {
+      unsubEnd()
+      unsubChange()
     }
-    document.addEventListener('selectionchange', onSelectionChange)
-    return () => document.removeEventListener('selectionchange', onSelectionChange)
-  }, [hideHighlightToolbar])
+  }, [
+    focusCanvasRoot,
+    hideHighlightToolbar,
+    selectionCapability,
+    session,
+    showPendingHighlightToolbar
+  ])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const onMouseUp = () => {
+      textSelectGestureRef.current = false
+    }
+
+    el.addEventListener('mouseup', onMouseUp)
+    return () => el.removeEventListener('mouseup', onMouseUp)
+  }, [])
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
@@ -1643,39 +1860,11 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const el = containerRef.current
     if (!el) return
 
-    const onMouseUp = () => {
-      textSelectGestureRef.current = false
-
-      const api = apiRef.current
-      if (!api) return
-
-      const selection = window.getSelection()
-      if (!selection || selection.isCollapsed || selection.rangeCount === 0) return
-      const anchor = selection.anchorNode
-      const anchorEl = anchor instanceof Element ? anchor : (anchor?.parentElement ?? null)
-      if (!anchorEl?.closest('.textLayer')) return
-
-      const skeletons = selectionToHighlightSkeletons(api.getAppState())
-      if (!skeletons) return
-
-      // Snapshot only — create on color click via HighlightToolbar.
-      showPendingHighlightToolbar(skeletons)
-      focusCanvasRoot()
-    }
-
-    el.addEventListener('mouseup', onMouseUp)
-    return () => el.removeEventListener('mouseup', onMouseUp)
-  }, [focusCanvasRoot, showPendingHighlightToolbar])
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
     const onWheel = (event: WheelEvent) => {
-      const overText =
+      const overPage =
         pdfTextPassRef.current ||
-        (event.target instanceof Element && event.target.closest('.textLayer'))
-      if (!overText) return
+        (event.target instanceof Element && event.target.closest('[data-pdf-page]') != null)
+      if (!overPage) return
 
       const api = apiRef.current
       if (!api) return
@@ -1732,9 +1921,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
-  // Hit-test gate: selection tool + over PDF text layer box + no nearby scene
-  // element → pass through. Use geometric `.textLayer` bounds (not event.target):
-  // while Excalidraw is on top, target is the canvas, so closest('.textLayer')
+  // Hit-test gate: selection tool + over PDF page box + no nearby scene
+  // element → pass through. Use geometric `[data-pdf-page]` bounds (not event.target):
+  // while Excalidraw is on top, target is the canvas, so closest('[data-pdf-page]')
   // would never arm pass. Gutters keep marquee. Pad + pointerdown forward fix
   // the PE-toggle race (browser sticks the event target for that frame).
   useEffect(() => {
@@ -1743,9 +1932,9 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
 
     let forwardingPointer = false
 
-    const isOverTextLayerBox = (clientX: number, clientY: number): boolean => {
-      for (const layer of el.querySelectorAll('.textLayer')) {
-        const r = layer.getBoundingClientRect()
+    const isOverPdfPageBox = (clientX: number, clientY: number): boolean => {
+      for (const pageEl of el.querySelectorAll('[data-pdf-page]')) {
+        const r = pageEl.getBoundingClientRect()
         if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
           return true
         }
@@ -1795,8 +1984,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         setPdfTextPass(false)
         return
       }
-      // Empty gutters (not over a page text layer): Excalidraw keeps marquee.
-      if (!isOverTextLayerBox(clientX, clientY)) {
+      // Empty gutters (not over a page): Excalidraw keeps marquee.
+      if (!isOverPdfPageBox(clientX, clientY)) {
         setPdfTextPass(false)
         return
       }
@@ -1814,6 +2003,8 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       // Synthetic re-dispatch from the race fix below — don't re-enter.
       if (forwardingPointer) return
 
+      if (event.buttons !== 0) pointerButtonsDownRef.current = true
+
       const target = event.target
       const wasPass = pdfTextPassRef.current
       updatePassThrough(event.clientX, event.clientY, target)
@@ -1826,14 +2017,14 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
         ) {
           const wasPending = pendingHighlightRef.current != null
           hideHighlightToolbar()
-          if (wasPending) window.getSelection()?.removeAllRanges()
+          if (wasPending) clearEmbedSelection()
         }
       }
 
-      // Race: pass was on → browser targeted `.textLayer`, but this point is
+      // Race: pass was on → pointer targeted PDF page, but this point is
       // inside a real (unpadded) scene element. Pad alone must not steal text
       // clicks in the halo — only forward on a true AABB hit.
-      if (wasPass && target instanceof Element && target.closest('.textLayer')) {
+      if (wasPass && target instanceof Element && target.closest('[data-pdf-page]')) {
         const api = apiRef.current
         const appState = api?.getAppState()
         const scene =
@@ -1891,16 +2082,23 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     const onPointerUp = (event: PointerEvent) => {
       textSelectGestureRef.current = false
       updatePassThrough(event.clientX, event.clientY, event.target)
+      endPointerGesture()
+    }
+
+    const onPointerCancel = () => {
+      textSelectGestureRef.current = false
+      endPointerGesture()
     }
 
     const onBlur = () => {
       textSelectGestureRef.current = false
       setPdfTextPass(false)
+      endPointerGesture()
     }
 
     // OS file drag: pointermove freezes, so pass can stay on over PDF text and
     // Excalidraw's onDrop never fires (host PE-none). Clear pass on dragover so
-    // the next hit-test reaches Excalidraw. If drop still lands on .textLayer
+    // the next hit-test reaches Excalidraw. If drop still lands on a PDF page
     // (same-tick PE), re-dispatch to .excalidraw with the live dataTransfer.
     // Chrome image drag: html/uri-list only (no Files) — clear pass + fetch in
     // main (renderer CSP), then re-dispatch a File drop for insertImages.
@@ -1956,7 +2154,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       if (dataTransferHasFiles(event.dataTransfer)) {
         setPdfTextPass(false)
         const target = event.target
-        if (!(target instanceof Element) || !target.closest('.textLayer')) return
+        if (!(target instanceof Element) || !target.closest('[data-pdf-page]')) return
         const excal = el.querySelector('.excalidraw')
         if (!(excal instanceof HTMLElement)) return
         event.preventDefault()
@@ -2009,6 +2207,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
     el.addEventListener('dragover', onDragOver, true)
     el.addEventListener('drop', onDropCapture, true)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerCancel)
     window.addEventListener('blur', onBlur)
     return () => {
       el.removeEventListener('pointermove', onPointerMove, true)
@@ -2016,9 +2215,10 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
       el.removeEventListener('dragover', onDragOver, true)
       el.removeEventListener('drop', onDropCapture, true)
       window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerCancel)
       window.removeEventListener('blur', onBlur)
     }
-  }, [hideHighlightToolbar, isBrowsing, setPdfTextPass])
+  }, [clearEmbedSelection, endPointerGesture, hideHighlightToolbar, isBrowsing, setPdfTextPass])
 
   // Excalidraw setStates activeEmbeddable "hover" on every pointermove over an
   // embed center (no equality guard) → full App re-render. Stop those moves
@@ -2065,7 +2265,7 @@ export function PdfCanvasApp({ categoryId, pdfId }: PdfCanvasAppProps) {
           ref={pdfLayerRef}
           layout={session.layout}
           pool={session.pool}
-          textPool={session.textPool}
+          documentId={session.documentId}
         />
       ) : null}
 

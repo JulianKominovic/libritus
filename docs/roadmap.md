@@ -2,13 +2,13 @@
 
 North star: Libritus as a **research canvas** — PDF as trigger, canvas as memory of the investigation. Product premises: [`docs/features/product-north.md`](features/product-north.md). Architecture: [`docs/architecture/infinite-pdf-canvas.md`](architecture/infinite-pdf-canvas.md). Agent conventions: [`AGENTS.md`](../AGENTS.md).
 
-**Stack decision:** Excalidraw + virtualized pdf.js is the canvas. We are **not** building a custom camera / Pixi engine while Excalidraw works well. Scale work = host culling, pools, density, memory — not a renderer rewrite.
+**Stack decision:** Excalidraw + virtualized EmbedPDF (PDFium) is the canvas. We are **not** building a custom camera / Pixi engine while Excalidraw works well. Scale work = host culling, pools, density, memory — not a renderer rewrite.
 
 ---
 
 ## v1 (current MVP)
 
-- Replace lector-based `/category/:categoryId/:pdfId` with Excalidraw + virtualized pdf.js layer.
+- Replace lector-based `/category/:categoryId/:pdfId` with Excalidraw + virtualized EmbedPDF layer.
 - Page pool, adaptive render density + CSS zoom, text select, locked highlights.
 - WYSIWYG notes (Plate + `pdfNote` embeddables; place free or from highlight).
 - Page navigator, find bar, outline + thumbs, annotation panel.
@@ -28,14 +28,14 @@ Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) ·
 
 Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat tab **unmounted**; RAG backend kept), [`web-search-capture`](features/web-search-capture.md), [`annotation-polish`](features/annotation-polish.md), [`adaptive-pdf-render-scale`](features/adaptive-pdf-render-scale.md) (Phase 1).
 
-| Item | Notes |
-|------|--------|
+| Item                                  | Notes                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Canonical annotation model (optional) | `pageIndex` + page-space geometry for layout-stable highlights/notes — Excalidraw stays paint/camera — [`page-space-annotations.md`](features/page-space-annotations.md) |
-| Migrate legacy data | Map old `categories.json` highlights/comments into canvas session — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md) |
-| Essays HUD | Reintroduce as **canvas research surface** (not PdfSidebar tab) — [`essays-hud.md`](features/essays-hud.md) |
-| Reading shortcuts | PageUp/Down, fit page, etc. — [`reading-shortcuts.md`](features/reading-shortcuts.md) |
-| Library polish | Optional `contentHash`, rename, reveal in Finder |
-| PDF RAG (today) | Local MiniLM + OpenRouter BYOK; Chat UI hidden until canvas Q&A — [`pdf-rag-chat.md`](features/pdf-rag-chat.md) |
+| Migrate legacy data                   | Map old `categories.json` highlights/comments into canvas session — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md)                          |
+| Essays HUD                            | Reintroduce as **canvas research surface** (not PdfSidebar tab) — [`essays-hud.md`](features/essays-hud.md)                                                              |
+| Reading shortcuts                     | PageUp/Down, fit page, etc. — [`reading-shortcuts.md`](features/reading-shortcuts.md)                                                                                    |
+| Library polish                        | Optional `contentHash`, rename, reveal in Finder                                                                                                                         |
+| PDF RAG (today)                       | Local MiniLM + OpenRouter BYOK; Chat UI hidden until canvas Q&A — [`pdf-rag-chat.md`](features/pdf-rag-chat.md)                                                          |
 
 ---
 
@@ -43,25 +43,25 @@ Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumb
 
 Aligned with [`product-north.md`](features/product-north.md). **Do not** ship auto-summaries, auto-highlights, or auto-keywords.
 
-| Item | Notes |
-|------|--------|
-| Remove / keep-hidden sidebar AI Chat | Drop Chat from `PdfSidebar` permanently when canvas Q&A ships; do not deepen the silo |
-| AI Q&A → canvas cards | Explicit ask → session artifacts (e.g. `pdfQa`); citations + deletable like other elements |
-| Nav-only PDF sidebar | Destination: Outline + Pages only; decide Annotations / other research chrome then |
-| Canvas research artifacts | Vocabulary, translations, YouTube / web embeds, cross-PDF links — first-class canvas types over time (search captures: done — [`web-search-capture.md`](features/web-search-capture.md)) |
+| Item                                 | Notes                                                                                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remove / keep-hidden sidebar AI Chat | Drop Chat from `PdfSidebar` permanently when canvas Q&A ships; do not deepen the silo                                                                                                    |
+| AI Q&A → canvas cards                | Explicit ask → session artifacts (e.g. `pdfQa`); citations + deletable like other elements                                                                                               |
+| Nav-only PDF sidebar                 | Destination: Outline + Pages only; decide Annotations / other research chrome then                                                                                                       |
+| Canvas research artifacts            | Vocabulary, translations, YouTube / web embeds, cross-PDF links — first-class canvas types over time (search captures: done — [`web-search-capture.md`](features/web-search-capture.md)) |
 
 ---
 
 ## Scale / memory (stay on Excalidraw)
 
-| Item | Notes |
-|------|--------|
-| Hard visible-set cap | Memory budget independent of zoom-out buffer |
+| Item                     | Notes                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Hard visible-set cap     | Memory budget independent of zoom-out buffer                                                            |
 | LOD / zoom-based density | Beyond Phase 1 adaptive scale — [`adaptive-pdf-render-scale.md`](features/adaptive-pdf-render-scale.md) |
-| Evict release | Zero canvas buffers / `page.cleanup()` on pool evict |
-| Spatial annotation index | Only if linear hit-test becomes a real cost |
-| Streaming / range / OPFS | Do not keep entire PDF ArrayBuffer in main forever |
-| Hi-res tiles | Avoid giant GPU textures at high zoom |
+| Evict release            | Zero canvas buffers / `page.cleanup()` on pool evict                                                    |
+| Spatial annotation index | Only if linear hit-test becomes a real cost                                                             |
+| Streaming / range / OPFS | Do not keep entire PDF ArrayBuffer in main forever                                                      |
+| Hi-res tiles             | Avoid giant GPU textures at high zoom                                                                   |
 
 ---
 
@@ -82,4 +82,4 @@ Plan: treat session JSON as the write path for new annotations; one-shot or lazy
 
 > Research lives on the **canvas**; AI only on **explicit ask** — never auto-summarize / auto-highlight / auto-keyword.
 
-Excalidraw is the canvas stack. Improve the pdf.js host and product surfaces; do not plan a second engine by default.
+Excalidraw is the canvas stack. Improve the EmbedPDF host and product surfaces; do not plan a second engine by default.

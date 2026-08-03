@@ -163,10 +163,10 @@ test('hover pad: inside shape pass off; outside AABB+pad over text pass on', asy
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    await page.locator('.textLayer').first().waitFor({ state: 'visible', timeout: 60_000 })
+    await page.locator('[data-pdf-page="0"]').first().waitFor({ state: 'visible', timeout: 60_000 })
 
     const midY = rect.y + rect.height / 2
-    // Beyond pad: text-pass should arm (over page textLayer box).
+    // Beyond pad: text-pass should arm (over page box).
     const beyond = await sceneToClient(page, rect.x - (PASS_HIT_PAD_PX + 10), midY)
     await page.mouse.move(beyond.x, beyond.y)
     await expectPassOn(page)
@@ -196,7 +196,7 @@ test('hover pad: inside shape pass off; outside AABB+pad over text pass on', asy
 
 /**
  * Regression: while `.pdf-text-pass` is on, a pointerdown on a scene element is
- * still browser-targeted at `.textLayer` (PE clears in the same capture handler).
+ * still browser-targeted at `[data-pdf-page]` (PE clears in the same capture handler).
  * Host must forward that down to the Excalidraw canvas.
  *
  * Important: do NOT mouse.move onto the shape first — that would clear pass
@@ -222,7 +222,7 @@ test('pointerdown on shape while pdf-text-pass still on selects', async () => {
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').first()
+    const span = page.locator('[data-pdf-page="0"]').first()
     await span.waitFor({ state: 'visible', timeout: 60_000 })
     const sb = await span.boundingBox()
     const canvas = page.locator('.excalidraw__canvas.interactive').first()
@@ -242,7 +242,8 @@ test('pointerdown on shape while pdf-text-pass still on selects', async () => {
     const targetedText = await page.evaluate(
       ({ x, y }) => {
         const root = document.querySelector('[data-pdf-canvas-root]')
-        if (!root?.classList.contains('pdf-text-pass')) return { ok: false as const, reason: 'pass-off' }
+        if (!root?.classList.contains('pdf-text-pass'))
+          return { ok: false as const, reason: 'pass-off' }
         const hit = document.elementFromPoint(x, y)
         const ev = new PointerEvent('pointerdown', {
           bubbles: true,
@@ -304,7 +305,7 @@ test('selected arrow endpoint drag over PDF text transforms', async () => {
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').first()
+    const span = page.locator('[data-pdf-page="0"]').first()
     await span.waitFor({ state: 'visible', timeout: 60_000 })
 
     // Select before arming pass (cold click — Excalidraw PE still on).

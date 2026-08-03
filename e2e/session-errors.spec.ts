@@ -3,12 +3,7 @@ import path from 'node:path'
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
 import { tmpAppData } from './helpers/canvas'
-import {
-  navigatePdf,
-  openPdf,
-  seedLibrary,
-  seedNoteElement
-} from './helpers/seed'
+import { navigatePdf, openPdf, seedLibrary, seedNoteElement } from './helpers/seed'
 
 test('corrupt session JSON opens PDF with empty scene (no crash)', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-corrupt-')

@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { clickScene, closePdfSidebar, leaveToHome, tmpAppData, waitForSession, excalidrawCanvas, expectSaved, expectUnsaved } from './helpers/canvas'
+import {
+  clickScene,
+  closePdfSidebar,
+  leaveToHome,
+  tmpAppData,
+  waitForSession,
+  excalidrawCanvas,
+  expectSaved,
+  expectUnsaved
+} from './helpers/canvas'
 import {
   openPdf,
   readSessionFile,
@@ -102,17 +111,15 @@ test('drag note by edge moves it (center click activates embed)', async () => {
       () => readSessionFile(appDataDir, pdfId),
       (s) => {
         const note = (s.elements ?? []).find(
-          (el) =>
-            el &&
-            typeof el === 'object' &&
-            (el as { id?: string }).id === 'drag-note'
+          (el) => el && typeof el === 'object' && (el as { id?: string }).id === 'drag-note'
         ) as { x?: number; y?: number } | undefined
         return note != null && (note.x !== noteX || note.y !== noteY)
       }
     )
-    const note = (snap.elements ?? []).find(
-      (el) => (el as { id?: string }).id === 'drag-note'
-    ) as { x: number; y: number }
+    const note = (snap.elements ?? []).find((el) => (el as { id?: string }).id === 'drag-note') as {
+      x: number
+      y: number
+    }
     expect(Math.abs(note.x - noteX) + Math.abs(note.y - noteY)).toBeGreaterThan(20)
   } finally {
     await close()
@@ -506,14 +513,10 @@ test('deleting note cascades host-managed arrow', async () => {
       () => readSessionFile(appDataDir, pdfId),
       (s) => {
         const live = (s.elements ?? []).filter(
-          (el) =>
-            el &&
-            typeof el === 'object' &&
-            (el as { isDeleted?: boolean }).isDeleted !== true
+          (el) => el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
         ) as Record<string, unknown>[]
         const hasLinkedNote = live.some(
-          (el) =>
-            (el.customData as { pdfNote?: boolean })?.pdfNote === true && el.id === noteId
+          (el) => (el.customData as { pdfNote?: boolean })?.pdfNote === true && el.id === noteId
         )
         const hasArrow = live.some(
           (el) => (el.customData as { pdfNoteArrow?: boolean })?.pdfNoteArrow === true
@@ -523,8 +526,7 @@ test('deleting note cascades host-managed arrow', async () => {
     )
 
     const live = (snap.elements ?? []).filter(
-      (el) =>
-        el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
+      (el) => el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
     ) as Record<string, unknown>[]
     expect(live.some((el) => el.id === 'place-keep')).toBe(true)
     expect(live.some((el) => (el.customData as { pdfHighlight?: boolean })?.pdfHighlight)).toBe(
@@ -648,10 +650,7 @@ test('undo delete note restores host-managed arrow', async () => {
       () => readSessionFile(appDataDir, pdfId),
       (s) => {
         const live = (s.elements ?? []).filter(
-          (el) =>
-            el &&
-            typeof el === 'object' &&
-            (el as { isDeleted?: boolean }).isDeleted !== true
+          (el) => el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
         ) as Record<string, unknown>[]
         return (
           live.some((el) => el.id === noteId) &&
@@ -661,8 +660,7 @@ test('undo delete note restores host-managed arrow', async () => {
     )
 
     const live = (snap.elements ?? []).filter(
-      (el) =>
-        el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
+      (el) => el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
     ) as Record<string, unknown>[]
     expect(live.some((el) => el.id === noteId)).toBe(true)
     const arrow = live.find(

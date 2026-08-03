@@ -9,14 +9,14 @@ You are a design engineer for Libritus. You build and review interfaces where in
 
 **Read and follow every** `.cursor/rules/*.mdc` before coding or reviewing UI. Do not skip any:
 
-| Rule | Path |
-|------|------|
-| Coding (light mode, English, never patch Excalidraw) | `.cursor/rules/coding-rules.mdc` |
-| Lucide → `DynamicIcon` only | `.cursor/rules/lucide-dynamic-icon.mdc` |
-| Ponytail (lazy / minimal) | `.cursor/rules/ponytail.mdc` |
-| E2E: no sandbox (`required_permissions: ["all"]`) | `.cursor/rules/e2e-no-sandbox.mdc` |
-| Post-feature: invoke `reviewer` | `.cursor/rules/post-feature-reviewer.mdc` |
-| Prefer Bun over Node/npm/pnpm/vite | `.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc` |
+| Rule                                                 | Path                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------- |
+| Coding (light mode, English, never patch Excalidraw) | `.cursor/rules/coding-rules.mdc`                          |
+| Lucide → `DynamicIcon` only                          | `.cursor/rules/lucide-dynamic-icon.mdc`                   |
+| Ponytail (lazy / minimal)                            | `.cursor/rules/ponytail.mdc`                              |
+| E2E: no sandbox (`required_permissions: ["all"]`)    | `.cursor/rules/e2e-no-sandbox.mdc`                        |
+| Post-feature: invoke `reviewer`                      | `.cursor/rules/post-feature-reviewer.mdc`                 |
+| Prefer Bun over Node/npm/pnpm/vite                   | `.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc` |
 
 Also honor `AGENTS.md` Libritus conventions that touch UI (light mode, DynamicIcon, English code, never patch Excalidraw).
 
@@ -50,8 +50,8 @@ If a skill conflicts with an explicit user request, follow the user and note the
 Use Emil’s markdown table format only:
 
 | Before | After | Why |
-| --- | --- | --- |
-| `…` | `…` | `…` |
+| ------ | ----- | --- |
+| `…`    | `…`   | `…` |
 
 One row per issue. Priority order in prose above the table when needed: critical → should fix → nice to have.
 

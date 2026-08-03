@@ -167,10 +167,7 @@ export function AIMenu() {
 }
 
 type EditorChatState =
-  | 'cursorCommand'
-  | 'cursorSuggestion'
-  | 'selectionCommand'
-  | 'selectionSuggestion'
+  'cursorCommand' | 'cursorSuggestion' | 'selectionCommand' | 'selectionSuggestion'
 
 const aiChatItems = {
   accept: {

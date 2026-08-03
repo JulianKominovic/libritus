@@ -177,7 +177,9 @@ export function clipboardHasImageOrFiles(data: DataTransfer | null | undefined):
 }
 
 /** URL to turn into a search capture, or null if paste should stay with Excalidraw. */
-export function pastedHttpUrlForSearchCapture(data: DataTransfer | null | undefined): string | null {
+export function pastedHttpUrlForSearchCapture(
+  data: DataTransfer | null | undefined
+): string | null {
   if (!data || clipboardHasImageOrFiles(data)) return null
   return parsePastedHttpUrl(data.getData('text/plain') ?? '')
 }
@@ -225,9 +227,10 @@ function searchArrowAnchor(
  * Recomputes both ends via shortest AABB segment on each sync.
  * ponytail: one-sided bindings explode (~1e5px) when the embeddable moves.
  */
-export function syncPdfSearchArrows(
-  elements: readonly OrderedExcalidrawElement[]
-): { elements: OrderedExcalidrawElement[]; changed: boolean } {
+export function syncPdfSearchArrows(elements: readonly OrderedExcalidrawElement[]): {
+  elements: OrderedExcalidrawElement[]
+  changed: boolean
+} {
   const byId = new Map(elements.map((el) => [el.id, el]))
   let changed = false
 

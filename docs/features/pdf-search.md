@@ -25,13 +25,13 @@ Out of scope (for now):
 
 ## UX
 
-| Control | Behavior |
-|---------|----------|
-| **Search field** | Open via chrome **Search** button. Debounced query (~250ms). |
-| **Enter / ↓** | Next match. |
-| **⇧Enter / ↑** | Previous match. |
-| **Escape** | Close find bar and clear active hit. |
-| **Empty / no hits** | Clear match chrome; show `0/0`, not an error. |
+| Control             | Behavior                                                     |
+| ------------------- | ------------------------------------------------------------ |
+| **Search field**    | Open via chrome **Search** button. Debounced query (~250ms). |
+| **Enter / ↓**       | Next match.                                                  |
+| **⇧Enter / ↑**      | Previous match.                                              |
+| **Escape**          | Close find bar and clear active hit.                         |
+| **Empty / no hits** | Clear match chrome; show `0/0`, not an error.                |
 
 Position: compact find bar beside the bottom page navigator. Do not bury in Excalidraw’s menu.
 
@@ -41,8 +41,8 @@ In `text-select-mode`, search chrome keeps `pointer-events-auto` like [`pdf-navi
 
 ## Model / approach
 
-- Source of truth for glyphs: pdf.js text content (`getTextContent`).
-- **Lazy / incremental** index: `PdfTextSearch` caches page→extracted text on demand with concurrency 2; results stay in refs, not React state.
+- Source of truth for glyphs: EmbedPDF engine text / `searchAllPages`.
+- **Lazy / incremental** index: `PdfTextSearch` via engine search; results stay in refs, not React state.
 - Match = `{ pageIndex, rects[] }` in **page space**; painted via `PdfLayer.setSearchHit` under the same camera transform as pages.
 - Jump: `PageLayout.scrollForWorldY` + Excalidraw `scrollY` only (stable X / zoom).
 
@@ -50,12 +50,12 @@ In `text-select-mode`, search chrome keeps `pointer-events-auto` like [`pdf-navi
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **PDF navigation** | Search jumps camera; current page chip updates from viewport center. |
-| **Virtualization** | Far jumps trigger the same pool sync as prev/next. |
-| **Text select** | Independent modes; search must not require text-select mode. |
-| **Annotation panel** | Different corpus (PDF text vs user marks). |
+| Feature              | Interaction                                                          |
+| -------------------- | -------------------------------------------------------------------- |
+| **PDF navigation**   | Search jumps camera; current page chip updates from viewport center. |
+| **Virtualization**   | Far jumps trigger the same pool sync as prev/next.                   |
+| **Text select**      | Independent modes; search must not require text-select mode.         |
+| **Annotation panel** | Different corpus (PDF text vs user marks).                           |
 
 ---
 

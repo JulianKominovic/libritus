@@ -30,29 +30,31 @@ describe('persistSignature', () => {
 
 describe('shouldMarkDirty', () => {
   test('same as lastSaved while dirty → clear', () => {
-    expect(
-      shouldMarkDirty({ sig: 's1', lastSaved: 's1', pending: 's2', dirty: true })
-    ).toEqual({ action: 'clear' })
+    expect(shouldMarkDirty({ sig: 's1', lastSaved: 's1', pending: 's2', dirty: true })).toEqual({
+      action: 'clear'
+    })
   })
 
   test('same as lastSaved while clean → noop', () => {
-    expect(
-      shouldMarkDirty({ sig: 's1', lastSaved: 's1', pending: '', dirty: false })
-    ).toEqual({ action: 'noop' })
+    expect(shouldMarkDirty({ sig: 's1', lastSaved: 's1', pending: '', dirty: false })).toEqual({
+      action: 'noop'
+    })
   })
 
   test('same as pending while dirty → noop', () => {
-    expect(
-      shouldMarkDirty({ sig: 'p', lastSaved: 's', pending: 'p', dirty: true })
-    ).toEqual({ action: 'noop' })
+    expect(shouldMarkDirty({ sig: 'p', lastSaved: 's', pending: 'p', dirty: true })).toEqual({
+      action: 'noop'
+    })
   })
 
   test('new sig → dirty', () => {
-    expect(
-      shouldMarkDirty({ sig: 'new', lastSaved: 's', pending: 'p', dirty: true })
-    ).toEqual({ action: 'dirty', pending: 'new' })
-    expect(
-      shouldMarkDirty({ sig: 'new', lastSaved: 's', pending: '', dirty: false })
-    ).toEqual({ action: 'dirty', pending: 'new' })
+    expect(shouldMarkDirty({ sig: 'new', lastSaved: 's', pending: 'p', dirty: true })).toEqual({
+      action: 'dirty',
+      pending: 'new'
+    })
+    expect(shouldMarkDirty({ sig: 'new', lastSaved: 's', pending: '', dirty: false })).toEqual({
+      action: 'dirty',
+      pending: 'new'
+    })
   })
 })

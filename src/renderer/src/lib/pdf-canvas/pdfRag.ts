@@ -1,6 +1,5 @@
 import type { OutlineNode } from './pdfOutline'
 import type { PdfDocument } from './PdfDocument'
-import { extractFromTextContent } from './pdfSearch'
 
 export const RAG_VERSION = 1
 export const EMBEDDING_MODEL_ID = 'Xenova/all-MiniLM-L6-v2'
@@ -79,10 +78,7 @@ export function chapterRangesFromOutline(
   return ranges
 }
 
-export function chapterTitleForPage(
-  ranges: ChapterRange[],
-  pageIndex: number
-): string | undefined {
+export function chapterTitleForPage(ranges: ChapterRange[], pageIndex: number): string | undefined {
   for (let i = ranges.length - 1; i >= 0; i--) {
     const r = ranges[i]
     if (pageIndex >= r.start && pageIndex <= r.end) return r.title
@@ -129,11 +125,8 @@ export function splitPageText(pageIndex: number, text: string, chapterTitle?: st
 export async function extractPageTexts(doc: PdfDocument): Promise<string[]> {
   const texts: string[] = []
   for (let i = 0; i < doc.pageCount; i++) {
-    const page = await doc.getPage(i)
-    const content = await page.getTextContent()
-    const viewport = page.getViewport({ scale: 1 })
-    const extracted = extractFromTextContent(content.items, viewport)
-    texts.push(extracted.text)
+    const text = await doc.engine.extractText(doc.handle, [i]).toPromise()
+    texts.push(typeof text === 'string' ? text : '')
   }
   return texts
 }

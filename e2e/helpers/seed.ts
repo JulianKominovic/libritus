@@ -45,8 +45,7 @@ export async function seedLibrary(opts: SeedLibraryOpts): Promise<{
   const categoryId = opts.categoryId ?? DEFAULT_CAT_ID
   const pdfId = opts.pdfId ?? DEFAULT_PDF_ID
   const pages = opts.pages ?? 1
-  const fixture =
-    opts.pdfFixture ?? path.join(process.cwd(), 'e2e/fixtures/sample.pdf')
+  const fixture = opts.pdfFixture ?? path.join(process.cwd(), 'e2e/fixtures/sample.pdf')
 
   await mkdir(opts.appDataDir, { recursive: true })
   await copyFile(fixture, path.join(opts.appDataDir, `${pdfId}.pdf`))
@@ -124,8 +123,7 @@ export async function seedExtraPdf(opts: SeedLibraryOpts & { categoryId: string 
   const categoryId = opts.categoryId
   const pdfId = opts.pdfId ?? `e2e-pdf-${Date.now()}`
   const pages = opts.pages ?? 1
-  const fixture =
-    opts.pdfFixture ?? path.join(process.cwd(), 'e2e/fixtures/sample.pdf')
+  const fixture = opts.pdfFixture ?? path.join(process.cwd(), 'e2e/fixtures/sample.pdf')
 
   await copyFile(fixture, path.join(opts.appDataDir, `${pdfId}.pdf`))
 
@@ -147,10 +145,7 @@ export async function seedSession(
   pdfId: string,
   snapshot: SessionSnapshot
 ): Promise<void> {
-  await writeFile(
-    path.join(appDataDir, `${pdfId}.session.json`),
-    JSON.stringify(snapshot)
-  )
+  await writeFile(path.join(appDataDir, `${pdfId}.session.json`), JSON.stringify(snapshot))
 }
 
 export async function readSessionFile(
@@ -182,11 +177,7 @@ export async function navigateApp(page: Page, path: string): Promise<void> {
 }
 
 /** Client-side navigate to PDF route (does not wait for canvas ready). */
-export async function navigatePdf(
-  page: Page,
-  categoryId: string,
-  pdfId: string
-): Promise<void> {
+export async function navigatePdf(page: Page, categoryId: string, pdfId: string): Promise<void> {
   await navigateApp(page, `/category/${categoryId}/${pdfId}`)
 }
 
@@ -195,11 +186,7 @@ export async function navigateCategory(page: Page, categoryId: string): Promise<
   await navigateApp(page, `/category/${categoryId}`)
 }
 
-export async function openPdf(
-  page: Page,
-  categoryId: string,
-  pdfId: string
-): Promise<void> {
+export async function openPdf(page: Page, categoryId: string, pdfId: string): Promise<void> {
   await navigatePdf(page, categoryId, pdfId)
   await page.getByLabel('Current page').waitFor({ state: 'visible', timeout: 60_000 })
 }
@@ -318,9 +305,7 @@ export function seedSearchCaptureElement(opts?: {
     url,
     ...(opts?.sourceHighlightId ? { sourceHighlightId: opts.sourceHighlightId } : {}),
     ...(opts?.createdAt ? { createdAt: opts.createdAt } : {}),
-    ...(fileId
-      ? { fileId, capturedAt: opts?.capturedAt ?? new Date().toISOString() }
-      : {})
+    ...(fileId ? { fileId, capturedAt: opts?.capturedAt ?? new Date().toISOString() } : {})
   }
 
   if (fileId) {

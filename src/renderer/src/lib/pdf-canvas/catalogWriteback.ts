@@ -1,7 +1,4 @@
-import {
-  canvasStatsNeedWriteback,
-  countCanvasStats
-} from '@renderer/lib/pdf-canvas/annotationList'
+import { canvasStatsNeedWriteback, countCanvasStats } from '@renderer/lib/pdf-canvas/annotationList'
 import { usePdfs } from '@renderer/stores/categories'
 
 export function syncReadingProgress(

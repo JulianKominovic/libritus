@@ -1,9 +1,5 @@
 import { Progress } from '@renderer/components/ui/progress'
-import {
-  getRagQueueSnapshot,
-  onRagQueue,
-  type RagQueueSnapshot
-} from '@renderer/lib/ai/ipc'
+import { getRagQueueSnapshot, onRagQueue, type RagQueueSnapshot } from '@renderer/lib/ai/ipc'
 import { usePdfs } from '@renderer/stores/categories'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -54,8 +50,7 @@ export function EmbeddingJobsIndicator() {
   if (idle) return null
 
   const active = snapshot.active
-  const pct =
-    active && active.total > 0 ? Math.round((active.done / active.total) * 100) : null
+  const pct = active && active.total > 0 ? Math.round((active.done / active.total) * 100) : null
 
   return (
     <div className="mb-2 w-full space-y-1.5 rounded-md bg-morphing-50 px-2.5 py-2 ring-1 ring-morphing-200">
@@ -64,7 +59,10 @@ export function EmbeddingJobsIndicator() {
       </p>
       {active ? (
         <div className="space-y-1">
-          <p className="truncate text-xs text-morphing-900" title={pdfTitle(active.pdfId, active.title, titles)}>
+          <p
+            className="truncate text-xs text-morphing-900"
+            title={pdfTitle(active.pdfId, active.title, titles)}
+          >
             {pdfTitle(active.pdfId, active.title, titles)}
           </p>
           <p className="text-[10px] tabular-nums text-morphing-600">

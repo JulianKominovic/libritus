@@ -12,12 +12,7 @@ export default defineConfig({
       sourcemap: false,
       // Bundle pure JS; leave electron + native (via transformers) external.
       externalizeDeps: {
-        exclude: [
-          '@electron-toolkit/utils',
-          '@openrouter/sdk',
-          'jsdom',
-          '@mozilla/readability'
-        ]
+        exclude: ['@electron-toolkit/utils', '@openrouter/sdk', 'jsdom', '@mozilla/readability']
       }
     }
   },
@@ -43,10 +38,6 @@ export default defineConfig({
       sourcemap: false,
       ssr: false
     },
-    plugins: [
-      react(),
-      tailwindcss(),
-      ...(analyze ? [analyzer({ analyzerMode: 'static' })] : [])
-    ]
+    plugins: [react(), tailwindcss(), ...(analyze ? [analyzer({ analyzerMode: 'static' })] : [])]
   }
 })

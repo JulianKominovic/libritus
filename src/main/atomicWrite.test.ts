@@ -27,9 +27,7 @@ describe('atomicWriteFile', () => {
     const file = path.join(dir, 'categories.json')
     await writeFile(file, '[]')
 
-    await Promise.all(
-      Array.from({ length: 20 }, (_, i) => atomicWriteFile(file, `[{"n":${i}}]`))
-    )
+    await Promise.all(Array.from({ length: 20 }, (_, i) => atomicWriteFile(file, `[{"n":${i}}]`)))
 
     const text = await readFile(file, 'utf8')
     expect(JSON.parse(text)).toEqual([{ n: expect.any(Number) }])
@@ -55,4 +53,3 @@ describe('atomicWriteFile', () => {
     expect(await readFile(file, 'utf8')).toBe('OK')
   })
 })
-

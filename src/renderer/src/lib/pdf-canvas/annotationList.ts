@@ -2,7 +2,11 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
 import { highlightGroupId, isPdfHighlight } from './pdfHighlightModel'
 import { getNotePlateValue, isPdfNote } from './pdfNoteModel'
-import { getSearchCaptureFileId, getSearchCaptureQuery, isPdfSearchCapture } from './pdfSearchCapture'
+import {
+  getSearchCaptureFileId,
+  getSearchCaptureQuery,
+  isPdfSearchCapture
+} from './pdfSearchCapture'
 
 export type AnnotationKind = 'highlight' | 'note' | 'search'
 

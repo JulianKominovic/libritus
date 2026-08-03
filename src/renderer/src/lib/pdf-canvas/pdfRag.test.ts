@@ -21,7 +21,12 @@ describe('splitPageText', () => {
   test('short page → one chunk', () => {
     const c = splitPageText(2, 'Hello world', 'Intro')
     expect(c).toHaveLength(1)
-    expect(c[0]).toMatchObject({ id: 'p2-0', pageIndex: 2, chapterTitle: 'Intro', text: 'Hello world' })
+    expect(c[0]).toMatchObject({
+      id: 'p2-0',
+      pageIndex: 2,
+      chapterTitle: 'Intro',
+      text: 'Hello world'
+    })
   })
 
   test('long page → multiple overlapping chunks', () => {

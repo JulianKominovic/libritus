@@ -29,7 +29,12 @@ let renderGate: Deferred | null = null
 
 mock.module('./PdfRenderer', () => ({
   FIXED_RENDER_SCALE: 2,
-  renderPageToCanvas: async (_page: unknown, canvas: { width: number; height: number }) => {
+  renderPageToCanvas: (
+    _engine: unknown,
+    _doc: unknown,
+    _page: unknown,
+    canvas: { width: number; height: number }
+  ) => {
     canvas.width = 10
     canvas.height = 10
     const gate = renderGate
@@ -52,13 +57,9 @@ function fakeDoc(): PdfDocument & { getPageCalls: () => number } {
     getPageCalls: () => calls,
     getPage: async () => {
       calls++
-      return {
-        getViewport: () => ({ width: 25, height: 50 }),
-        cleanup: () => undefined
-      } as never
+      return {} as never
     },
-    destroy: async () => undefined,
-    proxy: {} as never
+    destroy: async () => undefined
   }
   return doc as unknown as PdfDocument & { getPageCalls: () => number }
 }

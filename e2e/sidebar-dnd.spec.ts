@@ -7,7 +7,9 @@ import { navigateCategory, seedTwoCategories } from './helpers/seed'
 
 async function openCategory(page: Page, categoryId: string): Promise<void> {
   await navigateCategory(page, categoryId)
-  await page.getByRole('heading', { name: /\d+ pdfs/ }).waitFor({ state: 'visible', timeout: 30_000 })
+  await page
+    .getByRole('heading', { name: /\d+ pdfs/ })
+    .waitFor({ state: 'visible', timeout: 30_000 })
 }
 
 /** One HTML5 drag gesture onto `dest`. Leaves button down when `dropTarget` is visible. */

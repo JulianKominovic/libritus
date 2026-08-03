@@ -4,12 +4,14 @@ import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
 import {
   closePdfSidebar,
+  excalidrawCanvas,
+  expectPdfTextPass,
   expectUnsaved,
   leaveToHome,
   tmpAppData,
   waitForSession
 } from './helpers/canvas'
-import { openPdf, readSessionFile, seedLibrary } from './helpers/seed'
+import { openPdf, readSessionFile, seedLibrary, seedSession } from './helpers/seed'
 
 /** 1×1 PNG — enough for Excalidraw insertImages. */
 const TINY_PNG_B64 =
@@ -34,8 +36,8 @@ function isDroppedImage(el: Record<string, unknown>): boolean {
 
 /**
  * Regression: with selection tool + `.pdf-text-pass` over PDF text, OS image
- * drop used to hit `.textLayer` and Excalidraw never saw `onDrop`. Host must
- * clear pass on dragover (and re-dispatch drop if still on textLayer).
+ * drop used to hit the PDF page layer and Excalidraw never saw `onDrop`. Host must
+ * clear pass on dragover (and re-dispatch drop if still on `[data-pdf-page]`).
  *
  * Synthetic DataTransfer + DragEvent in evaluate — not Playwright file DnD
  * (flaky under Electron; see sidebar-dnd).
@@ -43,6 +45,13 @@ function isDroppedImage(el: Record<string, unknown>): boolean {
 test('drop PNG over PDF text with pdf-text-pass inserts image + attachment', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-img-drop-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: []
+  })
 
   const { page, close } = await launchApp({ appDataDir })
   try {
@@ -52,24 +61,14 @@ test('drop PNG over PDF text with pdf-text-pass inserts image + attachment', asy
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    const box = await span.boundingBox()
-    if (!box) throw new Error('text span has no box')
+    await excalidrawCanvas(page)
+    const pageEl = page.locator('[data-pdf-page="0"]')
+    await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+    await expectPdfTextPass(page)
+    const box = await pageEl.boundingBox()
+    if (!box) throw new Error('pdf page has no box')
     const clientX = box.x + box.width / 2
     const clientY = box.y + box.height / 2
-
-    // Arm pass over text (same as highlights / pass-through-race).
-    await page.mouse.move(clientX, clientY)
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(() =>
-            document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
-          ),
-        { timeout: 5_000 }
-      )
-      .toBe(true)
 
     const dropResult = await page.evaluate(
       ({ x, y, b64 }) => {
@@ -143,6 +142,13 @@ test('drop PNG over PDF text with pdf-text-pass inserts image + attachment', asy
 test('Chrome-like HTML image drop over PDF text inserts image + attachment', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-chrome-img-drop-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: []
+  })
 
   const { page, close } = await launchApp({ appDataDir })
   try {
@@ -152,23 +158,14 @@ test('Chrome-like HTML image drop over PDF text inserts image + attachment', asy
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    const box = await span.boundingBox()
-    if (!box) throw new Error('text span has no box')
+    await excalidrawCanvas(page)
+    const pageEl = page.locator('[data-pdf-page="0"]')
+    await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+    await expectPdfTextPass(page)
+    const box = await pageEl.boundingBox()
+    if (!box) throw new Error('pdf page has no box')
     const clientX = box.x + box.width / 2
     const clientY = box.y + box.height / 2
-
-    await page.mouse.move(clientX, clientY)
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(() =>
-            document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
-          ),
-        { timeout: 5_000 }
-      )
-      .toBe(true)
 
     // Stub main fetch — no network; return tiny PNG for any fetch-image-url.
     await page.evaluate((b64) => {

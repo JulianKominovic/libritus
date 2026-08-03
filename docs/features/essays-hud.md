@@ -25,12 +25,12 @@ Out of scope (for now):
 
 ## UX
 
-| Control | Behavior |
-|---------|----------|
-| **Open essays** | Toggle from canvas chrome (not Outline/Pages/Chat tabs). |
-| **Edit** | Plate editor (`NoteEditorKit`-class kit or shared essay kit — **no AI**). |
-| **Resize / collapse** | Width / dock; collapsed = more canvas. |
-| **Empty** | Start with empty doc / placeholder title. |
+| Control               | Behavior                                                                  |
+| --------------------- | ------------------------------------------------------------------------- |
+| **Open essays**       | Toggle from canvas chrome (not Outline/Pages/Chat tabs).                  |
+| **Edit**              | Plate editor (`NoteEditorKit`-class kit or shared essay kit — **no AI**). |
+| **Resize / collapse** | Width / dock; collapsed = more canvas.                                    |
+| **Empty**             | Start with empty doc / placeholder title.                                 |
 
 Reading the PDF and editing the essay should work in parallel: focus vs canvas focus must be obvious.
 
@@ -40,11 +40,11 @@ Reading the PDF and editing the essay should work in parallel: focus vs canvas f
 
 ### Storage options (pick one in impl)
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **A.** Field on session JSON (`essayPlateValue`) | One file | Large writes on every essay keystroke unless debounced separately |
-| **B.** Sidecar `{pdfId}.essay.json` | Isolates large docs | Two files to flush on leave |
-| **C.** Back into `categories.json` legacy essays | Migration-friendly | Mixes catalog with heavy content |
+| Option                                           | Pros                | Cons                                                              |
+| ------------------------------------------------ | ------------------- | ----------------------------------------------------------------- |
+| **A.** Field on session JSON (`essayPlateValue`) | One file            | Large writes on every essay keystroke unless debounced separately |
+| **B.** Sidecar `{pdfId}.essay.json`              | Isolates large docs | Two files to flush on leave                                       |
+| **C.** Back into `categories.json` legacy essays | Migration-friendly  | Mixes catalog with heavy content                                  |
 
 Prefer **B** (or A with a separate dirty/debounce channel). Default is not “full essay body as Excalidraw embeddable,” but the surface remains canvas research, not sidebar research.
 
@@ -56,13 +56,13 @@ Map old `categories.json` essays into the new store when opening a PDF ([`legacy
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **WYSIWYG notes** | Stickies = margin; essays = long-form. Share Plate schema where practical. |
-| **Annotation panel** | Do not list the whole essay as a canvas annotation row. |
-| **Sessions** | Flush essay on leave with the same reliability bar as session. |
-| **Page-space** | Optional deep-links from essay mentions → page/highlight later. |
-| **Product north** | Essays are research memory; keep them with the canvas, not PdfSidebar. |
+| Feature              | Interaction                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| **WYSIWYG notes**    | Stickies = margin; essays = long-form. Share Plate schema where practical. |
+| **Annotation panel** | Do not list the whole essay as a canvas annotation row.                    |
+| **Sessions**         | Flush essay on leave with the same reliability bar as session.             |
+| **Page-space**       | Optional deep-links from essay mentions → page/highlight later.            |
+| **Product north**    | Essays are research memory; keep them with the canvas, not PdfSidebar.     |
 
 ---
 

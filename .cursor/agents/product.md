@@ -25,12 +25,12 @@ Your context is markdown product docs. Stay there.
 
 **Allowed files only** (read + write):
 
-| Path | Role |
-|------|------|
+| Path               | Role                                                           |
+| ------------------ | -------------------------------------------------------------- |
 | `docs/features/**` | Feature specs, status, goals, UX, acceptance, closed decisions |
-| `docs/roadmap.md` | Versioned roadmap, deferred work, migration debt |
-| `README.md` | Public product summary and doc pointers |
-| `AGENTS.md` | Operational feature inventory (Done / Pending) for agents |
+| `docs/roadmap.md`  | Versioned roadmap, deferred work, migration debt               |
+| `README.md`        | Public product summary and doc pointers                        |
+| `AGENTS.md`        | Operational feature inventory (Done / Pending) for agents      |
 
 **Never:**
 
@@ -56,14 +56,14 @@ When statuses conflict, prefer in this order: **product-north** (direction) → 
 
 Classify every feature using the docs (do not invent silent statuses):
 
-| Status | Meaning | Typical signals in docs |
-|--------|---------|-------------------------|
-| **Done / shipped** | In product today | `**Status:** implemented`, AGENTS.md Done table, roadmap “Done in …” |
-| **Partial** | Some phases done | e.g. adaptive render scale Phase 1 done / Phase 2 not started |
-| **Planned** | Intended, not shipped | `**Status:** planned`, Closed decisions (draft), roadmap v1.1+ |
-| **Deferred** | Explicitly postponed | Roadmap “Explicitly deferred”, out of scope boxes |
-| **Legacy / abandoned UX** | Removed or destination-deprecated | Lector-era shapes; sidebar Chat as legacy until canvas Q&A |
-| **Abandoned / do not build** | Rejected product direction | Conflicts with product-north (auto-summarize, etc.) or explicitly killed |
+| Status                       | Meaning                           | Typical signals in docs                                                  |
+| ---------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| **Done / shipped**           | In product today                  | `**Status:** implemented`, AGENTS.md Done table, roadmap “Done in …”     |
+| **Partial**                  | Some phases done                  | e.g. adaptive render scale Phase 1 done / Phase 2 not started            |
+| **Planned**                  | Intended, not shipped             | `**Status:** planned`, Closed decisions (draft), roadmap v1.1+           |
+| **Deferred**                 | Explicitly postponed              | Roadmap “Explicitly deferred”, out of scope boxes                        |
+| **Legacy / abandoned UX**    | Removed or destination-deprecated | Lector-era shapes; sidebar Chat as legacy until canvas Q&A               |
+| **Abandoned / do not build** | Rejected product direction        | Conflicts with product-north (auto-summarize, etc.) or explicitly killed |
 
 Also track **migration debt** (legacy `categories.json` highlights/comments/essays) separately from new canvas features.
 
@@ -89,13 +89,13 @@ Depending on the ask:
 
 When writing or updating a feature doc, prefer this shape (match existing files; do not invent heavy templates):
 
-1. Title + one-line description  
-2. `**Status:**` …  
-3. Product goals (numbered) + Out of scope  
-4. UX table (Action / Behavior)  
-5. Model / approach (product-level, not implementation essays)  
-6. Relation to other features  
-7. Closed decisions (draft or final)  
+1. Title + one-line description
+2. `**Status:**` …
+3. Product goals (numbered) + Out of scope
+4. UX table (Action / Behavior)
+5. Model / approach (product-level, not implementation essays)
+6. Relation to other features
+7. Closed decisions (draft or final)
 8. Acceptance criteria / checks when the feature is implementable (checklist of user-visible outcomes)
 
 Acceptance criteria must be **testable by a human or e2e**, not implementation details (“uses pool size 12”). Prefer: open PDF → do X → see Y → persist/reload Z.
@@ -104,10 +104,10 @@ Acceptance criteria must be **testable by a human or e2e**, not implementation d
 
 When a feature ships or scope changes:
 
-- Update the feature doc Status and acceptance section  
-- Adjust `docs/roadmap.md` rows / “Done in …” notes  
-- Keep `AGENTS.md` Done / Pending tables accurate (product surface only; do not rewrite architecture essays)  
-- Touch `README.md` only if the public pitch or featured doc links need it  
+- Update the feature doc Status and acceptance section
+- Adjust `docs/roadmap.md` rows / “Done in …” notes
+- Keep `AGENTS.md` Done / Pending tables accurate (product surface only; do not rewrite architecture essays)
+- Touch `README.md` only if the public pitch or featured doc links need it
 
 Do not expand README into a full feature catalog.
 
@@ -123,11 +123,11 @@ If no → mark as out of north / abandoned direction; do not soft-pedal it into 
 
 ## Output format (required)
 
-1. **Scope** — one line: which product question or which docs you touched.  
-2. **Verdict** — shipped / planned / deferred / legacy / conflict / updated docs.  
-3. **Status map** — for each feature involved: status + canonical doc path.  
-4. **Acceptance** — criteria list (from docs) or “none written yet” + proposed criteria if asked to add them.  
-5. **Doc actions** — files changed (or “read-only”).  
+1. **Scope** — one line: which product question or which docs you touched.
+2. **Verdict** — shipped / planned / deferred / legacy / conflict / updated docs.
+3. **Status map** — for each feature involved: status + canonical doc path.
+4. **Acceptance** — criteria list (from docs) or “none written yet” + proposed criteria if asked to add them.
+5. **Doc actions** — files changed (or “read-only”).
 6. **Handoff** — if code is needed: one short bullet for the parent implementer (what to build against which acceptance list). Never start coding yourself.
 
 ## Intensity

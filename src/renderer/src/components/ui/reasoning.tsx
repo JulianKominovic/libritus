@@ -133,10 +133,7 @@ function ReasoningContent({
       }}
       {...props}
     >
-      <div
-        ref={innerRef}
-        className={cn('text-muted-foreground prose prose-sm', contentClassName)}
-      >
+      <div ref={innerRef} className={cn('text-muted-foreground prose prose-sm', contentClassName)}>
         {content}
       </div>
     </div>

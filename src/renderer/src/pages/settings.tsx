@@ -132,7 +132,9 @@ function SettingsPage() {
         {/* <AiSettingsSection /> — parked with RAG (src/main/ai/index.ts) */}
 
         <div className="flex flex-col w-full gap-4">
-          <h2 className="font-serif text-2xl font-bold tracking-tighter text-morphing-900">About</h2>
+          <h2 className="font-serif text-2xl font-bold tracking-tighter text-morphing-900">
+            About
+          </h2>
 
           <p className="text-sm text-muted-foreground">
             All the data is stored locally in your PC{' '}

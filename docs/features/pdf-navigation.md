@@ -27,12 +27,12 @@ Out of scope (for this feature):
 
 ## UX
 
-| Control | Behavior |
-|---------|----------|
-| **◀** | Go to `currentPage - 1`. Disabled on page 1. |
+| Control   | Behavior                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| **◀**     | Go to `currentPage - 1`. Disabled on page 1.                                                           |
 | **Input** | Shows `1…N` (1-based). On confirm: clamp and jump. While editing, scroll must not overwrite the draft. |
-| **/ N** | Read-only; `N = doc.pageCount`. |
-| **▶** | Go to `currentPage + 1`. Disabled on last page. |
+| **/ N**   | Read-only; `N = doc.pageCount`.                                                                        |
+| **▶**     | Go to `currentPage + 1`. Disabled on last page.                                                        |
 
 Position: absolute overlay **top-left** (`left-3 top-3`, high `z`), mirror of the right-side tool chips. Do not use Excalidraw `renderTopRightUI` for this.
 
@@ -42,9 +42,8 @@ In `text-select-mode` Excalidraw’s interactive layer is `pointer-events-none`;
 
 ## Model / coords
 
-- App: `pageIndex` **0-based**.
+- App: `pageIndex` **0-based** (PDFium page indexes are already 0-based).
 - Nav UI: **1-based** (`displayPage = pageIndex + 1`).
-- pdf.js 1-based only inside `PdfDocument.getPage`.
 
 ### Current page derivation
 
@@ -56,12 +55,12 @@ Do **not** use “first of `queryVisible`” — with buffer/zoom-out many pages
 
 ### Draft vs live on the input
 
-| Mode | Behavior |
-|------|----------|
-| **Live** | Input shows `currentPageIndex + 1` from camera. |
-| **Editing** | On focus, freeze local `draft`. Scroll does not overwrite. |
-| **Commit** | Enter or blur → parseInt → clamp `[1, pageCount]` → `goToPage` → leave editing. |
-| **Cancel** | Escape → discard draft, return to live. |
+| Mode        | Behavior                                                                        |
+| ----------- | ------------------------------------------------------------------------------- |
+| **Live**    | Input shows `currentPageIndex + 1` from camera.                                 |
+| **Editing** | On focus, freeze local `draft`. Scroll does not overwrite.                      |
+| **Commit**  | Enter or blur → parseInt → clamp `[1, pageCount]` → `goToPage` → leave editing. |
+| **Cancel**  | Escape → discard draft, return to live.                                         |
 
 ### Jump (`goToPage`)
 
@@ -75,11 +74,11 @@ Prev/next = `goToPage(current ± 1)` with clamp; no wrap.
 
 ## Helpers (`PageLayout`)
 
-| Helper | Role |
-|--------|------|
-| `pageIndexAtWorldPoint(x, y)` | Binary search Y + hit / nearest |
-| `pageIndexForCamera(camera)` | Viewport center → index |
-| `scrollForPageTop` / center helpers | Jump targets |
+| Helper                              | Role                            |
+| ----------------------------------- | ------------------------------- |
+| `pageIndexAtWorldPoint(x, y)`       | Binary search Y + hit / nearest |
+| `pageIndexForCamera(camera)`        | Viewport center → index         |
+| `scrollForPageTop` / center helpers | Jump targets                    |
 
 `queryVisible` remains for the pool; nav does **not** depend on the virtualization buffer.
 
@@ -87,11 +86,11 @@ Prev/next = `goToPage(current ± 1)` with clamp; no wrap.
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **Persistence / sessions** | Jump changes `scrollY` → same `camera` saved in session JSON. No separate `pageIndex` field needed. |
-| **Virtualization** | Jump far: `PdfLayer` syncVisible + pool cancel/render like a normal pan. |
-| **Page-space annotations (future)** | Nav only moves camera; does not touch elements. |
+| Feature                             | Interaction                                                                                         |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Persistence / sessions**          | Jump changes `scrollY` → same `camera` saved in session JSON. No separate `pageIndex` field needed. |
+| **Virtualization**                  | Jump far: `PdfLayer` syncVisible + pool cancel/render like a normal pan.                            |
+| **Page-space annotations (future)** | Nav only moves camera; does not touch elements.                                                     |
 
 ---
 

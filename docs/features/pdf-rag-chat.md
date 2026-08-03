@@ -33,13 +33,13 @@ Out of scope:
 
 ## UX (today)
 
-| Surface | Behavior |
-|---------|----------|
-| **Settings → AI** | OpenRouter key (save / test / clear via `safeStorage` in main). Chat model select. Copy: embeddings run locally. |
-| **Nav sidebar (above Settings)** | Active embed job + progress; queued PDF titles. Hidden when idle. |
-| **PdfSidebar → Chat** | **Hidden** (panel code retained). Indexing still runs on PDF open; Settings AI unchanged. |
-| **Without key** | Indexing still runs on PDF open; Send blocked with CTA to Settings. |
-| **Empty PDF text** | “No extractable text”. |
+| Surface                          | Behavior                                                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Settings → AI**                | OpenRouter key (save / test / clear via `safeStorage` in main). Chat model select. Copy: embeddings run locally. |
+| **Nav sidebar (above Settings)** | Active embed job + progress; queued PDF titles. Hidden when idle.                                                |
+| **PdfSidebar → Chat**            | **Hidden** (panel code retained). Indexing still runs on PDF open; Settings AI unchanged.                        |
+| **Without key**                  | Indexing still runs on PDF open; Send blocked with CTA to Settings.                                              |
+| **Empty PDF text**               | “No extractable text”.                                                                                           |
 
 Motion: short fade/slide on messages (~150ms); send `active:scale-[0.96]`; `tabular-nums` on pages/progress.
 
@@ -56,20 +56,20 @@ Motion: short fade/slide on messages (~150ms); send `active:scale-[0.96]`; `tabu
 ## Pipeline
 
 ```
-PDF open → pdf.js text → chunk → ai:rag-enqueue (main serial queue)
+PDF open → EmbedPDF `extractText` → chunk → ai:rag-enqueue (main serial queue)
   → MiniLM embed → {pdfId}.rag.json
   → Chat: query embed → top-k cosine → OpenRouter stream → UI
 ```
 
-| Piece | Where |
-|-------|--------|
-| Key | `src/main/ai/secrets.ts` + IPC `ai:set/has/clear-openrouter-key` |
-| Embed + queue | `src/main/ai/embedder.ts`, `ragIndexQueue.ts`, `ragIndex.ts` |
-| Chat stream | `src/main/ai/chat.ts` → `ai:chat-chunk/done/error` |
-| Chunk / retrieve | `src/renderer/src/lib/pdf-canvas/pdfRag.ts` |
-| Enqueue on open | `PdfCanvasApp` → `ai:rag-enqueue` |
-| Persist | main writes `{pdfId}.rag.json` + `{pdfId}.rag.meta.json`; chat history via `pdfRagPersist.ts` |
-| UI | `EmbeddingJobsIndicator`, `PdfChatPanel`, Settings AI |
+| Piece            | Where                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| Key              | `src/main/ai/secrets.ts` + IPC `ai:set/has/clear-openrouter-key`                              |
+| Embed + queue    | `src/main/ai/embedder.ts`, `ragIndexQueue.ts`, `ragIndex.ts`                                  |
+| Chat stream      | `src/main/ai/chat.ts` → `ai:chat-chunk/done/error`                                            |
+| Chunk / retrieve | `src/renderer/src/lib/pdf-canvas/pdfRag.ts`                                                   |
+| Enqueue on open  | `PdfCanvasApp` → `ai:rag-enqueue`                                                             |
+| Persist          | main writes `{pdfId}.rag.json` + `{pdfId}.rag.meta.json`; chat history via `pdfRagPersist.ts` |
+| UI               | `EmbeddingJobsIndicator`, `PdfChatPanel`, Settings AI                                         |
 
 Indexing is **idempotent**: disk fingerprint/model/chunk-count match → noop. Closing Chat/sidebar does **not** cancel. Leave PDF does **not** cancel. Delete PDF → `ai:rag-cancel`.
 
@@ -79,12 +79,12 @@ Embedding model: `Xenova/all-MiniLM-L6-v2` (384-d, q8). Chat model preference in
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **Outline** | Chapter titles on chunks when TOC exists (wait for outline before enqueue). |
-| **Search** | Shares `getTextContent` / extract path ideas; separate from find bar. |
-| **Notes / AIKit** | Do not mount Plate AI in chat or notes. |
-| **Product north** | Canvas owns research; sidebar Chat is temporary. |
+| Feature           | Interaction                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| **Outline**       | Chapter titles on chunks when TOC exists (wait for outline before enqueue). |
+| **Search**        | Shares engine text extraction ideas; separate from find bar.                |
+| **Notes / AIKit** | Do not mount Plate AI in chat or notes.                                     |
+| **Product north** | Canvas owns research; sidebar Chat is temporary.                            |
 
 ---
 

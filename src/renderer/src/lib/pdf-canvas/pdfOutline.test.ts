@@ -1,14 +1,34 @@
 import { describe, expect, test } from 'bun:test'
 import type { PdfDocument } from './PdfDocument'
-import { flattenOutline, loadOutline, type OutlineNode } from './pdfOutline'
+import {
+  flattenOutline,
+  loadOutline,
+  mapBookmark,
+  pageIndexFromBookmarkTarget,
+  type OutlineNode
+} from './pdfOutline'
+import type { PdfBookmarkObject, PdfTask } from '@embedpdf/models'
 
-function fakeDoc(proxy: {
-  getOutline: () => Promise<unknown>
-  getDestination?: (id: string) => Promise<unknown>
-  getPageIndex?: (ref: unknown) => Promise<number>
-}): PdfDocument {
+function resolveTask<T>(value: T): PdfTask<T> {
   return {
-    proxy,
+    toPromise: async () => value,
+    wait: (ok: (v: T) => void) => ok(value),
+    abort: () => undefined,
+    onProgress: () => undefined
+  } as unknown as PdfTask<T>
+}
+
+function fakeDoc(bookmarks: PdfBookmarkObject[] | (() => never)): PdfDocument {
+  return {
+    handle: { id: 'x', pageCount: 3, pages: [] },
+    engine: {
+      getBookmarks: () => {
+        if (typeof bookmarks === 'function') {
+          throw new Error('boom')
+        }
+        return resolveTask({ bookmarks })
+      }
+    },
     pageCount: 3,
     pageSizes: [],
     getPage: async () => null as never,
@@ -40,48 +60,68 @@ describe('flattenOutline', () => {
   })
 })
 
+describe('pageIndexFromBookmarkTarget / mapBookmark', () => {
+  test('destination pageIndex', () => {
+    expect(
+      pageIndexFromBookmarkTarget({
+        type: 'destination',
+        destination: { pageIndex: 2, zoom: { mode: 1 as never }, view: [] }
+      })
+    ).toBe(2)
+    expect(pageIndexFromBookmarkTarget(undefined)).toBeNull()
+  })
+
+  test('maps tree', () => {
+    const node = mapBookmark({
+      title: 'Ch',
+      target: {
+        type: 'destination',
+        destination: { pageIndex: 0, zoom: { mode: 1 as never }, view: [] }
+      },
+      children: [{ title: 'Sub', target: undefined }]
+    })
+    expect(node).toEqual({
+      title: 'Ch',
+      pageIndex: 0,
+      children: [{ title: 'Sub', pageIndex: null, children: [] }]
+    })
+  })
+})
+
 describe('loadOutline', () => {
   test('empty / missing outline returns []', async () => {
-    expect(await loadOutline(fakeDoc({ getOutline: async () => null }))).toEqual([])
-    expect(await loadOutline(fakeDoc({ getOutline: async () => [] }))).toEqual([])
+    expect(await loadOutline(fakeDoc([]))).toEqual([])
     expect(
       await loadOutline(
-        fakeDoc({
-          getOutline: async () => {
-            throw new Error('boom')
-          }
+        fakeDoc(() => {
+          throw new Error('boom')
         })
       )
     ).toEqual([])
   })
 
-  test('resolves array dest and named dest; skips bad dest', async () => {
+  test('maps bookmarks with page indexes', async () => {
     const nodes = await loadOutline(
-      fakeDoc({
-        getOutline: async () => [
-          {
-            title: 'Chapter 1',
-            dest: [{ num: 1, gen: 0 }, { name: 'XYZ' }, null, null, null],
-            items: [
-              {
-                title: 'Section 1.1',
-                dest: 'namedDest',
-                items: []
-              }
-            ]
+      fakeDoc([
+        {
+          title: 'Chapter 1',
+          target: {
+            type: 'destination',
+            destination: { pageIndex: 0, zoom: { mode: 1 as never }, view: [] }
           },
-          {
-            title: 'Broken',
-            dest: null,
-            items: []
-          }
-        ],
-        getDestination: async (id) => {
-          if (id === 'namedDest') return [{ num: 2, gen: 0 }, { name: 'Fit' }]
-          return null
+          children: [
+            {
+              title: 'Section 1.1',
+              target: {
+                type: 'destination',
+                destination: { pageIndex: 1, zoom: { mode: 1 as never }, view: [] }
+              },
+              children: []
+            }
+          ]
         },
-        getPageIndex: async (ref: unknown) => (ref as { num: number }).num - 1
-      })
+        { title: 'Broken', target: undefined, children: [] }
+      ])
     )
 
     expect(nodes).toEqual([

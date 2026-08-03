@@ -48,59 +48,18 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
     switch (state) {
       case 'input-streaming':
         return (
-          <span
-            className={cn(
-              baseClasses,
-              'bg-morphing-100 text-morphing-700'
-            )}
-          >
-            Processing
-          </span>
+          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-700')}>Processing</span>
         )
       case 'input-available':
-        return (
-          <span
-            className={cn(
-              baseClasses,
-              'bg-morphing-200 text-morphing-800'
-            )}
-          >
-            Ready
-          </span>
-        )
+        return <span className={cn(baseClasses, 'bg-morphing-200 text-morphing-800')}>Ready</span>
       case 'output-available':
         return (
-          <span
-            className={cn(
-              baseClasses,
-              'bg-morphing-100 text-morphing-900'
-            )}
-          >
-            Completed
-          </span>
+          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-900')}>Completed</span>
         )
       case 'output-error':
-        return (
-          <span
-            className={cn(
-              baseClasses,
-              'bg-destructive/10 text-destructive'
-            )}
-          >
-            Error
-          </span>
-        )
+        return <span className={cn(baseClasses, 'bg-destructive/10 text-destructive')}>Error</span>
       default:
-        return (
-          <span
-            className={cn(
-              baseClasses,
-              'bg-morphing-100 text-morphing-600'
-            )}
-          >
-            Pending
-          </span>
-        )
+        return <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-600')}>Pending</span>
     }
   }
 

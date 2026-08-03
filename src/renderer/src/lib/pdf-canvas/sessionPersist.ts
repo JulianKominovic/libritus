@@ -12,9 +12,7 @@ export type DirtyGateInput = {
 }
 
 export type DirtyGateResult =
-  | { action: 'clear' }
-  | { action: 'noop' }
-  | { action: 'dirty'; pending: string }
+  { action: 'clear' } | { action: 'noop' } | { action: 'dirty'; pending: string }
 
 const roundCam = (n: number) => Math.round(n * 1000) / 1000
 
@@ -25,18 +23,12 @@ const roundCam = (n: number) => Math.round(n * 1000) / 1000
  */
 function stabilizeElement(el: unknown): unknown {
   if (!el || typeof el !== 'object') return el
-  const { version: _v, versionNonce: _vn, updated: _u, ...rest } = el as Record<
-    string,
-    unknown
-  >
+  const { version: _v, versionNonce: _vn, updated: _u, ...rest } = el as Record<string, unknown>
   return rest
 }
 
 /** Stable signature of elements + camera for dirty detection. */
-export function persistSignature(
-  elements: readonly unknown[],
-  camera: PersistCamera
-): string {
+export function persistSignature(elements: readonly unknown[], camera: PersistCamera): string {
   return JSON.stringify({
     elements: elements.map(stabilizeElement),
     camera: {

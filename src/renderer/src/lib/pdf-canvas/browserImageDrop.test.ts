@@ -15,12 +15,10 @@ function stubDt(opts: {
 }): DataTransfer {
   const html = opts.html ?? ''
   const uri = opts.uri ?? ''
-  const types =
-    opts.types ??
-    [
-      ...(html ? (['text/html'] as const) : []),
-      ...(uri ? (['text/uri-list'] as const) : [])
-    ]
+  const types = opts.types ?? [
+    ...(html ? (['text/html'] as const) : []),
+    ...(uri ? (['text/uri-list'] as const) : [])
+  ]
   return {
     types,
     files: { length: opts.filesLength ?? 0 } as FileList,
@@ -37,9 +35,7 @@ describe('imageUrlFromHtml', () => {
     const html =
       '<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">' +
       '<img class="avatar avatar-user" src="https://avatars.githubusercontent.com/u/70329467?s=80&amp;v=4" width="40" height="40" alt="@Julia">'
-    expect(imageUrlFromHtml(html)).toBe(
-      'https://avatars.githubusercontent.com/u/70329467?s=80&v=4'
-    )
+    expect(imageUrlFromHtml(html)).toBe('https://avatars.githubusercontent.com/u/70329467?s=80&v=4')
   })
 
   test('decodes &amp; in src', () => {
@@ -70,8 +66,7 @@ describe('imageUrlFromDataTransfer', () => {
   test('Chrome avatar drag: prefers img src over page uri-list', () => {
     const url = imageUrlFromDataTransfer(
       stubDt({
-        html:
-          '<img class="avatar" src="https://avatars.githubusercontent.com/u/70329467?s=80&amp;v=4">',
+        html: '<img class="avatar" src="https://avatars.githubusercontent.com/u/70329467?s=80&amp;v=4">',
         uri: 'https://github.com/JulianKominovic'
       })
     )
@@ -91,9 +86,9 @@ describe('imageUrlFromDataTransfer', () => {
   })
 
   test('uri-list image only', () => {
-    expect(
-      imageUrlFromDataTransfer(stubDt({ uri: 'https://cdn.example.com/a.webp' }))
-    ).toBe('https://cdn.example.com/a.webp')
+    expect(imageUrlFromDataTransfer(stubDt({ uri: 'https://cdn.example.com/a.webp' }))).toBe(
+      'https://cdn.example.com/a.webp'
+    )
   })
 
   test('page uri-list without img → null', () => {
@@ -115,9 +110,9 @@ describe('dataTransferLooksLikeBrowserImageDrag', () => {
         stubDt({ types: ['text/html', 'text/uri-list', 'chromium/x-drag-id'] })
       )
     ).toBe(true)
-    expect(dataTransferLooksLikeBrowserImageDrag(stubDt({ types: ['Files'], filesLength: 1 }))).toBe(
-      false
-    )
+    expect(
+      dataTransferLooksLikeBrowserImageDrag(stubDt({ types: ['Files'], filesLength: 1 }))
+    ).toBe(false)
   })
 })
 

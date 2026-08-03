@@ -29,21 +29,21 @@ Out of scope (for now):
 
 ## Migration UX
 
-| Path | Behavior |
-|------|----------|
-| **Auto on open** | If legacy present and session empty → import → write session → clear or flag legacy fields. |
-| **Session already exists** | Do not overwrite canvas work; optional “Import legacy…” if legacy still present. |
-| **Failure** | Leave legacy intact; show Error; do not delete catalog fields. |
+| Path                       | Behavior                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| **Auto on open**           | If legacy present and session empty → import → write session → clear or flag legacy fields. |
+| **Session already exists** | Do not overwrite canvas work; optional “Import legacy…” if legacy still present.            |
+| **Failure**                | Leave legacy intact; show Error; do not delete catalog fields.                              |
 
 ---
 
 ## Export UX
 
-| Action | Behavior |
-|--------|----------|
-| **Export…** | From canvas chrome or library entry. |
-| **Formats (v1)** | Markdown download / save dialog via Electron. |
-| **Contents** | Title, per-highlight text + page if known, note plain text, essay body. |
+| Action           | Behavior                                                                |
+| ---------------- | ----------------------------------------------------------------------- |
+| **Export…**      | From canvas chrome or library entry.                                    |
+| **Formats (v1)** | Markdown download / save dialog via Electron.                           |
+| **Contents**     | Title, per-highlight text + page if known, note plain text, essay body. |
 
 ---
 
@@ -59,11 +59,11 @@ Typed on the store for load/display historically:
 
 ### Write targets
 
-| Legacy | Target |
-|--------|--------|
+| Legacy                       | Target                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------- |
 | Highlights / margin comments | Session highlights + notes (`pdfHighlight` / `pdfNote`) or canonical page-space |
-| Essays | Essay sidecar / HUD store ([`essays-hud.md`](essays-hud.md)) |
-| Scroll offset | Ignore when `{pdfId}.session.json` camera exists |
+| Essays                       | Essay sidecar / HUD store ([`essays-hud.md`](essays-hud.md))                    |
+| Scroll offset                | Ignore when `{pdfId}.session.json` camera exists                                |
 
 Idempotency: e.g. `legacyMigratedAt` on session or a flag on the catalog entry.
 
@@ -75,12 +75,12 @@ Pure function: `elements` (+ essay file) → Markdown string. No need to mutate 
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **Persistence / sessions** | Migration writes session once; then canvas is source of truth. |
-| **Page-space** | Best migration quality if canonical model lands first or in the same milestone. |
-| **Essays HUD** | Needs a home for legacy essays before import. |
-| **Annotation panel** | Imported items should appear like native ones. |
+| Feature                    | Interaction                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| **Persistence / sessions** | Migration writes session once; then canvas is source of truth.                  |
+| **Page-space**             | Best migration quality if canonical model lands first or in the same milestone. |
+| **Essays HUD**             | Needs a home for legacy essays before import.                                   |
+| **Annotation panel**       | Imported items should appear like native ones.                                  |
 
 ---
 

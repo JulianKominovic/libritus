@@ -31,8 +31,7 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
       >
         {HIGHLIGHT_COLORS.map(({ id, color }) => {
           const selected =
-            !pending &&
-            normalizeHighlightColor(activeColor) === normalizeHighlightColor(color)
+            !pending && normalizeHighlightColor(activeColor) === normalizeHighlightColor(color)
           return (
             <button
               key={id}

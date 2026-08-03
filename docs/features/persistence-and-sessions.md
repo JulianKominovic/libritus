@@ -75,11 +75,11 @@ Web search captures ([`web-search-capture.md`](web-search-capture.md)): placehol
 
 ### Relation to `categories.json`
 
-| Concern | Source of truth |
-|---------|-----------------|
-| Title, category, thumbnail, legacy highlights/essays | `categories.json` |
+| Concern                                                              | Source of truth                                              |
+| -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Title, category, thumbnail, legacy highlights/essays                 | `categories.json`                                            |
 | Live canvas counts (`canvasStats.highlights` / `notes` / `searches`) | Writebacked from session into `categories.json` (card pills) |
-| Canvas annotations + reading camera | `{pdfId}.session.json` |
+| Canvas annotations + reading camera                                  | `{pdfId}.session.json`                                       |
 
 Legacy highlight/comment fields on `Pdf` are **not** written by the canvas MVP. Migration is a later task (see [`docs/roadmap.md`](../roadmap.md)).
 
@@ -103,13 +103,13 @@ Existing `uploadPdf` → write `{pdfId}.pdf` + update catalog → navigate to vi
 
 UI status: `Saved` | `Unsaved` | `Saving…` | `Error`.
 
-| Event | Behavior |
-|-------|----------|
-| Element / camera change | Mark **Unsaved**; schedule save with **debounce 5 s** |
-| New Excalidraw image file | Write bytes to `attachments/{fileId}.{ext}` immediately (not in session JSON) |
-| Debounce fires | Write session JSON → **Saved** (or **Error**) |
-| Leave route / open another PDF | **Immediate flush** if Unsaved |
-| App close | Best-effort flush via `beforeunload` |
+| Event                          | Behavior                                                                      |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| Element / camera change        | Mark **Unsaved**; schedule save with **debounce 5 s**                         |
+| New Excalidraw image file      | Write bytes to `attachments/{fileId}.{ext}` immediately (not in session JSON) |
+| Debounce fires                 | Write session JSON → **Saved** (or **Error**)                                 |
+| Leave route / open another PDF | **Immediate flush** if Unsaved                                                |
+| App close                      | Best-effort flush via `beforeunload`                                          |
 
 Payload: scene elements + camera → `{pdfId}.session.json` (no attachment bytes).
 
