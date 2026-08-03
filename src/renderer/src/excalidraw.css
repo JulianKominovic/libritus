@@ -127,6 +127,9 @@
   background-color: #fff !important;
 }
 
-.excalidraw [title='Elbow arrow'] {
+/* Locale-stable id — title="Elbow arrow" breaks when UI language ≠ English.
+ * Host also strips elbowed scene arrows + forces currentItemArrowType ≠ elbow
+ * (A while arrow tool cycles sharp → round → elbow). */
+.excalidraw [data-testid='elbow-arrow'] {
   display: none !important;
 }
