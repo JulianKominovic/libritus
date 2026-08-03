@@ -18,7 +18,11 @@ import {
   type ChatHistoryMessage,
   type RagIndex
 } from '@renderer/lib/pdf-canvas/pdfRag'
-import { readChatHistory, readRagIndex, writeChatHistory } from '@renderer/lib/pdf-canvas/pdfRagPersist'
+import {
+  readChatHistory,
+  readRagIndex,
+  writeChatHistory
+} from '@renderer/lib/pdf-canvas/pdfRagPersist'
 import { useSettings } from '@renderer/stores/settings'
 import { useCallback, useEffect, useRef, useState } from 'react'
 

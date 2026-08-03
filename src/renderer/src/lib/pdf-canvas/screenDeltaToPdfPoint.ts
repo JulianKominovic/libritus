@@ -9,7 +9,7 @@ export function screenDeltaToPdfPoint(
   dx: number,
   dy: number,
   zoom: number,
-  scale: number,
+  scale: number
 ): { x: number; y: number } {
   const denom = zoom * scale
   if (denom === 0) return { x: 0, y: 0 }

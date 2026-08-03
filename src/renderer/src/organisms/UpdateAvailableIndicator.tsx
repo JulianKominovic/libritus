@@ -46,9 +46,7 @@ export function UpdateAvailableIndicator() {
   }
 
   const pct =
-    status.phase === 'downloading' && status.percent != null
-      ? Math.round(status.percent)
-      : null
+    status.phase === 'downloading' && status.percent != null ? Math.round(status.percent) : null
 
   return (
     <div

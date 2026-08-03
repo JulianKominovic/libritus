@@ -65,19 +65,12 @@ export function onChatError(
 }
 
 export function onEmbedProgress(
-  handler: (payload: {
-    requestId: string
-    done: number
-    total: number
-    status: string
-  }) => void
+  handler: (payload: { requestId: string; done: number; total: number; status: string }) => void
 ): () => void {
   return window.electron.ipcRenderer.on('ai:embed-progress', (_e, payload) => handler(payload))
 }
 
-export function onEmbedStatus(
-  handler: (payload: { status: string }) => void
-): () => void {
+export function onEmbedStatus(handler: (payload: { status: string }) => void): () => void {
   return window.electron.ipcRenderer.on('ai:embed-status', (_e, payload) => handler(payload))
 }
 

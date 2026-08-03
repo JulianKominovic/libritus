@@ -187,10 +187,7 @@ export function PdfCanvasApp(props: PdfCanvasAppProps) {
 
   if (!engine) {
     return (
-      <div
-        data-pdf-canvas-root
-        className="relative h-full w-full overflow-hidden bg-morphing-50"
-      />
+      <div data-pdf-canvas-root className="relative h-full w-full overflow-hidden bg-morphing-50" />
     )
   }
 
@@ -998,7 +995,10 @@ function PdfCanvasAppInner({
       current.thumbPool.destroy()
       const docs = documentManagerRef.current
       if (docs?.isDocumentOpen(current.documentId)) {
-        void docs.closeDocument(current.documentId).toPromise().catch(() => {})
+        void docs
+          .closeDocument(current.documentId)
+          .toPromise()
+          .catch(() => {})
       }
       void current.doc.destroy()
     }
@@ -2218,13 +2218,7 @@ function PdfCanvasAppInner({
       window.removeEventListener('pointercancel', onPointerCancel)
       window.removeEventListener('blur', onBlur)
     }
-  }, [
-    clearEmbedSelection,
-    endPointerGesture,
-    hideHighlightToolbar,
-    isBrowsing,
-    setPdfTextPass
-  ])
+  }, [clearEmbedSelection, endPointerGesture, hideHighlightToolbar, isBrowsing, setPdfTextPass])
 
   // Excalidraw setStates activeEmbeddable "hover" on every pointermove over an
   // embed center (no equality guard) → full App re-render. Stop those moves

@@ -186,13 +186,7 @@ export class ThumbPool {
       const page = await this.doc.getPage(pageIndex)
       if (gen !== this.generation) return
 
-      const task = renderPageToCanvas(
-        this.doc.engine,
-        this.doc.handle,
-        page,
-        slot.canvas,
-        scale
-      )
+      const task = renderPageToCanvas(this.doc.engine, this.doc.handle, page, slot.canvas, scale)
       this.jobs.set(pageIndex, { pageIndex, task, generation: gen })
       await task.promise
       this.jobs.delete(pageIndex)

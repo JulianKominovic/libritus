@@ -91,9 +91,13 @@ describe('pageIndexFromBookmarkTarget / mapBookmark', () => {
 describe('loadOutline', () => {
   test('empty / missing outline returns []', async () => {
     expect(await loadOutline(fakeDoc([]))).toEqual([])
-    expect(await loadOutline(fakeDoc(() => {
-      throw new Error('boom')
-    }))).toEqual([])
+    expect(
+      await loadOutline(
+        fakeDoc(() => {
+          throw new Error('boom')
+        })
+      )
+    ).toEqual([])
   })
 
   test('maps bookmarks with page indexes', async () => {

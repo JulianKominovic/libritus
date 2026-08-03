@@ -1,10 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { abortChat, streamChat, testOpenRouterConnection, type ChatMessage } from './chat'
-import {
-  clearOpenRouterKey,
-  hasOpenRouterKey,
-  setOpenRouterKey
-} from './secrets'
+import { clearOpenRouterKey, hasOpenRouterKey, setOpenRouterKey } from './secrets'
 
 // ---------------------------------------------------------------------------
 // RAG / local embeddings — DISABLED

@@ -92,7 +92,7 @@ Al reabrir/cambiar PDF (o durante tear-down), `destroyRuntimeSession` hacía `do
 
 - `PdfDocument.getPage` rechaza con `AbortException` si ya no está alive; `alive = false` al inicio de `destroy`.
 - Pools: flag `destroyed` + bump de generation en `destroy`; `syncVisible` no-op; catch ignora gen stale / `AbortException` / cancel EmbedPDF.
-- Limpiar `sessionRef` / `setSession(null)` *antes* de destruir pools/doc.
+- Limpiar `sessionRef` / `setSession(null)` _antes_ de destruir pools/doc.
 
 ### `resolveNoteFill`: `document` sin `getComputedStyle` en bun:test
 
@@ -278,7 +278,7 @@ Restaurar `NOTE_EMBED_LINK` en Excalidraw `onDuplicate` con `fixDuplicatedPdfNot
 
 #### Descripción más detallada
 
-Con `showPdfOutline: true`, el sidebar monta cuando hay `session` pero `loadOutline` aún no resolvió → `useState(outline.length > 0 ? 'outline' : 'pages')` queda en **Pages**. Cuando llega el outline, el tab no cambia. El e2e `outline entry and thumb jump` espera el botón `Go to Chapter Two` (en el tab Outline oculto) y hace timeout. Antes el sidebar se abría con un toggle *después* de cargar, así que a veces el outline ya estaba listo al montar.
+Con `showPdfOutline: true`, el sidebar monta cuando hay `session` pero `loadOutline` aún no resolvió → `useState(outline.length > 0 ? 'outline' : 'pages')` queda en **Pages**. Cuando llega el outline, el tab no cambia. El e2e `outline entry and thumb jump` espera el botón `Go to Chapter Two` (en el tab Outline oculto) y hace timeout. Antes el sidebar se abría con un toggle _después_ de cargar, así que a veces el outline ya estaba listo al montar.
 
 #### Corrección
 
@@ -616,7 +616,7 @@ En el gate de pass-through, tratar `isBrowsing()` como `activeEmbeddable.active`
 
 Tras pass-through siempre-on (selection tool + miss → `.pdf-text-pass` → host `pointer-events: none`), el canvas de Excalidraw queda sordo en casi toda la página PDF. Dos fallos:
 
-1. **Race en pointerdown:** el browser elige el target *antes* de que el handler en capture apague pass. Un click sobre una shape/highlight/nota con pass aún on cae en la capa PDF; apagar PE en el mismo evento no retargetea → “no puedo clickear elementos”.
+1. **Race en pointerdown:** el browser elige el target _antes_ de que el handler en capture apague pass. Un click sobre una shape/highlight/nota con pass aún on cae en la capa PDF; apagar PE en el mismo evento no retargetea → “no puedo clickear elementos”.
 2. **Gate por `event.target`:** con pass off el target es el canvas de Excalidraw, nunca la capa PDF → pass no se arma (o al revés: armar pass en cualquier miss incluyendo gutters mata el marquee).
 
 #### Corrección
@@ -624,7 +624,7 @@ Tras pass-through siempre-on (selection tool + miss → `.pdf-text-pass` → hos
 - Armar pass solo si el punto está en el **bbox** de un `[data-pdf-page]` (geométrico, no `event.target`).
 - Pad ~12px en hover para apagar PE antes del borde del elemento.
 - Si `pointerdown` llega con pass on + hit de escena **sin pad**: `preventDefault` + re-dispatch al canvas interactivo.
-- E2E: disparar `pointerdown` en coords de la shape *sin* `mouse.move` previo (el move limpiaría pass y no ejercita el race).
+- E2E: disparar `pointerdown` en coords de la shape _sin_ `mouse.move` previo (el move limpiaría pass y no ejercita el race).
 
 ### Flechas: handles de edición muertos sobre texto PDF
 
@@ -706,7 +706,7 @@ Re-descargar el binary: `cd node_modules/electron && bun run install.js` (o `bun
 
 #### Descripción más detallada
 
-`0.18.0-1acf66e` es `@next` (~364 commits *adelante* de `0.18.1`). Parece “más viejo” por el número pero es tip de master. Subir sin adaptar el host deja el canvas muerto: el prop `excalidrawAPI` ya no existe → `apiRef` nunca se setea.
+`0.18.0-1acf66e` es `@next` (~364 commits _adelante_ de `0.18.1`). Parece “más viejo” por el número pero es tip de master. Subir sin adaptar el host deja el canvas muerto: el prop `excalidrawAPI` ya no existe → `apiRef` nunca se setea.
 
 #### Corrección (host adaptado a next)
 
@@ -715,7 +715,7 @@ Re-descargar el binary: `cd node_modules/electron && bun run install.js` (o `bun
 - Types: `@excalidraw/excalidraw/data/transform` → `@excalidraw/excalidraw/element/transform`.
 - `activeTool` requiere `fromSelection`.
 - Casts más estrictos (`LocalPoint`, `isDeleted: true` en `newElementWith`, `NonDeleted` en `activeEmbeddable`).
-- Leave-flush: `@next` stubbea `get*` y llama `onExcalidrawAPI(null)` *antes* del cleanup del host → cachear escena (`sceneCacheRef`) + `liveExcalidrawApi` (`!isDestroyed`).
+- Leave-flush: `@next` stubbea `get*` y llama `onExcalidrawAPI(null)` _antes_ del cleanup del host → cachear escena (`sceneCacheRef`) + `liveExcalidrawApi` (`!isDestroyed`).
 - Pass-through: tratar `lasso` como `selection` (re-click selection → lasso en next).
 - E2E: `.App-menu__left` ya no existe → `getByRole('region', { name: 'Selected shape actions' })` / `.selected-shape-actions` (también `.compact-shape-actions` top-left).
 - E2E outside-click deactivate: no `(20,20)` (compact shape actions) ni `(520,80)` (PDF tools toolbar `top-12`); usar canvas debajo del card p.ej. `(200,400)`.
@@ -762,5 +762,3 @@ Al “arreglar” stutter al mover note/web embed, el plan propuso chip Saved/Un
 - No tocar el chip / no imperativizar `saveStatus` por esto.
 - Flechas rAF-coalesced (un `updateScene` por frame); drag hot path salta maintenance; `markUnsaved` barato si ya dirty + buttons down; al `pointerup`/`pointercancel`/`blur` flush flechas + `runHostSceneMaintenance` + firma completa.
 - Hover early-return: **sin** `markUnsaved` (no reintroducir stringify en el spam de hover de Excalidraw).
-
-

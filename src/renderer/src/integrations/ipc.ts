@@ -19,8 +19,7 @@ export async function fetchImageUrl(
     mimeType?: string
   } | null
   if (!result?.bytes || typeof result.mimeType !== 'string' || !result.mimeType) return null
-  const bytes =
-    result.bytes instanceof Uint8Array ? result.bytes : new Uint8Array(result.bytes)
+  const bytes = result.bytes instanceof Uint8Array ? result.bytes : new Uint8Array(result.bytes)
   if (bytes.byteLength === 0) return null
   return { bytes, mimeType: result.mimeType }
 }

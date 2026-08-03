@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
-import {
-  isHostLockedPdfArtifact,
-  shouldSuppressUnlockPopup
-} from './suppressUnlockPopup'
+import { isHostLockedPdfArtifact, shouldSuppressUnlockPopup } from './suppressUnlockPopup'
 
 function baseEl(
   partial: Partial<OrderedExcalidrawElement> & { id: string }

@@ -20,40 +20,40 @@ Guiding principles:
 
 ### Done (v1 canvas)
 
-| Feature | Where |
-|---------|--------|
-| Categories library + PDF upload (existing Libritus FS) | `stores/categories`, `integrations/fs` |
-| Session per PDF (`{pdfId}.session.json`: elements + camera) | `PdfCanvasApp`, `lib/pdf-canvas/session` |
-| Autosave debounce 5s + Saved/Unsaved + flush on leave | `PdfCanvasApp` |
-| Open PDF from category → ArrayBuffer → PDFium (EmbedPDF) | `PdfCanvasApp`, `PdfDocument` |
-| Column layout + gap + world-scale normalization | `PageLayout`, `pageWorldScale` |
-| Virtualization: visible pages only (+ buffer) | `PagePool`, `PdfLayer` |
-| Reusable pool + cancel off-screen renders | `PagePool` |
-| Adaptive render density + CSS zoom (no re-raster on zoom) | `PdfRenderer`, `renderScaleForWorld`, `PdfLayer` |
-| Text selection on visible pages (EmbedPDF SelectionLayer) | `PdfLayer`, `@embedpdf/plugin-selection` |
-| Selection → locked Excalidraw highlights (+ HighlightToolbar) | `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PdfCanvasApp` (selection-tool pass-through) |
-| Click highlight → “Add note” / “Buscar” / “Remove” chips (+ note/search arrows) | `PdfCanvasApp`, `pdfNotes`, `pdfSearchCapture` |
-| Remove highlight cascades linked notes + search captures + arrows | `idsDeletedWithHighlight`, `PdfCanvasApp` |
-| WYSIWYG notes (Plate + `pdfNote` embeddable) | `NoteEmbed`, `pdfNotes`, `pdfNoteModel` |
-| Web search capture (Buscar / Place browser → guest WebContentsView → PNG as native image) | `SearchCaptureEmbed`, `pdfSearchCapture`, `src/main/web-browser.ts` |
-| Freehand / shapes / undo | Excalidraw built-in |
-| Page navigation (prev/next, input, current page) | `PageNavigator`, `PageLayout`, `PdfCanvasApp` |
-| PDF text search (find bar + jump + hit overlay; same-line rect dedupe) | `PdfFindBar`, `pdfSearch`, `mergeSameLineRects`, `PdfLayer.setSearchHit`, `PdfCanvasApp` |
-| Outline + page thumbnails (sidebar) | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp` |
-| Annotation panel (highlights + notes + searches list) | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp` |
-| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **unmounted**) | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
+| Feature                                                                                        | Where                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Categories library + PDF upload (existing Libritus FS)                                         | `stores/categories`, `integrations/fs`                                                                                                                |
+| Session per PDF (`{pdfId}.session.json`: elements + camera)                                    | `PdfCanvasApp`, `lib/pdf-canvas/session`                                                                                                              |
+| Autosave debounce 5s + Saved/Unsaved + flush on leave                                          | `PdfCanvasApp`                                                                                                                                        |
+| Open PDF from category → ArrayBuffer → PDFium (EmbedPDF)                                       | `PdfCanvasApp`, `PdfDocument`                                                                                                                         |
+| Column layout + gap + world-scale normalization                                                | `PageLayout`, `pageWorldScale`                                                                                                                        |
+| Virtualization: visible pages only (+ buffer)                                                  | `PagePool`, `PdfLayer`                                                                                                                                |
+| Reusable pool + cancel off-screen renders                                                      | `PagePool`                                                                                                                                            |
+| Adaptive render density + CSS zoom (no re-raster on zoom)                                      | `PdfRenderer`, `renderScaleForWorld`, `PdfLayer`                                                                                                      |
+| Text selection on visible pages (EmbedPDF SelectionLayer)                                      | `PdfLayer`, `@embedpdf/plugin-selection`                                                                                                              |
+| Selection → locked Excalidraw highlights (+ HighlightToolbar)                                  | `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PdfCanvasApp` (selection-tool pass-through)                                      |
+| Click highlight → “Add note” / “Buscar” / “Remove” chips (+ note/search arrows)                | `PdfCanvasApp`, `pdfNotes`, `pdfSearchCapture`                                                                                                        |
+| Remove highlight cascades linked notes + search captures + arrows                              | `idsDeletedWithHighlight`, `PdfCanvasApp`                                                                                                             |
+| WYSIWYG notes (Plate + `pdfNote` embeddable)                                                   | `NoteEmbed`, `pdfNotes`, `pdfNoteModel`                                                                                                               |
+| Web search capture (Buscar / Place browser → guest WebContentsView → PNG as native image)      | `SearchCaptureEmbed`, `pdfSearchCapture`, `src/main/web-browser.ts`                                                                                   |
+| Freehand / shapes / undo                                                                       | Excalidraw built-in                                                                                                                                   |
+| Page navigation (prev/next, input, current page)                                               | `PageNavigator`, `PageLayout`, `PdfCanvasApp`                                                                                                         |
+| PDF text search (find bar + jump + hit overlay; same-line rect dedupe)                         | `PdfFindBar`, `pdfSearch`, `mergeSameLineRects`, `PdfLayer.setSearchHit`, `PdfCanvasApp`                                                              |
+| Outline + page thumbnails (sidebar)                                                            | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp`                                                                                               |
+| Annotation panel (highlights + notes + searches list)                                          | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp`                                                                                        |
+| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **unmounted**)                               | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI                                                   |
 | Annotation polish: highlight color palette + delete note (keeps highlight) + Copiar on toolbar | `HighlightToolbar`, `selectionToHighlights` (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`); note delete via Excalidraw + host `pdfNoteArrow` cleanup |
 
 ### Pending / roadmap
 
-| Priority | Feature | Notes |
-|----------|---------|--------|
-| **v1.1** | Finish annotation polish | Copy selected PDF text without creating a highlight |
-| **v1.1** | Optional page-space annotation model (`pageIndex` + page geometry) | Today live in Excalidraw **scene coords** (intentional); not a renderer-migration path |
-| **v1.1** | Migrate legacy highlights/comments/essays from `categories.json` | Old lector model — not wired to canvas |
-| **v1.1** | Essays HUD / reading shortcuts / navigation history | See feature specs |
-| **Scale** | Visible-set cap, LOD beyond Phase 1, evict release, streaming/OPFS | Stay on Excalidraw — see roadmap |
-| **Later** | Canvas Q&A cards; nav-only PDF sidebar; retire Chat silo | See [`product-north.md`](docs/features/product-north.md), roadmap |
+| Priority  | Feature                                                            | Notes                                                                                  |
+| --------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| **v1.1**  | Finish annotation polish                                           | Copy selected PDF text without creating a highlight                                    |
+| **v1.1**  | Optional page-space annotation model (`pageIndex` + page geometry) | Today live in Excalidraw **scene coords** (intentional); not a renderer-migration path |
+| **v1.1**  | Migrate legacy highlights/comments/essays from `categories.json`   | Old lector model — not wired to canvas                                                 |
+| **v1.1**  | Essays HUD / reading shortcuts / navigation history                | See feature specs                                                                      |
+| **Scale** | Visible-set cap, LOD beyond Phase 1, evict release, streaming/OPFS | Stay on Excalidraw — see roadmap                                                       |
+| **Later** | Canvas Q&A cards; nav-only PDF sidebar; retire Chat silo           | See [`product-north.md`](docs/features/product-north.md), roadmap                      |
 
 See [`docs/roadmap.md`](docs/roadmap.md).
 
@@ -116,13 +116,13 @@ Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md
 
 ### Conscious gaps (improve on Excalidraw)
 
-| Gap | Today |
-|-----|--------|
-| Page-space annotations | Scene coords (session persists scene-space on purpose) |
-| LOD / tiles | Adaptive density Phase 1 (`renderScaleForWorld`); no zoom-based LOD yet |
-| Camera outside React | Excalidraw owns camera; host syncs pools via refs |
-| Spatial index | Linear element scan (`findPdfHighlightAt`) |
-| Whole PDF in RAM | Open = ArrayBuffer → `openDocumentBuffer` |
+| Gap                                | Today                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page-space annotations             | Scene coords (session persists scene-space on purpose)                                                                                                                                                                                                                                                                                                                                                            |
+| LOD / tiles                        | Adaptive density Phase 1 (`renderScaleForWorld`); no zoom-based LOD yet                                                                                                                                                                                                                                                                                                                                           |
+| Camera outside React               | Excalidraw owns camera; host syncs pools via refs                                                                                                                                                                                                                                                                                                                                                                 |
+| Spatial index                      | Linear element scan (`findPdfHighlightAt`)                                                                                                                                                                                                                                                                                                                                                                        |
+| Whole PDF in RAM                   | Open = ArrayBuffer → `openDocumentBuffer`                                                                                                                                                                                                                                                                                                                                                                         |
 | Native text edit off-screen growth | Editing Excalidraw text, pan so it leaves the viewport, then type → container can grow/overflow via WYSIWYG `scrollIntoView` ([upstream #8936](https://github.com/excalidraw/excalidraw/issues/8936)). **Do not** host-mitigate or patch Excalidraw — wait for [#11056](https://github.com/excalidraw/excalidraw/pull/11056) (or successor) to land and bump `@excalidraw/excalidraw` when a release includes it. |
 
 ---
@@ -135,14 +135,14 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 ### Where RAM goes
 
-| Source | What happens | Files |
-|--------|--------------|-------|
-| **Page bitmaps** | Each slot renders at `renderScaleForWorld(worldScale)` (~`TARGET_WORLD_DENSITY` = 2 device px per world CSS px, clamped). Letter ≈ ~8 MB RGBA per page at 2×. | `PdfRenderer.ts`, `pageWorldScale.ts`, `PagePool.ts` |
-| **Visibility buffer** | `PdfLayer` expands AABB with viewport size / zoom. Zoom-out explodes the visible set. | `PdfLayer.tsx`, `PageLayout.queryVisible` |
-| **Whole PDF in process** | Open = ArrayBuffer → `openDocumentBuffer`. | `PdfDocument.ts`, `PdfCanvasApp` |
-| **Metadata pass** | `getPage` for all pages for sizes — warms worker on huge docs. | `PdfDocument.open` |
-| **Text selection** | EmbedPDF SelectionLayer glyph overlays for visible pages (not DOM text spans). | `PdfLayer.tsx`, `@embedpdf/plugin-selection` |
-| **Excalidraw** | Scene + internal textures. | `PdfCanvasApp` |
+| Source                   | What happens                                                                                                                                                  | Files                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| **Page bitmaps**         | Each slot renders at `renderScaleForWorld(worldScale)` (~`TARGET_WORLD_DENSITY` = 2 device px per world CSS px, clamped). Letter ≈ ~8 MB RGBA per page at 2×. | `PdfRenderer.ts`, `pageWorldScale.ts`, `PagePool.ts` |
+| **Visibility buffer**    | `PdfLayer` expands AABB with viewport size / zoom. Zoom-out explodes the visible set.                                                                         | `PdfLayer.tsx`, `PageLayout.queryVisible`            |
+| **Whole PDF in process** | Open = ArrayBuffer → `openDocumentBuffer`.                                                                                                                    | `PdfDocument.ts`, `PdfCanvasApp`                     |
+| **Metadata pass**        | `getPage` for all pages for sizes — warms worker on huge docs.                                                                                                | `PdfDocument.open`                                   |
+| **Text selection**       | EmbedPDF SelectionLayer glyph overlays for visible pages (not DOM text spans).                                                                                | `PdfLayer.tsx`, `@embedpdf/plugin-selection`         |
+| **Excalidraw**           | Scene + internal textures.                                                                                                                                    | `PdfCanvasApp`                                       |
 
 ### Levers (suggested priority)
 
@@ -192,7 +192,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 **Cause (two Excalidraw traps):**
 
 1. Highlights are `locked: true`. Locked elements are not bindable for interactive rebind. If the arrow start is bound to the highlight, releasing a handle clears that binding.
-2. Straight arrows rebind *both* ends when dragging one. Free start near the note snaps to the same note → zero-length arrow.
+2. Straight arrows rebind _both_ ends when dragging one. Free start near the note snaps to the same note → zero-length arrow.
 
 **Canonical fix** (in `createNoteFromHighlight` / `pdfNotes.ts`):
 

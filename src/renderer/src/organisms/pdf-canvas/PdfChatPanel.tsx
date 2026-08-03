@@ -1,7 +1,4 @@
-import {
-  ChatContainerContent,
-  ChatContainerRoot
-} from '@renderer/components/ui/chat-container'
+import { ChatContainerContent, ChatContainerRoot } from '@renderer/components/ui/chat-container'
 import { Message, MessageContent } from '@renderer/components/ui/message'
 import {
   PromptInput,

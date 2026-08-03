@@ -26,9 +26,7 @@ export async function browserSetBounds(bounds: BrowserBounds): Promise<void> {
 }
 
 export async function browserSetZoom(zoomFactor: number): Promise<number> {
-  return readZoomFactor(
-    await window.electron.ipcRenderer.invoke('browser:setZoom', zoomFactor)
-  )
+  return readZoomFactor(await window.electron.ipcRenderer.invoke('browser:setZoom', zoomFactor))
 }
 
 export async function browserGoBack(): Promise<void> {

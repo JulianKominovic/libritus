@@ -215,9 +215,9 @@ function stubClipboard(opts: {
 
 describe('pastedHttpUrlForSearchCapture', () => {
   test('plain URL becomes search-capture URL', () => {
-    expect(
-      pastedHttpUrlForSearchCapture(stubClipboard({ text: 'https://example.com/page' }))
-    ).toBe('https://example.com/page')
+    expect(pastedHttpUrlForSearchCapture(stubClipboard({ text: 'https://example.com/page' }))).toBe(
+      'https://example.com/page'
+    )
   })
 
   test('image/* + URL text does not steal image paste', () => {
@@ -273,9 +273,9 @@ describe('resolveSearchCaptureOpenUrl', () => {
   })
 
   test('both empty + query → Google search', () => {
-    expect(
-      resolveSearchCaptureOpenUrl({ customData: { query: 'quantum' } }, null)
-    ).toBe('https://www.google.com/search?q=quantum')
+    expect(resolveSearchCaptureOpenUrl({ customData: { query: 'quantum' } }, null)).toBe(
+      'https://www.google.com/search?q=quantum'
+    )
   })
 })
 

@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { JSDOM } from 'jsdom'
-import {
-  EXCALIDRAW_UI_POINTER_SELECTOR,
-  isExcalidrawUiPointerTarget
-} from './excalidrawUiTarget'
+import { EXCALIDRAW_UI_POINTER_SELECTOR, isExcalidrawUiPointerTarget } from './excalidrawUiTarget'
 
 function makeDom() {
   return new JSDOM('<!doctype html><html><body></body></html>').window.document

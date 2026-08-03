@@ -9,8 +9,8 @@ describe('pdfiumWasmUrlFrom', () => {
   })
 
   test('file: resolves next to index.html', () => {
-    expect(
-      pdfiumWasmUrlFrom('file:', 'file://', 'file:///Users/me/app/index.html')
-    ).toBe('file:///Users/me/app/wasm/pdfium.wasm')
+    expect(pdfiumWasmUrlFrom('file:', 'file://', 'file:///Users/me/app/index.html')).toBe(
+      'file:///Users/me/app/wasm/pdfium.wasm'
+    )
   })
 })

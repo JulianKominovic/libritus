@@ -1,7 +1,13 @@
 import { rm } from 'node:fs/promises'
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { clickScene, closePdfSidebar, expectUnsaved, tmpAppData, waitForSession } from './helpers/canvas'
+import {
+  clickScene,
+  closePdfSidebar,
+  expectUnsaved,
+  tmpAppData,
+  waitForSession
+} from './helpers/canvas'
 import { openPdf, readSessionFile, seedLibrary } from './helpers/seed'
 
 test('quit with Unsaved flushes session; reopen shows note', async () => {

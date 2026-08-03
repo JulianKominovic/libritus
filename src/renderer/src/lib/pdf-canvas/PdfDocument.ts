@@ -31,13 +31,7 @@ export class PdfDocument {
       width: p.size.width,
       height: p.size.height
     }))
-    return new PdfDocument(
-      engine,
-      handle,
-      handle.pageCount,
-      pageSizes,
-      options?.ownsClose ?? false
-    )
+    return new PdfDocument(engine, handle, handle.pageCount, pageSizes, options?.ownsClose ?? false)
   }
 
   static async open(data: ArrayBuffer): Promise<PdfDocument> {

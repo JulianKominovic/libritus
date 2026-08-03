@@ -7,11 +7,7 @@ import type {
 } from '@excalidraw/excalidraw/element/types'
 import type { AppState } from '@excalidraw/excalidraw/types'
 import type { PageLayout } from './PageLayout'
-import {
-  highlightGroupId,
-  isPdfHighlight,
-  type PdfHighlightData
-} from './pdfHighlightModel'
+import { highlightGroupId, isPdfHighlight, type PdfHighlightData } from './pdfHighlightModel'
 
 export {
   findPdfHighlightAt,

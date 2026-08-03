@@ -15,9 +15,7 @@ export function visibilityBuffer(
 }
 
 /** World AABB + buffer used by PdfLayer for page culling. */
-export function visiblePagesQuery(
-  camera: CameraState
-): { aabb: WorldAABB; buffer: number } {
+export function visiblePagesQuery(camera: CameraState): { aabb: WorldAABB; buffer: number } {
   const aabb = worldAABBFromCamera(
     camera.scrollX,
     camera.scrollY,
@@ -43,8 +41,7 @@ export function trimVisibleToCap(
 ): number[] {
   if (indices.length <= max) return indices
 
-  const worldCenterY =
-    -camera.scrollY + camera.viewportHeight / (2 * Math.max(camera.zoom, 0.01))
+  const worldCenterY = -camera.scrollY + camera.viewportHeight / (2 * Math.max(camera.zoom, 0.01))
 
   const ranked = indices
     .map((pageIndex) => {

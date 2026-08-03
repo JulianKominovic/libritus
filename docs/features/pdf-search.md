@@ -25,13 +25,13 @@ Out of scope (for now):
 
 ## UX
 
-| Control | Behavior |
-|---------|----------|
-| **Search field** | Open via chrome **Search** button. Debounced query (~250ms). |
-| **Enter / ↓** | Next match. |
-| **⇧Enter / ↑** | Previous match. |
-| **Escape** | Close find bar and clear active hit. |
-| **Empty / no hits** | Clear match chrome; show `0/0`, not an error. |
+| Control             | Behavior                                                     |
+| ------------------- | ------------------------------------------------------------ |
+| **Search field**    | Open via chrome **Search** button. Debounced query (~250ms). |
+| **Enter / ↓**       | Next match.                                                  |
+| **⇧Enter / ↑**      | Previous match.                                              |
+| **Escape**          | Close find bar and clear active hit.                         |
+| **Empty / no hits** | Clear match chrome; show `0/0`, not an error.                |
 
 Position: compact find bar beside the bottom page navigator. Do not bury in Excalidraw’s menu.
 
@@ -50,12 +50,12 @@ In `text-select-mode`, search chrome keeps `pointer-events-auto` like [`pdf-navi
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **PDF navigation** | Search jumps camera; current page chip updates from viewport center. |
-| **Virtualization** | Far jumps trigger the same pool sync as prev/next. |
-| **Text select** | Independent modes; search must not require text-select mode. |
-| **Annotation panel** | Different corpus (PDF text vs user marks). |
+| Feature              | Interaction                                                          |
+| -------------------- | -------------------------------------------------------------------- |
+| **PDF navigation**   | Search jumps camera; current page chip updates from viewport center. |
+| **Virtualization**   | Far jumps trigger the same pool sync as prev/next.                   |
+| **Text select**      | Independent modes; search must not require text-select mode.         |
+| **Annotation panel** | Different corpus (PDF text vs user marks).                           |
 
 ---
 

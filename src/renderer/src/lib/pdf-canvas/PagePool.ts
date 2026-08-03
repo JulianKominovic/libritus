@@ -262,13 +262,7 @@ export class PagePool {
       if (this.destroyed || this.runToken.get(pageIndex) !== token) return
       if (!this.wanted.has(pageIndex) || !this.slots.has(pageIndex)) return
 
-      ownTask = renderPageToCanvas(
-        this.doc.engine,
-        this.doc.handle,
-        page,
-        slot.canvas,
-        scale
-      )
+      ownTask = renderPageToCanvas(this.doc.engine, this.doc.handle, page, slot.canvas, scale)
       this.jobs.set(pageIndex, { pageIndex, scale, task: ownTask })
       this.pump()
 

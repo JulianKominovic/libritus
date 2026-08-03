@@ -78,10 +78,7 @@ export function chapterRangesFromOutline(
   return ranges
 }
 
-export function chapterTitleForPage(
-  ranges: ChapterRange[],
-  pageIndex: number
-): string | undefined {
+export function chapterTitleForPage(ranges: ChapterRange[], pageIndex: number): string | undefined {
   for (let i = ranges.length - 1; i >= 0; i--) {
     const r = ranges[i]
     if (pageIndex >= r.start && pageIndex <= r.end) return r.title

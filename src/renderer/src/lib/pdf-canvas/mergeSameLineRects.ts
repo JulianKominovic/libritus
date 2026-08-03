@@ -23,12 +23,15 @@ function sameLine(a: ClientBox, b: ClientBox): boolean {
  * per line. Engine text runs often emit multiple overlapping boxes per row.
  */
 export function mergeSameLineRects(
-  rects: ArrayLike<Pick<ClientBox, 'left' | 'top' | 'right' | 'bottom'> & { width?: number; height?: number }>
+  rects: ArrayLike<
+    Pick<ClientBox, 'left' | 'top' | 'right' | 'bottom'> & { width?: number; height?: number }
+  >
 ): ClientBox[] {
   const boxes: ClientBox[] = []
   for (let i = 0; i < rects.length; i++) {
     const rect = rects[i]!
-    const width = 'width' in rect && typeof rect.width === 'number' ? rect.width : rect.right - rect.left
+    const width =
+      'width' in rect && typeof rect.width === 'number' ? rect.width : rect.right - rect.left
     const height =
       'height' in rect && typeof rect.height === 'number' ? rect.height : rect.bottom - rect.top
     if (width * height < MIN_RECT_AREA) continue

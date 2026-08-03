@@ -1,9 +1,5 @@
 import { readFile, writeFile } from '@renderer/integrations/fs'
-import {
-  parseRagIndex,
-  type ChatHistoryMessage,
-  type RagIndex
-} from './pdfRag'
+import { parseRagIndex, type ChatHistoryMessage, type RagIndex } from './pdfRag'
 
 function ragFilename(pdfId: string): string {
   return `${pdfId}.rag.json`
@@ -32,7 +28,9 @@ export async function readChatHistory(pdfId: string): Promise<ChatHistoryMessage
   const bytes = await readFile(chatFilename(pdfId))
   if (!bytes) return []
   try {
-    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as { messages?: ChatHistoryMessage[] }
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
+      messages?: ChatHistoryMessage[]
+    }
     return Array.isArray(parsed.messages) ? parsed.messages : []
   } catch {
     return []

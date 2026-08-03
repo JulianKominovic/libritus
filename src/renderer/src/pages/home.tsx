@@ -141,11 +141,7 @@ function HomePage() {
             <ul className="flex flex-wrap gap-8">
               {recent.map(({ categoryId, categoryName, pdf }) => (
                 <li key={pdf.id}>
-                  <HomePdfCard
-                    categoryId={categoryId}
-                    categoryName={categoryName}
-                    pdf={pdf}
-                  />
+                  <HomePdfCard categoryId={categoryId} categoryName={categoryName} pdf={pdf} />
                 </li>
               ))}
             </ul>

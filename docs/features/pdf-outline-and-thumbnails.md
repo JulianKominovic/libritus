@@ -26,12 +26,12 @@ Out of scope (for now):
 
 ## UX
 
-| Surface | Behavior |
-|---------|----------|
-| **Toggle** | Navbar panel-right + Settings `showPdfOutline`; right overlay when open. |
-| **Outline** | Tree from EmbedPDF bookmarks (`getBookmarks`). Missing outline → empty / hidden, not an error. |
-| **Thumbnails** | One slot per page or virtualized list; active page marked from viewport center. |
-| **Click item** | `goToPage` / destination scroll; same zoom + stable X as nav. |
+| Surface        | Behavior                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| **Toggle**     | Navbar panel-right + Settings `showPdfOutline`; right overlay when open.                       |
+| **Outline**    | Tree from EmbedPDF bookmarks (`getBookmarks`). Missing outline → empty / hidden, not an error. |
+| **Thumbnails** | One slot per page or virtualized list; active page marked from viewport center.                |
+| **Click item** | `goToPage` / destination scroll; same zoom + stable X as nav.                                  |
 
 In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 
@@ -55,13 +55,13 @@ In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
+| Feature            | Interaction                                                                     |
+| ------------------ | ------------------------------------------------------------------------------- |
 | **PDF navigation** | Same jump primitives; thumbs/outline are discovery, nav is precise page number. |
-| **PDF search** | Complementary: structure vs string match. |
-| **Memory / pools** | Thumbs must not inflate the main page pool buffer. |
-| **Sessions** | No need to persist outline; camera already restores position. |
-| **Product north** | These tabs are the nav destination of the PDF sidebar. |
+| **PDF search**     | Complementary: structure vs string match.                                       |
+| **Memory / pools** | Thumbs must not inflate the main page pool buffer.                              |
+| **Sessions**       | No need to persist outline; camera already restores position.                   |
+| **Product north**  | These tabs are the nav destination of the PDF sidebar.                          |
 
 ---
 

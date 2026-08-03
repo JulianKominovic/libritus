@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/launch'
-import { leaveToHome, waitForSession, clickScene, closePdfSidebar, tmpAppData } from './helpers/canvas'
 import {
-  openPdf,
-  readSessionFile,
-  seedLibrary,
-  seedNoteElement,
-  seedSession
-} from './helpers/seed'
+  leaveToHome,
+  waitForSession,
+  clickScene,
+  closePdfSidebar,
+  tmpAppData
+} from './helpers/canvas'
+import { openPdf, readSessionFile, seedLibrary, seedNoteElement, seedSession } from './helpers/seed'
 
 test('restores seeded note and flushes place-note on leave', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-session-')

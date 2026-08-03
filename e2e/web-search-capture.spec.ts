@@ -37,9 +37,7 @@ async function seedAttachmentPng(appDataDir: string, fileId: string): Promise<vo
 function liveElements(snap: { elements?: unknown[] }): Record<string, unknown>[] {
   return (snap.elements ?? []).filter(
     (el): el is Record<string, unknown> =>
-      !!el &&
-      typeof el === 'object' &&
-      (el as { isDeleted?: boolean }).isDeleted !== true
+      !!el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
   )
 }
 
@@ -227,8 +225,8 @@ test('Buscar from highlight creates search capture + host-managed arrow', async 
           (el) =>
             el &&
             typeof el === 'object' &&
-            (el as { customData?: { pdfSearchCapture?: boolean } }).customData
-              ?.pdfSearchCapture === true
+            (el as { customData?: { pdfSearchCapture?: boolean } }).customData?.pdfSearchCapture ===
+              true
         )
     )
 
@@ -949,7 +947,9 @@ test('Excalidraw style panel click does not activate search capture underneath',
     await expect(panel).toBeVisible({ timeout: 10_000 })
 
     // Click stroke chrome over the capture — must not activate browse underneath.
-    await panel.getByRole('button', { name: 'Stroke', description: 'Show stroke color picker' }).click()
+    await panel
+      .getByRole('button', { name: 'Stroke', description: 'Show stroke color picker' })
+      .click()
 
     // Regression: host scene hit-test must ignore .layer-ui__wrapper.
     await page.waitForTimeout(600)

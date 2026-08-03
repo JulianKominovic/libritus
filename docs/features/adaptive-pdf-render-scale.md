@@ -32,11 +32,11 @@ Effective on-screen density:
 bitmapPx / cssPx ≈ renderScale / worldScale ≈ TARGET_WORLD_DENSITY (clamped)
 ```
 
-| Native page width | `worldScale` | Adaptive bitmap | CSS width | Density |
-|-------------------|--------------|-----------------|-----------|---------|
-| 612 (Letter)      | 1            | 1224            | 612       | **2×** |
-| 300 (small crop)  | 2.04         | ~1224 (max 4)   | 612       | **~2×** |
-| 2000 (scan-as-pts)| 0.306        | ~612 (min 1)    | 612       | **~1×** |
+| Native page width  | `worldScale` | Adaptive bitmap | CSS width | Density |
+| ------------------ | ------------ | --------------- | --------- | ------- |
+| 612 (Letter)       | 1            | 1224            | 612       | **2×**  |
+| 300 (small crop)   | 2.04         | ~1224 (max 4)   | 612       | **~2×** |
+| 2000 (scan-as-pts) | 0.306        | ~612 (min 1)    | 612       | **~1×** |
 
 ```ts
 renderScale = clamp(TARGET_WORLD_DENSITY * worldScale, 1, 4)
@@ -115,13 +115,13 @@ Skip Phase 2 until Phase 1 is validated in product — most “definition differ
 
 ## Files touched (Phase 1)
 
-| File | Change |
-|------|--------|
-| [`PdfRenderer.ts`](../../src/renderer/src/lib/pdf-canvas/PdfRenderer.ts) | `FIXED_RENDER_SCALE` = default density / fallback. |
-| [`pageWorldScale.ts`](../../src/renderer/src/lib/pdf-canvas/pageWorldScale.ts) | `renderScaleForWorld(worldScale)`. |
-| [`PagePool.ts`](../../src/renderer/src/lib/pdf-canvas/PagePool.ts) | Accept `renderScale`; use in `renderSlot`. |
+| File                                                                               | Change                                                      |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [`PdfRenderer.ts`](../../src/renderer/src/lib/pdf-canvas/PdfRenderer.ts)           | `FIXED_RENDER_SCALE` = default density / fallback.          |
+| [`pageWorldScale.ts`](../../src/renderer/src/lib/pdf-canvas/pageWorldScale.ts)     | `renderScaleForWorld(worldScale)`.                          |
+| [`PagePool.ts`](../../src/renderer/src/lib/pdf-canvas/PagePool.ts)                 | Accept `renderScale`; use in `renderSlot`.                  |
 | [`PdfCanvasApp.tsx`](../../src/renderer/src/organisms/pdf-canvas/PdfCanvasApp.tsx) | Pass `renderScaleForWorld(worldScale)` into `new PagePool`. |
-| Tests | `renderScaleForWorld` + PagePool injected scale. |
+| Tests                                                                              | `renderScaleForWorld` + PagePool injected scale.            |
 
 Search hits already multiply by `layout.scale`. Text selection uses EmbedPDF `SelectionLayer` at the same page CSS scale (`layout.scale`).
 

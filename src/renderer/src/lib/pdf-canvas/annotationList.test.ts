@@ -10,7 +10,9 @@ import {
 } from './annotationList'
 import { emptyPlateValue, plateValueFromQuote } from './pdfNoteModel'
 
-function baseEl(partial: Partial<OrderedExcalidrawElement> & { id: string }): OrderedExcalidrawElement {
+function baseEl(
+  partial: Partial<OrderedExcalidrawElement> & { id: string }
+): OrderedExcalidrawElement {
   return {
     type: 'rectangle',
     x: 0,
@@ -248,12 +250,10 @@ describe('annotationList', () => {
   })
 
   test('canvasStatsNeedWriteback treats undefined as zeros', () => {
-    expect(
-      canvasStatsNeedWriteback(undefined, { highlights: 0, notes: 0, searches: 0 })
-    ).toBe(false)
-    expect(
-      canvasStatsNeedWriteback(undefined, { highlights: 1, notes: 0, searches: 0 })
-    ).toBe(true)
+    expect(canvasStatsNeedWriteback(undefined, { highlights: 0, notes: 0, searches: 0 })).toBe(
+      false
+    )
+    expect(canvasStatsNeedWriteback(undefined, { highlights: 1, notes: 0, searches: 0 })).toBe(true)
     expect(
       canvasStatsNeedWriteback(
         { highlights: 1, notes: 2, searches: 0 },

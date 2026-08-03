@@ -73,13 +73,13 @@ User-facing behavior should stay the same (select text → highlight, place note
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **Persistence** | Versioned session; migration from pure scene-space snapshots. |
-| **Selection → highlights** | Write page-space at create time. |
-| **WYSIWYG notes** | Store page anchor; project embeddable rect for paint. |
-| **Legacy migration** | Map old lector highlights into page-space when available; else best-effort scene placement. |
-| **Search hit overlay** | Same page-space rect language (already used for hits). |
+| Feature                    | Interaction                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| **Persistence**            | Versioned session; migration from pure scene-space snapshots.                               |
+| **Selection → highlights** | Write page-space at create time.                                                            |
+| **WYSIWYG notes**          | Store page anchor; project embeddable rect for paint.                                       |
+| **Legacy migration**       | Map old lector highlights into page-space when available; else best-effort scene placement. |
+| **Search hit overlay**     | Same page-space rect language (already used for hits).                                      |
 
 ---
 

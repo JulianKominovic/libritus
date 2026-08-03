@@ -34,12 +34,12 @@ Viewport/Scroller/RenderLayer stay unmounted (Excalidraw owns the camera).
 
 ### Done
 
-| Action | Behavior |
-|--------|----------|
-| **Highlight color** | Palette on the active highlight toolbar (next to Add note / Buscar / Copiar / Remove). Persist color on the highlight group (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`). |
-| **Remove note** | Select the note (grab the **edge**), then Backspace/Delete. Excalidraw deletes the note embeddable; host cleans up its `pdfNoteArrow`. Source highlight is **kept**. Undo restores note + arrow. No dedicated “Remove note” chip. |
-| **Remove highlight** | Done in v1: cascades notes with `sourceHighlightId` + their arrows (`idsDeletedWithHighlight`). |
-| **Copy text** | **Copiar** on the highlight toolbar (pending text selection or committed highlight) writes `customData.text` to the clipboard and closes the toolbar. No session dirty. |
+| Action               | Behavior                                                                                                                                                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Highlight color**  | Palette on the active highlight toolbar (next to Add note / Buscar / Copiar / Remove). Persist color on the highlight group (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`).                                                      |
+| **Remove note**      | Select the note (grab the **edge**), then Backspace/Delete. Excalidraw deletes the note embeddable; host cleans up its `pdfNoteArrow`. Source highlight is **kept**. Undo restores note + arrow. No dedicated “Remove note” chip. |
+| **Remove highlight** | Done in v1: cascades notes with `sourceHighlightId` + their arrows (`idsDeletedWithHighlight`).                                                                                                                                   |
+| **Copy text**        | **Copiar** on the highlight toolbar (pending text selection or committed highlight) writes `customData.text` to the clipboard and closes the toolbar. No session dirty.                                                           |
 
 Default highlight appearance stays readable on light pages (light-mode only).
 
@@ -55,11 +55,11 @@ Default highlight appearance stays readable on light pages (light-mode only).
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **WYSIWYG notes** | Remove-note must respect host-managed arrow / `pdfNoteArrow` rules (do not leave orphan connectors). |
-| **Annotation panel** | List updates when color/delete changes. |
-| **Sessions** | Color + deletes dirty the session like any scene edit. Copy does not. |
+| Feature              | Interaction                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| **WYSIWYG notes**    | Remove-note must respect host-managed arrow / `pdfNoteArrow` rules (do not leave orphan connectors). |
+| **Annotation panel** | List updates when color/delete changes.                                                              |
+| **Sessions**         | Color + deletes dirty the session like any scene edit. Copy does not.                                |
 
 ---
 

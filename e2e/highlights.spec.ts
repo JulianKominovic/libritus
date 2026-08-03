@@ -295,14 +295,13 @@ test('Add note from grouped highlight uses groupId as sourceHighlightId', async 
           (el) =>
             (el as { customData?: { pdfNote?: boolean; sourceHighlightId?: string } }).customData
               ?.pdfNote === true &&
-            (el as { customData?: { sourceHighlightId?: string } }).customData?.sourceHighlightId ===
-              groupId
+            (el as { customData?: { sourceHighlightId?: string } }).customData
+              ?.sourceHighlightId === groupId
         )
     )
 
     const note = (snap.elements ?? []).find(
-      (el) =>
-        (el as { customData?: { pdfNote?: boolean } }).customData?.pdfNote === true
+      (el) => (el as { customData?: { pdfNote?: boolean } }).customData?.pdfNote === true
     ) as { customData?: { sourceHighlightId?: string } }
 
     expect(note.customData?.sourceHighlightId).toBe(groupId)
@@ -403,10 +402,7 @@ test('Remove highlight also deletes linked notes and arrows', async () => {
       () => readSessionFile(appDataDir, pdfId),
       (s) => {
         const live = (s.elements ?? []).filter(
-          (el) =>
-            el &&
-            typeof el === 'object' &&
-            (el as { isDeleted?: boolean }).isDeleted !== true
+          (el) => el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
         )
         const hasHl = live.some(
           (el) =>
@@ -422,8 +418,7 @@ test('Remove highlight also deletes linked notes and arrows', async () => {
     )
 
     const live = (snap.elements ?? []).filter(
-      (el) =>
-        el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
+      (el) => el && typeof el === 'object' && (el as { isDeleted?: boolean }).isDeleted !== true
     )
     expect(
       live.some(

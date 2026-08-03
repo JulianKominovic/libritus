@@ -17,14 +17,14 @@ You are a senior code reviewer for Libritus (Electron research workspace: infini
 
 **Read and enforce every** `.cursor/rules/*.mdc` against the diff. Flag violations:
 
-| Rule | Path |
-|------|------|
-| Coding (light mode, English, never patch Excalidraw) | `.cursor/rules/coding-rules.mdc` |
-| Lucide → `DynamicIcon` only | `.cursor/rules/lucide-dynamic-icon.mdc` |
-| Ponytail (lazy / minimal — flag needless complexity in the diff) | `.cursor/rules/ponytail.mdc` |
-| E2E: no sandbox | `.cursor/rules/e2e-no-sandbox.mdc` |
-| Post-feature reviewer (context for why you were invoked) | `.cursor/rules/post-feature-reviewer.mdc` |
-| Prefer Bun | `.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc` |
+| Rule                                                             | Path                                                      |
+| ---------------------------------------------------------------- | --------------------------------------------------------- |
+| Coding (light mode, English, never patch Excalidraw)             | `.cursor/rules/coding-rules.mdc`                          |
+| Lucide → `DynamicIcon` only                                      | `.cursor/rules/lucide-dynamic-icon.mdc`                   |
+| Ponytail (lazy / minimal — flag needless complexity in the diff) | `.cursor/rules/ponytail.mdc`                              |
+| E2E: no sandbox                                                  | `.cursor/rules/e2e-no-sandbox.mdc`                        |
+| Post-feature reviewer (context for why you were invoked)         | `.cursor/rules/post-feature-reviewer.mdc`                 |
+| Prefer Bun                                                       | `.cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc` |
 
 Also apply project ground truth from `AGENTS.md` when relevant (page-space vs scene coords, never put PDF pages in Excalidraw store, light mode only, never patch Excalidraw, Lucide via `DynamicIcon`, English code).
 
@@ -47,7 +47,7 @@ If aprendizajes conflicts with an explicit user request reflected in the diff, n
    - If the user points at files/PR/commit, scope to that
 3. Review only what the diff introduces or touches. Skip pre-existing issues unless the change makes them worse or newly reachable.
 4. Cross-check aprendizajes: any pattern that already burned us → elevate severity.
-5. Do not edit code or update aprendizajes unless the user asks (or you discover a *new* wrong approach worth recording and they want it written down).
+5. Do not edit code or update aprendizajes unless the user asks (or you discover a _new_ wrong approach worth recording and they want it written down).
 
 ## Review priorities (severity order)
 
@@ -80,15 +80,15 @@ Findings are the deliverable. Order by severity:
 
 Ask these against the change, not the ideal architecture:
 
-| Area | Look for |
-|------|----------|
-| Data safety | Atomic writes, mkdir parent, Windows rename fallback, flush on leave/quit, persist signature ignoring noise fields, no silent truncate |
-| Canvas/session | Dirty gate, open race (A→B), destroy order (clear session before pools/doc), include-deleted for host arrow sync |
-| Performance | Visible-set / buffer growth, pool hard caps, work on every pan/zoom tick, large static imports |
-| Tests | Happy path + one failure/edge; e2e needs `LIBRITUS_APP_DATA_DIR` / userData isolation awareness |
-| OS | Anything with paths, protocols, FS, window chrome, accelerators (Cmd vs Ctrl) |
-| Rules | Light mode, DynamicIcon, Bun, no Excalidraw patches, e2e sandbox, ponytail bloat |
-| Aprendizajes | Does this reintroduce a documented failure mode? |
+| Area           | Look for                                                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Data safety    | Atomic writes, mkdir parent, Windows rename fallback, flush on leave/quit, persist signature ignoring noise fields, no silent truncate |
+| Canvas/session | Dirty gate, open race (A→B), destroy order (clear session before pools/doc), include-deleted for host arrow sync                       |
+| Performance    | Visible-set / buffer growth, pool hard caps, work on every pan/zoom tick, large static imports                                         |
+| Tests          | Happy path + one failure/edge; e2e needs `LIBRITUS_APP_DATA_DIR` / userData isolation awareness                                        |
+| OS             | Anything with paths, protocols, FS, window chrome, accelerators (Cmd vs Ctrl)                                                          |
+| Rules          | Light mode, DynamicIcon, Bun, no Excalidraw patches, e2e sandbox, ponytail bloat                                                       |
+| Aprendizajes   | Does this reintroduce a documented failure mode?                                                                                       |
 
 ## Output format (required)
 

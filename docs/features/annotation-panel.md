@@ -29,16 +29,16 @@ Out of scope (for now):
 
 ## UX
 
-| Control | Behavior |
-|---------|----------|
-| **Toggle** | Navbar panel-right button (and Settings → “Show PDF sidebar”); panel on the right. |
-| **Tab** | Outline / Pages / Annotations (shared Tabs UI). Chat tab is **unmounted** (RAG UI deferred). |
-| **List** | Flat list sorted by `createdAt` desc; max height 200px per row with bottom fade when overflowing. |
-| **Highlight row** | Kind + page number next to date + text snippet. |
-| **Note row** | Kind + date + read-only Plate (`NoteStaticBody`). |
-| **Search row** | Kind + date + capture image (or query chrome if not yet promoted). |
-| **Row click** | Camera to element center; **no** `selectedElementIds`. |
-| **Empty** | “No annotations yet.” |
+| Control           | Behavior                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| **Toggle**        | Navbar panel-right button (and Settings → “Show PDF sidebar”); panel on the right.                |
+| **Tab**           | Outline / Pages / Annotations (shared Tabs UI). Chat tab is **unmounted** (RAG UI deferred).      |
+| **List**          | Flat list sorted by `createdAt` desc; max height 200px per row with bottom fade when overflowing. |
+| **Highlight row** | Kind + page number next to date + text snippet.                                                   |
+| **Note row**      | Kind + date + read-only Plate (`NoteStaticBody`).                                                 |
+| **Search row**    | Kind + date + capture image (or query chrome if not yet promoted).                                |
+| **Row click**     | Camera to element center; **no** `selectedElementIds`.                                            |
+| **Empty**         | “No annotations yet.”                                                                             |
 
 Chrome: right overlay sidebar (`pointer-events-auto` in text-select mode).
 
@@ -61,14 +61,14 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|----------|
-| **WYSIWYG notes** | Rows for `pdfNote`; click jumps, does not auto-enter edit. |
-| **Highlights** | One row per `groupId`; page via `PageLayout.pageIndexAtWorldPoint`; snippet from `customData.text`. |
-| **Web search capture** | Listed; image thumb after promote. Catalog count is `canvasStats.searches`. |
-| **Sessions** | No separate file — scene already persists. |
-| **PDF RAG chat** | Chat tab hidden from sidebar; Settings AI / indexing unchanged. |
-| **Essays HUD** | Essays are a different surface; do not mix into this list until essays exist. |
+| Feature                | Interaction                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| **WYSIWYG notes**      | Rows for `pdfNote`; click jumps, does not auto-enter edit.                                          |
+| **Highlights**         | One row per `groupId`; page via `PageLayout.pageIndexAtWorldPoint`; snippet from `customData.text`. |
+| **Web search capture** | Listed; image thumb after promote. Catalog count is `canvasStats.searches`.                         |
+| **Sessions**           | No separate file — scene already persists.                                                          |
+| **PDF RAG chat**       | Chat tab hidden from sidebar; Settings AI / indexing unchanged.                                     |
+| **Essays HUD**         | Essays are a different surface; do not mix into this list until essays exist.                       |
 
 ---
 

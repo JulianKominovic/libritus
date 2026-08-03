@@ -421,11 +421,7 @@ describe('pdfNotes', () => {
     const { newElements } = createNoteFromHighlight(highlight)
     const note = newElements.find((el) => isPdfNote(el))!
     const movedNote = { ...note, x: note.x + 400, y: note.y + 300 }
-    const { elements, changed } = syncPdfNoteArrows([
-      highlight,
-      movedNote,
-      newElements[1]!
-    ])
+    const { elements, changed } = syncPdfNoteArrows([highlight, movedNote, newElements[1]!])
     expect(changed).toBe(true)
     const arrow = elements.find((el) => el.type === 'arrow') as {
       width: number
@@ -599,9 +595,9 @@ describe('pdfNotes', () => {
     expect(free.x).toBe(50)
     expect(free.y).toBe(300)
     expect((free as { endBinding?: { elementId?: string } }).endBinding?.elementId).toBe(note.id)
-    expect(elements.filter((el) => !el.isDeleted && isPdfNoteArrow(el)).map((el) => el.id)).toEqual([
-      'host-arr'
-    ])
+    expect(elements.filter((el) => !el.isDeleted && isPdfNoteArrow(el)).map((el) => el.id)).toEqual(
+      ['host-arr']
+    )
   })
 
   test('syncPdfNoteArrows migrateBoundArrows:false leaves live endBinding arrow alone', () => {
@@ -633,9 +629,7 @@ describe('pdfNotes', () => {
     expect(changed).toBe(false)
     const arrow = elements.find((el) => el.id === 'live-arr')!
     expect(isPdfNoteArrow(arrow)).toBe(false)
-    expect((arrow as { endBinding?: { elementId?: string } }).endBinding?.elementId).toBe(
-      note.id
-    )
+    expect((arrow as { endBinding?: { elementId?: string } }).endBinding?.elementId).toBe(note.id)
     expect(arrow.locked).toBe(false)
     expect(arrow.width).toBe(40)
   })

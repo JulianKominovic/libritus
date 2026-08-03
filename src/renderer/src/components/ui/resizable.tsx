@@ -1,5 +1,12 @@
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { Group, Panel, Separator, type GroupProps, type PanelProps, type SeparatorProps } from 'react-resizable-panels'
+import {
+  Group,
+  Panel,
+  Separator,
+  type GroupProps,
+  type PanelProps,
+  type SeparatorProps
+} from 'react-resizable-panels'
 
 import { cn } from '@renderer/lib/utils'
 

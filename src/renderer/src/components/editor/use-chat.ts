@@ -11,8 +11,7 @@ export const useChat = () => {
   // chatOptions is a custom option attached via AIChatPlugin.extend
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options = (editor.getOptions(AIChatPlugin) as any).chatOptions as
-    | { api?: string; body?: Record<string, unknown> }
-    | undefined
+    { api?: string; body?: Record<string, unknown> } | undefined
 
   // remove when you implement the route /api/ai/command
   const abortControllerRef = React.useRef<AbortController | null>(null)

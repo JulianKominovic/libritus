@@ -242,7 +242,8 @@ test('pointerdown on shape while pdf-text-pass still on selects', async () => {
     const targetedText = await page.evaluate(
       ({ x, y }) => {
         const root = document.querySelector('[data-pdf-canvas-root]')
-        if (!root?.classList.contains('pdf-text-pass')) return { ok: false as const, reason: 'pass-off' }
+        if (!root?.classList.contains('pdf-text-pass'))
+          return { ok: false as const, reason: 'pass-off' }
         const hit = document.elementFromPoint(x, y)
         const ev = new PointerEvent('pointerdown', {
           bubbles: true,

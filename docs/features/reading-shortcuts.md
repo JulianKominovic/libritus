@@ -22,15 +22,15 @@ Out of scope (for now):
 
 ## UX
 
-| Shortcut / action | Behavior |
-|-------------------|----------|
-| **PageDown / Space** | Next page (same as nav ▶). |
-| **PageUp / ⇧Space** | Previous page. |
-| **Home / End** (optional) | First / last page. |
-| **Fit page** | Zoom + scroll so the current page fits in the viewport. |
-| **Fit width** | Zoom so page width matches viewport width; keep vertical reading position. |
-| **Zoom ±** | Step zoom (e.g. ±10%); center on viewport center. |
-| **Ctrl/Cmd + 0** | Reset to a default reading zoom (define constant). |
+| Shortcut / action         | Behavior                                                                   |
+| ------------------------- | -------------------------------------------------------------------------- |
+| **PageDown / Space**      | Next page (same as nav ▶).                                                 |
+| **PageUp / ⇧Space**       | Previous page.                                                             |
+| **Home / End** (optional) | First / last page.                                                         |
+| **Fit page**              | Zoom + scroll so the current page fits in the viewport.                    |
+| **Fit width**             | Zoom so page width matches viewport width; keep vertical reading position. |
+| **Zoom ±**                | Step zoom (e.g. ±10%); center on viewport center.                          |
+| **Ctrl/Cmd + 0**          | Reset to a default reading zoom (define constant).                         |
 
 Ignore shortcuts while typing in note edit, page-nav input, search field, or other focused inputs.
 
@@ -48,12 +48,12 @@ In `text-select-mode`, wheel may already be manual — shortcuts must still call
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **PDF navigation** | Shortcuts are accelerators over the same `goToPage` / camera helpers. |
-| **PDF search** | Search owns Enter for next-match when find UI is focused. |
-| **Text select / notes** | Focus gating so editing is not interrupted. |
-| **Sessions** | Camera changes dirty + autosave as today. |
+| Feature                 | Interaction                                                           |
+| ----------------------- | --------------------------------------------------------------------- |
+| **PDF navigation**      | Shortcuts are accelerators over the same `goToPage` / camera helpers. |
+| **PDF search**          | Search owns Enter for next-match when find UI is focused.             |
+| **Text select / notes** | Focus gating so editing is not interrupted.                           |
+| **Sessions**            | Camera changes dirty + autosave as today.                             |
 
 ---
 

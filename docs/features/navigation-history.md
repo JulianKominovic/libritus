@@ -23,11 +23,11 @@ Out of scope (for now):
 
 ## UX
 
-| Control | Behavior |
-|---------|----------|
-| **History button** | Clock icon beside back in [`PageNavigator.tsx`](../../src/renderer/src/organisms/pdf-canvas/PageNavigator.tsx). |
-| **Popover** | List of visited pages; pin “max page reached” at top with legend; thumbs like [`PdfSidebar`](../../src/renderer/src/organisms/pdf-canvas/PdfSidebar.tsx). |
-| **Row click** | `goToPage` (same zoom / stable X as other jumps). |
+| Control            | Behavior                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **History button** | Clock icon beside back in [`PageNavigator.tsx`](../../src/renderer/src/organisms/pdf-canvas/PageNavigator.tsx).                                           |
+| **Popover**        | List of visited pages; pin “max page reached” at top with legend; thumbs like [`PdfSidebar`](../../src/renderer/src/organisms/pdf-canvas/PdfSidebar.tsx). |
+| **Row click**      | `goToPage` (same zoom / stable X as other jumps).                                                                                                         |
 
 ---
 
@@ -41,8 +41,8 @@ Out of scope (for now):
 
 ## Relation to other features
 
-| Feature | Interaction |
-|---------|-------------|
-| **PDF navigation** | History chrome lives next to existing navigator. |
-| **Outline / thumbs / find** | Those jumps should feed the history. |
-| **Sessions** | Do not write history into `{pdfId}.session.json` for v1 of this feature. |
+| Feature                     | Interaction                                                              |
+| --------------------------- | ------------------------------------------------------------------------ |
+| **PDF navigation**          | History chrome lives next to existing navigator.                         |
+| **Outline / thumbs / find** | Those jumps should feed the history.                                     |
+| **Sessions**                | Do not write history into `{pdfId}.session.json` for v1 of this feature. |
