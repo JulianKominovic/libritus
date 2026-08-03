@@ -127,9 +127,8 @@
   background-color: #fff !important;
 }
 
-/* Locale-stable id — title="Elbow arrow" breaks when UI language ≠ English.
- * Host also strips elbowed scene arrows + forces currentItemArrowType ≠ elbow
- * (A while arrow tool cycles sharp → round → elbow). */
-.excalidraw [data-testid='elbow-arrow'] {
+/* Arrow-type radios put data-testid on the <input>, title on the <label>.
+ * Hide the label (locale-stable). title="Elbow arrow" alone is English-only. */
+.excalidraw label:has([data-testid='elbow-arrow']) {
   display: none !important;
 }
