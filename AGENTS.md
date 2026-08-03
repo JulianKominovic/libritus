@@ -38,6 +38,7 @@ Guiding principles:
 | Web search capture (Buscar / Place browser → guest WebContentsView → PNG as native image)      | `SearchCaptureEmbed`, `pdfSearchCapture`, `src/main/web-browser.ts`                                                                                   |
 | Freehand / shapes / undo                                                                       | Excalidraw built-in                                                                                                                                   |
 | Page navigation (prev/next, input, current page)                                               | `PageNavigator`, `PageLayout`, `PdfCanvasApp`                                                                                                         |
+| Internal PDF links (Goto / destination → `goToPage`)                                           | `pdfLinks`, `PdfLayer` hit overlays, `PdfCanvasApp`                                                                                                   |
 | PDF text search (find bar + jump + hit overlay; same-line rect dedupe)                         | `PdfFindBar`, `pdfSearch`, `mergeSameLineRects`, `PdfLayer.setSearchHit`, `PdfCanvasApp`                                                              |
 | Outline + page thumbnails (sidebar)                                                            | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp`                                                                                               |
 | Annotation panel (highlights + notes + searches list)                                          | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp`                                                                                        |
@@ -89,6 +90,7 @@ src/renderer/src/
     ThumbPool.ts              # hard-capped low-scale thumbs for sidebar
     PdfRenderer.ts            # renderPageRaw → canvas
     pdfOutline.ts             # bookmarks → pageIndex tree
+    pdfLinks.ts               # page LINK annots → scene hits + goToPage
     annotationList.ts         # scene → highlight/note list + plate plain text + canvasStats
     selectionToHighlights.ts  # EmbedPDF formatted selection → Excalidraw highlights
     pdfNotes.ts / pdfNoteModel.ts  # WYSIWYG notes (embeddable + plateValue)
@@ -221,7 +223,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec`, `pdf-links.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

@@ -1516,6 +1516,13 @@ function PdfCanvasAppInner({
         return
       }
 
+      const linkTarget = pdfLayerRef.current?.findLinkAt(sceneX, sceneY)
+      if (linkTarget != null) {
+        goToPage(linkTarget)
+        hideHighlightToolbar()
+        return
+      }
+
       const hit = findPdfHighlightAt(api.getSceneElements(), sceneX, sceneY)
       if (hit) {
         showHighlightToolbar(hit.id)
@@ -1526,6 +1533,7 @@ function PdfCanvasAppInner({
     [
       exitPlaceModes,
       goToAnnotation,
+      goToPage,
       hideHighlightToolbar,
       markUnsaved,
       openSearchBrowser,
@@ -2057,7 +2065,14 @@ function PdfCanvasAppInner({
       // Race: pass was on → pointer targeted PDF page, but this point is
       // inside a real (unpadded) scene element. Pad alone must not steal text
       // clicks in the halo — only forward on a true AABB hit.
-      if (wasPass && target instanceof Element && target.closest('[data-pdf-page]')) {
+      // PDF internal link overlays win over scene elements underneath (same
+      // priority as handlePointerDown findLinkAt → goToPage).
+      if (
+        wasPass &&
+        target instanceof Element &&
+        target.closest('[data-pdf-page]') &&
+        !target.closest('[data-pdf-link]')
+      ) {
         const api = apiRef.current
         const appState = api?.getAppState()
         const scene =
@@ -2298,7 +2313,9 @@ function PdfCanvasAppInner({
           ref={pdfLayerRef}
           layout={session.layout}
           pool={session.pool}
+          doc={session.doc}
           documentId={session.documentId}
+          onInternalLink={goToPage}
         />
       ) : null}
 

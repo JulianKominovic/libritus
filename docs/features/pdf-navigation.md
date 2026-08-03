@@ -70,6 +70,10 @@ Mutate camera via Excalidraw `updateScene` (`scrollX`/`scrollY`/`zoom`).
 
 Prev/next = `goToPage(current ± 1)` with clamp; no wrap.
 
+### Internal PDF link annotations
+
+Clickable LINK annots (TOC / cross-refs) with an internal destination or Goto action jump via the same `goToPage` (page center; dest Y deferred, same as outline). Loaded per visible page via EmbedPDF `getPageAnnotations` (`pdfLinks` + hit overlays in `PdfLayer`; host `handlePointerDown` for non-pass-through tools). URI / RemoteGoto are ignored for now.
+
 ---
 
 ## Helpers (`PageLayout`)
