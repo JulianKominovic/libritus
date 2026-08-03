@@ -13,16 +13,45 @@ No es un archivo de aprendizajes para usar siempre, sino que se usa para evitar 
 
 Este archivo es mantenido y actualizado por el agente.
 
-### pdf.js 6: JBIG2 / scanned PDFs need `wasmUrl`
+### PDF engine: EmbedPDF PDFium (no Headless Viewport)
 
 #### Descripción más detallada
 
-PDFs escaneados (imágenes JBIG2/JPEG2000) abrían páginas en blanco con warnings: `#instantiateWasm: Ensure that the wasmUrl API parameter is provided`, `nulljbig2_nowasm_fallback.js`, `JBig2 failed to initialize`, `Dependent image isn't ready yet`. El worker ya estaba configurado; faltaba el directorio `pdfjs-dist/wasm/`.
+Migrar “a EmbedPDF Headless” no es drop-in: Headless trae Viewport/Scroller/Zoom propios. Libritus usa Excalidraw como cámara + pools virtualizados. Usar `@embedpdf/engines` (PDFium WASM) detrás de `PdfDocument` / `PagePool`, más SelectionPlugin **sin** Viewport/Scroller para texto.
 
 #### Corrección
 
-- Copiar `node_modules/pdfjs-dist/wasm` → `src/renderer/public/wasm` en `postinstall` (mismo patrón que fonts de Excalidraw).
-- Envolver `getDocument` en `pdfjs.ts` con `wasmUrl`: en `http(s)` → `${location.origin}/wasm/` (no `document.baseURI` — con rutas `/pdf/…` caería en `/pdf/wasm/`); en `file:` → `new URL('wasm/', document.baseURI)` (como `EXCALIDRAW_ASSET_PATH`).
+- Engine singleton `embedpdfEngine.ts` + `public/wasm/pdfium.wasm` (postinstall desde `@embedpdf/pdfium`).
+- Render: `renderPageRaw` → canvas; search/outline/RAG vía engine.
+- Texto: `@embedpdf/core` + DocumentManager + InteractionManager + SelectionPlugin; `PagePointerProvider` + `SelectionLayer` por página visible; highlights desde `getFormattedSelection()`.
+- Pass-through `.pdf-text-pass` (selection tool + page AABB + no scene hit) para que Excalidraw no se coma los pointers.
+- CSP: `script-src 'self' 'wasm-unsafe-eval'`; `worker-src` ya tenía `blob:`.
+- **No** montar Viewport/Scroller/RenderLayer — pelean con Excalidraw. SelectionPlugin sin Viewport sí.
+
+### EmbedPDF SelectionLayer: hit-test desfasado bajo CSS `scale(zoom)`
+
+#### Descripción más detallada
+
+Seleccionar texto “miraba” más abajo de lo visual (arriba → línea siguiente; mitad → varias líneas). Causa: la cámara de Libritus aplica `scale(zoom)` en el world div; `PagePointerProvider` usa `getBoundingClientRect()` (incluye ese zoom) y solo divide por `layout.scale`. Error ≈ `y_pdf * (zoom - 1)`.
+
+#### Corrección
+
+- `convertEventToPoint` custom en `PdfLayer` / `PageSlotView` vía `screenDeltaToPdfPoint(dx, dy, zoom, scale)` → divide por `zoom * layout.scale`.
+- Mantener `scale={layout.scale}` en SelectionLayer (no `* zoom`): el paint ya vive bajo el CSS zoom.
+- No subir `scale` del provider a `layout.scale * zoom` — doble-escala el overlay.
+
+### E2E EmbedPDF: drag-select / cross-page / pass poll
+
+#### Descripción más detallada
+
+E2e de selección fallaban: (1) `dragSelect` con `xStartRatio: 0.15` cortaba mid-word en sample.pdf (`Libritus e2e sample` empieza en PDF x=50 ≈ 0.08); (2) EmbedPDF solo hit-testea glifos (margen vacío = sin hit); (3) selección cross-page no existe (SelectionPlugin por `PagePointerProvider`); (4) poll de `.pdf-text-pass` sin re-`mousemove` si el primer move llegó antes de que Excalidraw API/tool estuviera listo.
+
+#### Corrección
+
+- Default `xStartRatio: 0.08` en `dragSelectPdfPage` (glyph edge en sample.pdf; 0.05 = margen vacío sin hit, 0.15 = mid-word); Copiar assertea `/Libritus e2e sample/`.
+- sample-2p texto en `(72, 720)` → drag con `yRatio≈0.09`, no el default 0.12.
+- Cross-page → zoom-out + line select en page 0 (sigue guardando “no page-tall”).
+- `expectPdfTextPass`: re-move sobre la página en cada tick del poll; image-drop siembra session `zoom: 1` como pass-through-race.
 
 ### Windows: create category no-op + no DevTools
 
@@ -53,28 +82,17 @@ El renderer usa `useBrowserLocation` sobre `file://`. En Windows el pathname es 
 - `titleBarOverlay` en win/linux (height 50); traffic lights solo en darwin; navbar `pl-20` (mac) / `pr-36` (win).
 - `useHashLocation` cuando `location.protocol === 'file:'`.
 
-### `sendWithPromise` null: text layer after PDF destroy
+### PDF destroy while pools still syncing
 
 #### Descripción más detallada
 
-Al reabrir/cambiar PDF (o durante tear-down), `destroyRuntimeSession` hacía `doc.destroy()` mientras `PdfLayer` seguía montado con el pool viejo. `pushCamera` / `syncVisible` llamaban `getPage` con el worker ya destruido → `TypeError: Cannot read properties of null (reading 'sendWithPromise')` en `Failed to build text layer`.
+Al reabrir/cambiar PDF (o durante tear-down), `destroyRuntimeSession` hacía `doc.destroy()` mientras `PdfLayer` seguía montado con el pool viejo. `pushCamera` / `syncVisible` llamaban `getPage` / render con el documento ya muerto.
 
 #### Corrección
 
 - `PdfDocument.getPage` rechaza con `AbortException` si ya no está alive; `alive = false` al inicio de `destroy`.
-- Pools: flag `destroyed` + bump de generation en `destroy`; `syncVisible` no-op; catch ignora gen stale / `AbortException`.
+- Pools: flag `destroyed` + bump de generation en `destroy`; `syncVisible` no-op; catch ignora gen stale / `AbortException` / cancel EmbedPDF.
 - Limpiar `sessionRef` / `setSession(null)` *antes* de destruir pools/doc.
-
-
-#### Descripción más detallada
-
-El test `text select at zoom ≠ 1` hacía Meta+wheel (zoom vía handler de text-select) y luego `mouse.down/move/up` sobre el span. `expectUnsaved` pasaba por el dirty del **camera** (zoom/scroll), no por un highlight. El session flush quedaba con `elements: []`.
-
-Causa: con el PDF layer en `transform: scale(z)`, el drag sintético de Playwright no crea `window.getSelection()` (collapsed). `elementFromPoint` sí pega en el span; un `Range` vía JS sí selecciona; el handler de `mouseup` funciona si ya hay selección.
-
-#### Corrección
-
-En e2e a zoom ≠ 1: `selectNodeContents` + `mouseup` sintético en `[data-pdf-canvas-root]` (no `mouse.down` — colapsa la selección). Afirmar toolbar **Add note** visible (highlight creado + HighlightToolbar), no solo Unsaved. (Ya no hay modo Select text / `aria-pressed`.)
 
 ### `resolveNoteFill`: `document` sin `getComputedStyle` en bun:test
 
@@ -356,13 +374,12 @@ Usar `newElementWith(el, { backgroundColor })` en `setHighlightGroupColor` (igua
 
 #### Descripción más detallada
 
-`App.tsx` importaba estáticamente `PdfPage` → `PdfCanvasApp` (Excalidraw + Plate + pdf.js) aunque Home no los use. Además `react-scan` corría con `dangerouslyForceRunInProduction: true`, y `main.tsx` inicializaba pdf.js en el entry. Main cargaba `@huggingface/transformers` / jsdom al registrar IPC.
+`App.tsx` importaba estáticamente `PdfPage` → `PdfCanvasApp` (Excalidraw + Plate + EmbedPDF) aunque Home no los use. Además `react-scan` corría con `dangerouslyForceRunInProduction: true`. Main cargaba `@huggingface/transformers` / jsdom al registrar IPC.
 
 #### Corrección
 
 - `React.lazy` para pdf/settings/category + `Suspense`; Home eager.
 - `react-scan` solo si `import.meta.env.DEV`.
-- Worker en `pdfjs.ts` (upload de thumbs también usa `getDocument`); `pdf_viewer.css` en `PdfDocument.ts`.
 - Dynamic `import()` de transformers / jsdom / readability en el primer uso.
 - `build.sourcemap: false` explícito en electron-vite (prod ya no generaba `.map`).
 
@@ -462,16 +479,6 @@ Mientras el guest está visible: `setAlwaysOnTop(true, 'floating')` en `browser:
 #### Corrección
 
 Usar solo `wc.capturePage().toPNG()` — captura exactamente lo visible en el guest.
-
-### Upload PDF: thumbnails rotos tras defer del worker
-
-#### Descripción más detallada
-
-Cold-start movió `GlobalWorkerOptions.workerSrc` de `main.tsx` a `PdfDocument.ts` (lazy con el canvas). `getPdfMetadata` (`lib/pdf.ts`) sigue usando `getDocument` al subir un PDF desde categoría/home **sin** haber cargado `PdfDocument` → workerSrc vacío → thumbnail vacío/roto.
-
-#### Corrección
-
-Configurar el worker en `pdfjs.ts` (punto único de `getDocument`). CSS del viewer puede quedarse en `PdfDocument`.
 
 ### Host arrows: borrar note/search capture deja flecha; undo no la revive
 
@@ -584,45 +591,20 @@ El guest pasó de `BrowserWindow` overlay (`alwaysOnTop`, sin `parent:`) a `WebC
 
 #### Descripción más detallada
 
-Tras pass-through de la text layer, Cmd/Ctrl+Z parecía interceptado por el host. No lo estaba: Excalidraw por defecto pone `onKeyDown` solo en el nodo React (focus dentro de `.excalidraw`). Clicks en toolbar / text leave focus fuera → undo muerto hasta click en el canvas. Cmd+A seleccionaba todo el PDF text porque el browser default ganaba sobre Excalidraw select-all.
-
-Cross-page: `range.getClientRects()` devolvía cajas ~altura de página (`.endOfContent` / multi-page).
+Tras pass-through (`.pdf-text-pass`), Cmd/Ctrl+Z parecía interceptado por el host. No lo estaba: Excalidraw por defecto pone `onKeyDown` solo en el nodo React (focus dentro de `.excalidraw`). Clicks en toolbar / PDF leave focus fuera → undo muerto hasta click en el canvas. Cmd+A seleccionaba texto del PDF porque el browser default ganaba sobre Excalidraw select-all.
 
 #### Corrección
 
 - `handleKeyboardGlobally` en `<Excalidraw>` (document keydown).
 - Cmd/Ctrl+A: `preventDefault` + `removeAllRanges` (sin `stopPropagation`) salvo writable/note.
-- Rects: `clipRangeToNode` por `.textLayer span` + `dropOversizedClientRects`.
-- Toolbar: hide en `selectionchange` collapsed, pointerdown fuera (`removeAllRanges` si pending), Escape; Copiar también en pending.
+- Toolbar: hide en selection collapsed, pointerdown fuera, Escape; Copiar también en pending.
 - E2E: rebuild (`electron-vite build`) antes de `playwright` directo — `test:e2e` ya buildea.
-
-### Text caret snap: only started on spans → margin→margin no-op
-
-#### Descripción más detallada
-
-Heurística de snap (whitespace → inicio/fin de línea) solo armaba `snapDrag` si el `pointerdown` caía en un `.textLayer span`. Arrastrar **margen → margen** (fuera del glifo pero sobre la página) nunca activaba el host: `.endOfContent` / hit en `.textLayer` tienen `user-select: none` o no inician Selection nativa, y el foco nunca se snapeaba. El síntoma: “selecciono en diagonal fuera del texto y no entra nada intermedio”.
-
-#### Corrección
-
-- `pointerdown` en cualquier hit de `.textLayer` registrado (whitespace o span).
-- Si whitespace: anclar con `resolveSnapCaret`, seed del Range, `fromWhitespace` → el host maneja todo el `pointermove`.
-- Si span: ancla nativa (`caretRangeFromPoint`); snap solo mientras el move está en whitespace.
-
-### Text caret snap: flicker cross-page por snappear contra la página de inicio
-
-#### Descripción más detallada
-
-Con drag margen→margen OK in-page. Al cruzar a la página siguiente, el `pointermove` seguía llamando `resolveSnapCaret(startLayer, x, y)` con coordenadas de la página 2. El focus saltaba a líneas de la página 1 y peleaba con la Selection cross-page nativa → flickering en whitespace.
-
-#### Corrección
-
-Resolver el focus en `layerFromTarget(hit)` (text layer bajo el cursor). Entre páginas (sin layer) no reescribir Selection. `focusLayer.classList.add('selecting')` al snappear.
 
 ### Search capture image: outside-click no cierra browse
 
 #### Descripción más detallada
 
-E2E `center-click re-activates browse on native image capture` fallaba: chrome seguía `display:flex` tras click fuera. Causa: browse de `image` no setea `activeEmbeddable` (solo el hook `activeBrowserCaptureIdRef`). Al mover el mouse a vacío, `.pdf-text-pass` pone `.excalidraw-host { pointer-events: none }` → el listener de deactivate (en el host) no ve el pointerdown (cae en `.textLayer`). Los embeddables aguantaban porque Excalidraw deja `activeEmbeddable.active` y eso ya desactiva pass-through.
+E2E `center-click re-activates browse on native image capture` fallaba: chrome seguía `display:flex` tras click fuera. Causa: browse de `image` no setea `activeEmbeddable` (solo el hook `activeBrowserCaptureIdRef`). Al mover el mouse a vacío, `.pdf-text-pass` pone `.excalidraw-host { pointer-events: none }` → el listener de deactivate (en el host) no ve el pointerdown (cae en la capa PDF / SelectionLayer). Los embeddables aguantaban porque Excalidraw deja `activeEmbeddable.active` y eso ya desactiva pass-through.
 
 #### Corrección
 
@@ -634,14 +616,14 @@ En el gate de pass-through, tratar `isBrowsing()` como `activeEmbeddable.active`
 
 Tras pass-through siempre-on (selection tool + miss → `.pdf-text-pass` → host `pointer-events: none`), el canvas de Excalidraw queda sordo en casi toda la página PDF. Dos fallos:
 
-1. **Race en pointerdown:** el browser elige el target *antes* de que el handler en capture apague pass. Un click sobre una shape/highlight/nota con pass aún on cae en `.textLayer`; apagar PE en el mismo evento no retargetea → “no puedo clickear elementos”.
-2. **Gate por `event.target.closest('.textLayer')`:** con pass off el target es el canvas de Excalidraw, nunca el text layer → pass no se arma (o al revés: armar pass en cualquier miss incluyendo gutters mata el marquee).
+1. **Race en pointerdown:** el browser elige el target *antes* de que el handler en capture apague pass. Un click sobre una shape/highlight/nota con pass aún on cae en la capa PDF; apagar PE en el mismo evento no retargetea → “no puedo clickear elementos”.
+2. **Gate por `event.target`:** con pass off el target es el canvas de Excalidraw, nunca la capa PDF → pass no se arma (o al revés: armar pass en cualquier miss incluyendo gutters mata el marquee).
 
 #### Corrección
 
-- Armar pass solo si el punto está en el **bbox** de un `.textLayer` (geométrico, no `event.target`).
+- Armar pass solo si el punto está en el **bbox** de un `[data-pdf-page]` (geométrico, no `event.target`).
 - Pad ~12px en hover para apagar PE antes del borde del elemento.
-- Si `pointerdown` llega con pass on + target en `.textLayer` + hit **sin pad** en escena: `preventDefault` + re-dispatch al canvas interactivo.
+- Si `pointerdown` llega con pass on + hit de escena **sin pad**: `preventDefault` + re-dispatch al canvas interactivo.
 - E2E: disparar `pointerdown` en coords de la shape *sin* `mouse.move` previo (el move limpiaría pass y no ejercita el race).
 
 ### Flechas: handles de edición muertos sobre texto PDF
@@ -752,5 +734,33 @@ Arrastrar una `<img>` desde Chrome al canvas no insertaba nada (incluso sobre ca
 - Re-despachar un `drop` sintético con `File` a `.excalidraw` → `insertImages` + `persistNewBinaryFiles` existente.
 - En `dragover`, clear pass también para html/uri-list (no solo Files).
 - No ampliar CSP. URL sola → web embed sigue fuera de alcance.
+
+### PDF blank pages: EmbedPDF abort ≠ cancel real + PagePool thrash
+
+#### Descripción más detallada
+
+Tras pdf.js → EmbedPDF, zoom-out + pan dejaba páginas en blanco “una vida”. Approach erróneo: asumir que `task.abort()` / `isPdfJobCancelled` detiene PDFium como `RenderTask.cancel()` de pdf.js. En el worker de EmbedPDF el abort solo rechaza el `Promise` del cliente; el job sigue en cola y termina.
+
+Peor: `PagePool.syncVisible` hacía `generation++` en cada cambio de set y **re-lanzaba** todos los no-ready aún visibles → cada pan de 1 página cancelaba (cosmético) y reposteaba N renders. `visibilityBuffer = max(vw,vh)/zoom` + `capacity = max(poolSize, needed)` pedía 26–50 páginas a la vez.
+
+#### Corrección
+
+- Wanted-set: no cancelar/reiniciar jobs todavía visibles; gate de éxito por `wanted` + `runToken` (no solo generation).
+- Cola host `MAX_CONCURRENT` (2): pending se puede dropear **antes** de `postMessage` — ahí el cancel sí ahorra trabajo.
+- Hard-cap `poolSize` (como `ThumbPool`); `trimVisibleToCap` al centro de cámara en `PdfLayer`.
+- Buffer = `viewportHeight / zoom`, no `max(vw,vh)/zoom` en todos los lados.
+- Al quitar generation: **obligatorio** token/inFlight para que un completion stale no haga `ready=true` ni re-encole en loop tras error real (re-queue solo si `superseded`).
+
+### Perf drag notes/embeds: el chip Unsaved no es el hot path
+
+#### Descripción más detallada
+
+Al “arreglar” stutter al mover note/web embed, el plan propuso chip Saved/Unsaved imperativo (evitar `setSaveStatus`). El usuario corrigió: un `setState` puntual cada varios segundos **está bien**. El problema son los costos **continuos** por frame: `syncPdfNoteArrows`/`syncPdfSearchArrows` → `updateScene` cada pointermove, `currentPersistSignature()` (JSON de toda la escena) cada `onChange`, scans de annotations, y `markUnsaved` en el early-return de hover.
+
+#### Corrección
+
+- No tocar el chip / no imperativizar `saveStatus` por esto.
+- Flechas rAF-coalesced (un `updateScene` por frame); drag hot path salta maintenance; `markUnsaved` barato si ya dirty + buttons down; al `pointerup`/`pointercancel`/`blur` flush flechas + `runHostSceneMaintenance` + firma completa.
+- Hover early-return: **sin** `markUnsaved` (no reintroducir stringify en el spam de hover de Excalidraw).
 
 

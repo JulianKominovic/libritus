@@ -5,14 +5,20 @@ import {
 	useImperativeHandle,
 	useRef,
 	useState,
+	type RefObject,
 } from "react";
-import type { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
-import { worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
-import type { SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
-import { visibilityBuffer } from '@renderer/lib/pdf-canvas/visibilityBuffer'
-import type { PagePool, PageSlot } from '@renderer/lib/pdf-canvas/PagePool'
-import type { TextLayerPool, TextLayerSlot } from '@renderer/lib/pdf-canvas/TextLayerPool'
-import type { CameraState, PageRect } from '@renderer/lib/pdf-canvas/types'
+import { PagePointerProvider } from "@embedpdf/plugin-interaction-manager/react";
+import { SelectionLayer } from "@embedpdf/plugin-selection/react";
+import type { PageLayout } from "@renderer/lib/pdf-canvas/PageLayout";
+import { worldAABBFromCamera } from "@renderer/lib/pdf-canvas/PageLayout";
+import type { SearchMatch } from "@renderer/lib/pdf-canvas/pdfSearch";
+import { screenDeltaToPdfPoint } from "@renderer/lib/pdf-canvas/screenDeltaToPdfPoint";
+import {
+	trimVisibleToCap,
+	visibilityBuffer,
+} from "@renderer/lib/pdf-canvas/visibilityBuffer";
+import type { PagePool, PageSlot } from "@renderer/lib/pdf-canvas/PagePool";
+import type { CameraState, PageRect } from "@renderer/lib/pdf-canvas/types";
 
 export type PdfLayerHandle = {
 	applyCamera: (camera: CameraState) => void;
@@ -23,7 +29,7 @@ export type PdfLayerHandle = {
 type PdfLayerProps = {
 	layout: PageLayout;
 	pool: PagePool;
-	textPool: TextLayerPool;
+	documentId: string;
 };
 
 function visibleEqual(a: number[], b: number[]): boolean {
@@ -37,14 +43,17 @@ function visibleEqual(a: number[], b: number[]): boolean {
 function PageSlotView({
 	page,
 	slot,
-	textSlot,
+	documentId,
+	scale,
+	cameraRef,
 }: {
 	page: PageRect;
 	slot?: PageSlot;
-	textSlot?: TextLayerSlot;
+	documentId: string;
+	scale: number;
+	cameraRef: RefObject<CameraState | null>;
 }) {
 	const canvasHostRef = useRef<HTMLDivElement>(null);
-	const textHostRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		const host = canvasHostRef.current;
@@ -63,22 +72,23 @@ function PageSlotView({
 		};
 	}, [slot, slot?.ready, page.width, page.height]);
 
-	useEffect(() => {
-		const host = textHostRef.current;
-		if (!host || !textSlot?.ready) return;
-
-		const div = textSlot.div;
-		host.replaceChildren(div);
-
-		return () => {
-			if (div.parentElement === host) {
-				host.removeChild(div);
-			}
-		};
-	}, [textSlot, textSlot?.ready]);
+	const convertEventToPoint = useCallback(
+		(event: PointerEvent, el: HTMLElement) => {
+			const r = el.getBoundingClientRect();
+			const z = cameraRef.current?.zoom ?? 1;
+			return screenDeltaToPdfPoint(
+				event.clientX - r.left,
+				event.clientY - r.top,
+				z,
+				scale,
+			);
+		},
+		[cameraRef, scale],
+	);
 
 	return (
 		<div
+			data-pdf-page={page.pageIndex}
 			className="absolute bg-white shadow-sm"
 			style={{
 				left: page.x,
@@ -87,28 +97,38 @@ function PageSlotView({
 				height: page.height,
 			}}
 		>
-			{slot?.ready ? (
-				<div ref={canvasHostRef} className="h-full w-full" />
-			) : (
-				<div className="h-full w-full animate-pulse bg-neutral-100" />
-			)}
-			{textSlot?.ready ? (
-				<div ref={textHostRef} className="pointer-events-auto absolute inset-0" />
-			) : null}
+			<PagePointerProvider
+				documentId={documentId}
+				pageIndex={page.pageIndex}
+				scale={scale}
+				convertEventToPoint={convertEventToPoint}
+				className="pointer-events-auto absolute inset-0"
+			>
+				{slot?.ready ? (
+					<div ref={canvasHostRef} className="pointer-events-none h-full w-full" />
+				) : (
+					<div className="pointer-events-none h-full w-full animate-pulse bg-neutral-100" />
+				)}
+				<SelectionLayer
+					documentId={documentId}
+					pageIndex={page.pageIndex}
+					scale={scale}
+				/>
+			</PagePointerProvider>
 		</div>
 	);
 }
 
 /**
- * Readonly visual PDF layer under Excalidraw. Text layer is always hittable;
- * the host gates Excalidraw pass-through so elements stay above text.
- * Only mounts canvases / text layers for pages currently tracked by the pools.
+ * Readonly visual PDF layer under Excalidraw. EmbedPDF SelectionLayer is
+ * hittable; the host gates Excalidraw pass-through so elements stay above text.
+ * Only mounts canvases for pages currently tracked by the pool.
  *
  * Camera updates are imperative (`applyCamera`) so pan/zoom does not re-render
  * React — only CSS transform + culling when the visible page set changes.
  */
 export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
-	function PdfLayer({ layout, pool, textPool }, ref) {
+	function PdfLayer({ layout, pool, documentId }, ref) {
 		const [visible, setVisible] = useState<number[]>([]);
 		const [, setTick] = useState(0);
 
@@ -120,10 +140,8 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 
 		const layoutRef = useRef(layout);
 		const poolRef = useRef(pool);
-		const textPoolRef = useRef(textPool);
 		layoutRef.current = layout;
 		poolRef.current = pool;
-		textPoolRef.current = textPool;
 
 		const applyCamera = useCallback((camera: CameraState) => {
 			lastCameraRef.current = camera;
@@ -136,7 +154,6 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 
 			const currentLayout = layoutRef.current;
 			const currentPool = poolRef.current;
-			const currentTextPool = textPoolRef.current;
 
 			const aabb = worldAABBFromCamera(
 				camera.scrollX,
@@ -148,9 +165,19 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 			const buffer = visibilityBuffer(
 				camera.viewportWidth,
 				camera.viewportHeight,
-				camera.zoom
-			)
-			const next = currentLayout.queryVisible(aabb, buffer);
+				camera.zoom,
+			);
+			const queried = currentLayout.queryVisible(aabb, buffer);
+			const next = trimVisibleToCap(
+				queried,
+				currentPool.capacity,
+				camera,
+				(pageIndex) => {
+					const page = currentLayout.pages[pageIndex];
+					if (!page) return undefined;
+					return page.y + page.height / 2;
+				},
+			);
 
 			if (visibleEqual(visibleRef.current, next)) return;
 
@@ -159,10 +186,7 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 
 			const gen = ++syncGenRef.current;
 			void (async () => {
-				await Promise.all([
-					currentPool.syncVisible(next),
-					currentTextPool.syncVisible(next),
-				]);
+				await currentPool.syncVisible(next);
 				if (gen === syncGenRef.current) setTick((t) => t + 1);
 			})();
 		}, []);
@@ -201,19 +225,17 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 
 		useEffect(() => {
 			const unsubPool = pool.subscribe(() => setTick((t) => t + 1));
-			const unsubText = textPool.subscribe(() => setTick((t) => t + 1));
 			return () => {
 				unsubPool();
-				unsubText();
 			};
-		}, [pool, textPool]);
+		}, [pool]);
 
 		// Session / pool identity changed — re-cull with last camera if any.
 		useEffect(() => {
 			visibleRef.current = [];
 			const cam = lastCameraRef.current;
 			if (cam) applyCamera(cam);
-		}, [layout, pool, textPool, applyCamera]);
+		}, [layout, pool, documentId, applyCamera]);
 
 		const pageIndices = new Set([
 			...visible,
@@ -238,7 +260,9 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(
 								key={pageIndex}
 								page={page}
 								slot={pool.getSlot(pageIndex)}
-								textSlot={textPool.getSlot(pageIndex)}
+								documentId={documentId}
+								scale={layout.scale}
+								cameraRef={lastCameraRef}
 							/>
 						);
 					})}

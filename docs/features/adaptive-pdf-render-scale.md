@@ -3,7 +3,7 @@
 **Status:** Phase 1 done; Phase 2 optional / not started.  
 **Related:** world-scale normalization ([`pageWorldScale.ts`](../../src/renderer/src/lib/pdf-canvas/pageWorldScale.ts)), roadmap LOD ([`docs/roadmap.md`](../roadmap.md)), memory notes in [`AGENTS.md`](../../AGENTS.md).
 
-This doc is a handoff for implementing sharper / more consistent page bitmaps across PDFs. It is **not** the full zoom-based LOD system (see roadmap **Scale / memory**); it is the smaller fix that becomes necessary once pages are normalized to a shared world width. Excalidraw stays the canvas — LOD is host/pdf.js work.
+This doc is a handoff for implementing sharper / more consistent page bitmaps across PDFs. It is **not** the full zoom-based LOD system (see roadmap **Scale / memory**); it is the smaller fix that becomes necessary once pages are normalized to a shared world width. Excalidraw stays the canvas — LOD is host/EmbedPDF work.
 
 ---
 
@@ -11,7 +11,7 @@ This doc is a handoff for implementing sharper / more consistent page bitmaps ac
 
 Depending on which PDF you open, pages look sharper or softer at the same Excalidraw zoom (e.g. 100% / 200%). Notes and UI chrome stay crisp; only the PDF bitmap softens.
 
-`FIXED_RENDER_SCALE = 2` in [`PdfRenderer.ts`](../../src/renderer/src/lib/pdf-canvas/PdfRenderer.ts) was the hardcoded native scale. After **world-scale normalization**, that constant no longer means “2 CSS pixels per world unit” for every document — Phase 1 derives pdf.js scale from `worldScale`.
+`FIXED_RENDER_SCALE = 2` in [`PdfRenderer.ts`](../../src/renderer/src/lib/pdf-canvas/PdfRenderer.ts) was the hardcoded native scale. After **world-scale normalization**, that constant no longer means “2 CSS pixels per world unit” for every document — Phase 1 derives render scale from `worldScale`.
 
 ---
 
@@ -21,7 +21,7 @@ Depending on which PDF you open, pages look sharper or softer at the same Excali
 
 Pipeline:
 
-1. pdf.js reports **native** page size (`getViewport({ scale: 1 })`) in PDF points.
+1. The engine reports **native** page size (PDF points at scale 1).
 2. `pageWorldScale` sets `worldScale = 612 / maxNativeWidth` and builds `PageLayout` in **world** units (~Letter width).
 3. `PagePool` rasters with `renderScaleForWorld(worldScale)` in **native** PDF units.
 4. `PdfLayer` CSS-sizes the canvas to **world** page width/height.
@@ -56,17 +56,17 @@ Some PDFs are soft because the **source** is soft: a full-page scan embedded as 
 
 Detection can still be useful for **telemetry / heuristics / UI** (“this looks like a scan”) or to **avoid** wasting RAM on huge scales when the page is already image-bound.
 
-#### Feasible signals (pdf.js)
+#### Feasible signals (engine / page content)
 
 On a sample of pages (e.g. first page + a middle page), after `getPage`:
 
 1. **Image coverage / DPI (best cheap signal)**  
-   Walk operators / XObjects (pdf.js `page.getOperatorList()` + `page.objs` / common patterns for `paintImageXObject`). For large images:
+   Walk page operators / XObjects (or EmbedPDF equivalents for embedded images). For large images:
    - `effectiveDpi ≈ (imagePixelWidth / pageWidthPts) * 72`
    - If one image covers most of the page and `effectiveDpi < ~120–150`, treat as **scan / low-res image page**.
 
 2. **Text density**  
-   `getTextContent()` item count / page area. Near-zero text + full-bleed image → scan. Lots of text → vector/text PDF (Fix A is enough).
+   Extracted text item count / page area. Near-zero text + full-bleed image → scan. Lots of text → vector/text PDF (Fix A is enough).
 
 3. **Native MediaBox size alone is not quality**  
    Small MediaBox ≠ low quality (often a crop). Large MediaBox ≠ high quality (often a scan with points = pixels). Always combine with (1).
@@ -123,13 +123,13 @@ Skip Phase 2 until Phase 1 is validated in product — most “definition differ
 | [`PdfCanvasApp.tsx`](../../src/renderer/src/organisms/pdf-canvas/PdfCanvasApp.tsx) | Pass `renderScaleForWorld(worldScale)` into `new PagePool`. |
 | Tests | `renderScaleForWorld` + PagePool injected scale. |
 
-`TextLayerPool` already builds at `worldScale` — leave it. Search hits already multiply by `layout.scale`.
+Search hits already multiply by `layout.scale`. Text selection uses EmbedPDF `SelectionLayer` at the same page CSS scale (`layout.scale`).
 
 ---
 
 ## Constraints (from AGENTS.md)
 
-- Pan/zoom must remain CSS/camera only; do not re-render pdf.js on zoom for this fix.
+- Pan/zoom must remain CSS/camera only; do not re-render PDF pages on zoom for this fix.
 - Visible set + pool caps still apply; sharper small PDFs must not remove culling.
 - Letter ≈ 8 MB RGBA at density 2; design Phase 1 so every doc targets that ballpark, not native×2 for 2000pt pages.
 - Never patch `node_modules/@excalidraw/*`.

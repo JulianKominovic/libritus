@@ -42,7 +42,7 @@ In `text-select-mode`, wheel may already be manual — shortcuts must still call
 
 - All actions mutate Excalidraw camera (`scrollX` / `scrollY` / `zoom`) via the same helpers as [`pdf-navigation.md`](pdf-navigation.md).
 - Fit math uses `PageLayout` page bounds + viewport size from the Excalidraw API / container.
-- Do not re-render pdf.js textures on zoom.
+- Do not re-render PDF textures on zoom.
 
 ---
 

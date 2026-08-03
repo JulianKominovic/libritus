@@ -1,51 +1,78 @@
-import { getDocument, type PDFDocumentProxy, type PDFPageProxy } from './pdfjs'
-import 'pdfjs-dist/web/pdf_viewer.css'
+import type { PdfDocumentObject, PdfEngine, PdfPageObject } from '@embedpdf/models'
+import { getPdfEngine } from './embedpdfEngine'
 import type { PageSize } from './types'
 
 /**
- * pdf.js document wrapper. Worker is configured in pdfjs.ts.
- * Viewer CSS stays here so Home does not pay for it on cold start.
- * Public pageIndex is 0-based.
+ * PDFium document wrapper (EmbedPDF engine). Public pageIndex is 0-based.
+ *
+ * `open` owns close via the engine. `wrap` is for DocumentManager-owned docs
+ * (SelectionPlugin) — destroy only marks dead; caller closes via DocumentManager.
  */
 export class PdfDocument {
   private alive = true
+  private readonly ownsClose: boolean
 
   private constructor(
-    readonly proxy: PDFDocumentProxy,
+    readonly engine: PdfEngine<Blob>,
+    readonly handle: PdfDocumentObject,
     readonly pageCount: number,
-    readonly pageSizes: PageSize[]
-  ) {}
-
-  static async open(data: ArrayBuffer): Promise<PdfDocument> {
-    const loadingTask = getDocument({ data: new Uint8Array(data) })
-    const proxy = await loadingTask.promise
-    const pageCount = proxy.numPages
-    const pageSizes: PageSize[] = []
-
-    for (let i = 1; i <= pageCount; i++) {
-      const page = await proxy.getPage(i)
-      const viewport = page.getViewport({ scale: 1 })
-      pageSizes.push({ width: viewport.width, height: viewport.height })
-    }
-
-    return new PdfDocument(proxy, pageCount, pageSizes)
+    readonly pageSizes: PageSize[],
+    ownsClose: boolean
+  ) {
+    this.ownsClose = ownsClose
   }
 
-  getPage(pageIndex: number): Promise<PDFPageProxy> {
-    // ponytail: PdfLayer may still syncVisible after destroyRuntimeSession tears
-    // down the worker (stale ref / in-flight). Reject as AbortException so pools
-    // treat it like a cancel instead of logging TypeError on null transport.
+  static wrap(
+    engine: PdfEngine<Blob>,
+    handle: PdfDocumentObject,
+    options?: { ownsClose?: boolean }
+  ): PdfDocument {
+    const pageSizes: PageSize[] = handle.pages.map((p) => ({
+      width: p.size.width,
+      height: p.size.height
+    }))
+    return new PdfDocument(
+      engine,
+      handle,
+      handle.pageCount,
+      pageSizes,
+      options?.ownsClose ?? false
+    )
+  }
+
+  static async open(data: ArrayBuffer): Promise<PdfDocument> {
+    const engine = await getPdfEngine()
+    const handle = await engine
+      .openDocumentBuffer({
+        id: crypto.randomUUID(),
+        content: data
+      })
+      .toPromise()
+
+    return PdfDocument.wrap(engine, handle, { ownsClose: true })
+  }
+
+  /** Page object for render/text APIs. Rejects if destroyed (pools treat as cancel). */
+  getPage(pageIndex: number): Promise<PdfPageObject> {
     if (!this.alive) {
       const err = new Error('PDF document destroyed')
       err.name = 'AbortException'
       return Promise.reject(err)
     }
-    return this.proxy.getPage(pageIndex + 1)
+    const page = this.handle.pages[pageIndex]
+    if (!page) {
+      return Promise.reject(new Error(`Invalid page index ${pageIndex}`))
+    }
+    return Promise.resolve(page)
   }
 
   async destroy(): Promise<void> {
     this.alive = false
-    await this.proxy.cleanup()
-    await this.proxy.loadingTask.destroy()
+    if (!this.ownsClose) return
+    try {
+      await this.engine.closeDocument(this.handle).toPromise()
+    } catch {
+      /* already closed / worker gone */
+    }
   }
 }

@@ -8,7 +8,8 @@ import {
   tmpAppData,
   waitForSession,
   excalidrawCanvas,
-  expectUnsaved
+  expectUnsaved,
+  dragSelectPdfPage
 } from './helpers/canvas'
 import {
   openPdf,
@@ -33,16 +34,7 @@ test('text select shows toolbar; color click creates locked pdfHighlight', async
 
     await expect(page.getByRole('button', { name: 'Select text' })).toHaveCount(0)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    const box = await span.boundingBox()
-    if (!box) throw new Error('text span has no box')
-
-    // Hover first so the host enables `.pdf-text-pass` before pointerdown.
-    await page.mouse.move(box.x + 2, box.y + box.height / 2)
-    await page.mouse.down()
-    await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 6 })
-    await page.mouse.up()
+    await dragSelectPdfPage(page)
 
     // Pending: colors + Add note / Buscar / Copiar — no Remove / Unsaved yet.
     const colorBtn = page.getByRole('button', { name: 'Highlight color fuchsia' })
@@ -87,34 +79,19 @@ test('text select at zoom ≠ 1 creates locked highlight near text', async () =>
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    const preBox = await span.boundingBox()
-    if (!preBox) throw new Error('text span has no box')
+    const pageEl = page.locator('[data-pdf-page="0"]')
+    await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+    const preBox = await pageEl.boundingBox()
+    if (!preBox) throw new Error('pdf page has no box')
 
-    // Wheel zoom over text (host handler while `.pdf-text-pass` / .textLayer)
-    await page.mouse.move(preBox.x + preBox.width / 2, preBox.y + preBox.height / 2)
+    // Wheel zoom over page (host handler while `.pdf-text-pass`)
+    await page.mouse.move(preBox.x + preBox.width / 2, preBox.y + preBox.height * 0.12)
     await page.keyboard.down('Meta')
     await page.mouse.wheel(0, -400)
     await page.keyboard.up('Meta')
     await page.waitForTimeout(300)
 
-    const box = await span.boundingBox()
-    if (!box) throw new Error('text span has no box after zoom')
-
-    // Playwright mouse-drag does not create a native Selection under CSS scale().
-    // Seed the range and dispatch mouseup on the canvas root — do not mouse.down
-    // first (that collapses the selection before the highlight handler runs).
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-    })
+    await dragSelectPdfPage(page)
 
     const colorBtn = page.getByRole('button', { name: 'Highlight color fuchsia' })
     await expect(colorBtn).toBeVisible()
@@ -137,6 +114,11 @@ test('text select at zoom ≠ 1 creates locked highlight near text', async () =>
     ) as { x: number; y: number; width: number; height: number }
     expect(hl.width).toBeGreaterThan(5)
     expect(hl.height).toBeGreaterThan(2)
+    // Title band (~yRatio 0.12 on Letter). Without undoing CSS zoom in
+    // convertEventToPoint, hit-test maps ~zoom× too far down (y ≫ 180).
+    expect(hl.y).toBeGreaterThan(10)
+    expect(hl.y).toBeLessThan(180)
+    expect(hl.height).toBeLessThan(80)
   } finally {
     await close()
   }
@@ -508,7 +490,7 @@ test('leave with Unsaved writes session via flush', async () => {
   }
 })
 
-test('clearing DOM selection hides pending highlight toolbar', async () => {
+test('clearing selection hides pending highlight toolbar', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-hl-clear-sel-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
 
@@ -520,23 +502,12 @@ test('clearing DOM selection hides pending highlight toolbar', async () => {
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-    })
+    await dragSelectPdfPage(page)
 
     await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
 
-    await page.evaluate(() => window.getSelection()?.removeAllRanges())
+    await page.keyboard.press('Escape')
     await expect(page.getByRole('button', { name: 'Add note' })).toBeHidden({ timeout: 5_000 })
   } finally {
     await close()
@@ -588,18 +559,7 @@ test('click outside pending toolbar dismisses without revive on mouseup', async 
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-    })
+    await dragSelectPdfPage(page)
 
     await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
 
@@ -623,24 +583,13 @@ test('Cmd/Ctrl+A clears PDF text selection (Excalidraw select-all wins)', async 
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      window.getSelection()?.removeAllRanges()
-      window.getSelection()?.addRange(range)
-    })
-    await expect
-      .poll(async () => page.evaluate(() => window.getSelection()?.toString() ?? ''))
-      .toMatch(/Libritus/)
+    await dragSelectPdfPage(page)
+    await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
 
     await page.locator('[data-pdf-canvas-root]').focus()
     await page.keyboard.press('ControlOrMeta+A')
 
-    await expect
-      .poll(async () => page.evaluate(() => window.getSelection()?.toString() ?? ''))
-      .toBe('')
+    await expect(page.getByRole('button', { name: 'Add note' })).toBeHidden({ timeout: 5_000 })
   } finally {
     await close()
   }
@@ -658,18 +607,7 @@ test('Cmd/Ctrl+Z undoes highlight without re-clicking the canvas', async () => {
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-    })
+    await dragSelectPdfPage(page)
 
     const colorBtn = page.getByRole('button', { name: 'Highlight color fuchsia' })
     await expect(colorBtn).toBeVisible()
@@ -698,18 +636,7 @@ test('pending Add note commits default highlight + note without color click', as
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-    })
+    await dragSelectPdfPage(page)
 
     await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(0)
@@ -764,18 +691,7 @@ test('pending Copiar writes selection text and does not dirty session', async ()
       }
     })
 
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    await span.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-    })
+    await dragSelectPdfPage(page)
 
     await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
     await page.getByRole('button', { name: 'Copiar' }).click()
@@ -786,57 +702,14 @@ test('pending Copiar writes selection text and does not dirty session', async ()
     const copied = await page.evaluate(
       () => (window as unknown as { __copied: string | null }).__copied
     )
-    expect(copied).toMatch(/Libritus/)
+    expect(copied).toMatch(/Libritus e2e sample/)
   } finally {
     await close()
   }
 })
 
-test('caret snap: drag from page margin selects line text', async () => {
-  const appDataDir = await tmpAppData('libritus-e2e-hl-caret-snap-')
-  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
-
-  const { page, close } = await launchApp({ appDataDir })
-  try {
-    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
-      timeout: 30_000
-    })
-    await openPdf(page, categoryId, pdfId)
-    await closePdfSidebar(page)
-
-    const span = page.locator('.textLayer span').filter({ hasText: 'Libritus' }).first()
-    await span.waitFor({ state: 'visible', timeout: 60_000 })
-    const layer = page.locator('.textLayer').first()
-    const spanBox = await span.boundingBox()
-    const layerBox = await layer.boundingBox()
-    if (!spanBox || !layerBox) throw new Error('missing text layer boxes')
-
-    // Start in left margin of the page (textLayer hit, not a glyph span).
-    const startX = Math.max(layerBox.x + 4, spanBox.x - 36)
-    const endX = spanBox.x + spanBox.width - 2
-    const y = spanBox.y + spanBox.height / 2
-    expect(startX).toBeLessThan(spanBox.x)
-
-    // Hover first so host enables `.pdf-text-pass` before pointerdown.
-    await page.mouse.move(startX, y)
-    await page.mouse.down()
-    await page.mouse.move(endX, y, { steps: 10 })
-    await page.mouse.up()
-
-    await expect
-      .poll(async () => page.evaluate(() => window.getSelection()?.toString() ?? ''), {
-        timeout: 5_000
-      })
-      .toMatch(/Libritus/)
-
-    await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible({ timeout: 5_000 })
-  } finally {
-    await close()
-  }
-})
-
-test('cross-page selection does not create page-tall highlights', async () => {
-  const appDataDir = await tmpAppData('libritus-e2e-hl-cross-')
+test('zoomed-out line selection does not create page-tall highlights', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-hl-zoom-out-line-')
   const { categoryId, pdfId } = await seedLibrary({
     appDataDir,
     pdfFixture: path.join(process.cwd(), 'e2e/fixtures/sample-2p.pdf'),
@@ -851,7 +724,7 @@ test('cross-page selection does not create page-tall highlights', async () => {
     await openPdf(page, categoryId, pdfId)
     await closePdfSidebar(page)
 
-    // Zoom out so both pages stay in the text-layer pool.
+    // Zoom out so both pages stay visible (regression: line select must stay line-tall).
     const root = page.locator('[data-pdf-canvas-root]')
     const rootBox = await root.boundingBox()
     if (!rootBox) throw new Error('no canvas root')
@@ -859,20 +732,16 @@ test('cross-page selection does not create page-tall highlights', async () => {
     await page.keyboard.down('Meta')
     await page.mouse.wheel(0, 1200)
     await page.keyboard.up('Meta')
-    await expect(page.locator('.textLayer')).toHaveCount(2, { timeout: 60_000 })
+    await expect(page.locator('[data-pdf-page="0"]')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('[data-pdf-page="1"]')).toBeVisible({ timeout: 60_000 })
 
-    await page.evaluate(() => {
-      const spans = [...document.querySelectorAll('.textLayer span')]
-      if (spans.length < 2) throw new Error(`expected ≥2 spans, got ${spans.length}`)
-      const range = document.createRange()
-      range.setStartBefore(spans[0]!)
-      range.setEndAfter(spans[spans.length - 1]!)
-      const sel = window.getSelection()
-      sel?.removeAllRanges()
-      sel?.addRange(range)
-      document
-        .querySelector('[data-pdf-canvas-root]')
-        ?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    // EmbedPDF selection is per-page — drag a line on page 0 (not cross-page).
+    // sample-2p: "Libritus page one" at PDF (72, 720) → ~x 0.12, y from top ~0.09.
+    await dragSelectPdfPage(page, {
+      pageIndex: 0,
+      xStartRatio: 0.11,
+      xEndRatio: 0.55,
+      yRatio: 0.09
     })
 
     const colorBtn = page.getByRole('button', { name: 'Highlight color fuchsia' })

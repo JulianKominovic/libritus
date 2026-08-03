@@ -1,6 +1,6 @@
-import type { RenderTask } from './pdfjs'
 import type { PdfDocument } from './PdfDocument'
-import { renderPageToCanvas } from './PdfRenderer'
+import { isPdfJobCancelled } from './isPdfJobCancelled'
+import { renderPageToCanvas, type AbortableRender } from './PdfRenderer'
 
 // Sidebar ~220px wide; 0.75 keeps thumbs sharp on retina without PagePool-scale cost.
 export const THUMB_SCALE = 0.75
@@ -16,7 +16,7 @@ export type ThumbSlot = {
 
 type ActiveJob = {
   pageIndex: number
-  task: RenderTask
+  task: AbortableRender
   generation: number
 }
 
@@ -186,7 +186,13 @@ export class ThumbPool {
       const page = await this.doc.getPage(pageIndex)
       if (gen !== this.generation) return
 
-      const task = await renderPageToCanvas(page, slot.canvas, scale)
+      const task = renderPageToCanvas(
+        this.doc.engine,
+        this.doc.handle,
+        page,
+        slot.canvas,
+        scale
+      )
       this.jobs.set(pageIndex, { pageIndex, task, generation: gen })
       await task.promise
       this.jobs.delete(pageIndex)
@@ -200,8 +206,7 @@ export class ThumbPool {
     } catch (err) {
       this.jobs.delete(pageIndex)
       if (this.destroyed || gen !== this.generation) return
-      const name = err instanceof Error ? err.name : ''
-      if (name === 'AbortException' || name === 'RenderingCancelledException') return
+      if (isPdfJobCancelled(err)) return
       console.error(`Failed to render thumb ${pageIndex}`, err)
     }
   }

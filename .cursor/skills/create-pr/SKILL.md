@@ -48,7 +48,7 @@ Examples:
 
 - `feature: jump to page from outline sidebar`
 - `fix: keep highlights after zooming the canvas`
-- `chore: bump pdf.js worker assets`
+- `chore: bump pdfium.wasm / EmbedPDF engines`
 
 ## 4. Body
 

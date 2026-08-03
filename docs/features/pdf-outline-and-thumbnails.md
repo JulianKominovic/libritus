@@ -29,7 +29,7 @@ Out of scope (for now):
 | Surface | Behavior |
 |---------|----------|
 | **Toggle** | Navbar panel-right + Settings `showPdfOutline`; right overlay when open. |
-| **Outline** | Tree from pdf.js outline API. Missing outline → empty / hidden, not an error. |
+| **Outline** | Tree from EmbedPDF bookmarks (`getBookmarks`). Missing outline → empty / hidden, not an error. |
 | **Thumbnails** | One slot per page or virtualized list; active page marked from viewport center. |
 | **Click item** | `goToPage` / destination scroll; same zoom + stable X as nav. |
 
@@ -41,7 +41,7 @@ In `text-select-mode`, panel chrome needs `pointer-events-auto`.
 
 ### Outline
 
-- Load via pdf.js document outline; destinations → `pageIndex` (+ optional Y in page space).
+- Load via EmbedPDF `getBookmarks`; destinations → `pageIndex` (+ optional Y in page space).
 - Destinations that cannot resolve: skip or disable row; do not crash open.
 - Jump today: page center via existing `goToPage` (dest Y deferred).
 

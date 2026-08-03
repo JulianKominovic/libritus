@@ -18,18 +18,15 @@ Out of scope (for now):
 - Full style system for every Excalidraw shape.
 - OCR for scanned PDFs.
 - Collaborative cursors / comments threads.
-- Cmd/Ctrl+C of a DOM selection without using the toolbar (toolbar **Copiar** covers pending + committed paths).
-- Native-parity PDF text selection (Preview / Acrobat style). See experimental caret snap below.
+- Cmd/Ctrl+C of a pending selection without using the toolbar (toolbar **Copiar** covers pending + committed paths).
 
 ---
 
-## Experimental: text-layer caret snap
+## Text selection (EmbedPDF)
 
-pdf.js text spans are absolutely positioned, so a diagonal drag into page whitespace often selects only glyphs under the cursor path — not full intermediate lines.
+Text select uses EmbedPDF `SelectionPlugin` (glyph hit-test + `SelectionLayer`) under Excalidraw pass-through (`.pdf-text-pass`). Highlights come from `getFormattedSelection()` → scene skeletons — not DOM `window.getSelection()`.
 
-**Heuristic:** while dragging on a text layer, if the pointer is over `.endOfContent` / empty `.textLayer` (page margin), the host snaps the Selection caret to the start or end of the nearest visual line on the **page under the cursor** (`textLayerCaretSnap` + `textLayerSelection`). Drags may **start and end in whitespace** — native selection never begins on `user-select: none` / empty hits, so the host seeds and drives the Range. Cross-page: anchor stays on the start page; focus snaps on the layer under the pointer (snapping against the start page with foreign coordinates caused flicker). Intermediate lines enter via DOM order when spans are in reading order.
-
-**Not** browser `<p>` parity or a real PDF selection engine. Known ceilings: multi-column layouts, DOM order ≠ visual order, rotated runs. Upgrade path: dedicated selection engine or page-space ranges.
+Viewport/Scroller/RenderLayer stay unmounted (Excalidraw owns the camera).
 
 ---
 

@@ -15,7 +15,7 @@ Desktop research workspace: read PDFs on an infinite canvas, and keep the invest
 
 ## Research canvas
 
-The PDF viewer is an **infinite canvas** (Excalidraw + native pdf.js): virtualized pages, free pan/zoom, and freeform research on top of the document. Product north, architecture, roadmap, and agent conventions:
+The PDF viewer is an **infinite canvas** (Excalidraw + EmbedPDF / PDFium): virtualized pages, free pan/zoom, and freeform research on top of the document. Product north, architecture, roadmap, and agent conventions:
 
 - [`docs/features/product-north.md`](docs/features/product-north.md) — research canvas premises (canvas owns research; AI subordinate)
 - [`AGENTS.md`](AGENTS.md) — operational ground truth for contributors and agents

@@ -1,3 +1,4 @@
+import type { PdfBookmarkObject, PdfLinkTarget } from '@embedpdf/models'
 import type { PdfDocument } from './PdfDocument'
 
 export type OutlineNode = {
@@ -23,67 +24,36 @@ export function flattenOutline(nodes: OutlineNode[], depth = 0): FlatOutlineRow[
   return out
 }
 
-type RawOutlineItem = {
-  title: string
-  dest: string | Array<unknown> | null
-  items: RawOutlineItem[]
-}
-
-type OutlineProxy = {
-  getOutline: () => Promise<RawOutlineItem[] | null>
-  getDestination: (id: string) => Promise<Array<unknown> | null>
-  getPageIndex: (ref: unknown) => Promise<number>
-}
-
-/** Extract the page ref from a pdf.js destination array (first element). */
-function pageRefFromDest(dest: Array<unknown> | null): unknown | null {
-  if (!dest || dest.length === 0) return null
-  return dest[0] ?? null
-}
-
-async function resolvePageIndex(
-  proxy: OutlineProxy,
-  dest: string | Array<unknown> | null
-): Promise<number | null> {
-  if (dest == null) return null
-  try {
-    const resolved = typeof dest === 'string' ? await proxy.getDestination(dest) : dest
-    const ref = pageRefFromDest(resolved)
-    if (ref == null) return null
-    const index = await proxy.getPageIndex(ref)
-    return Number.isFinite(index) ? index : null
-  } catch {
-    return null
+export function pageIndexFromBookmarkTarget(target: PdfLinkTarget | undefined): number | null {
+  if (!target) return null
+  if (target.type === 'destination') {
+    const idx = target.destination.pageIndex
+    return Number.isFinite(idx) ? idx : null
   }
+  if (target.type === 'action' && 'destination' in target.action) {
+    const dest = (target.action as { destination?: { pageIndex?: number } }).destination
+    if (dest && typeof dest.pageIndex === 'number') return dest.pageIndex
+  }
+  return null
 }
 
-async function mapItem(proxy: OutlineProxy, item: RawOutlineItem): Promise<OutlineNode> {
-  const pageIndex = await resolvePageIndex(proxy, item.dest)
-  const children: OutlineNode[] = []
-  for (const child of item.items ?? []) {
-    children.push(await mapItem(proxy, child))
+export function mapBookmark(node: PdfBookmarkObject): OutlineNode {
+  return {
+    title: node.title || 'Untitled',
+    pageIndex: pageIndexFromBookmarkTarget(node.target),
+    children: (node.children ?? []).map(mapBookmark)
   }
-  return { title: item.title || 'Untitled', pageIndex, children }
 }
 
 /**
- * Load the PDF's embedded outline and resolve each destination to a 0-based pageIndex.
- * Missing outline → []. Unresolvable dests → pageIndex null (caller disables the row).
- * // ponytail: XYZ top → scrollForWorldY if mid-page TOC matters
+ * Load the PDF's embedded bookmarks via EmbedPDF `getBookmarks`.
+ * Missing outline → []. Unresolvable dests → pageIndex null.
  */
 export async function loadOutline(doc: PdfDocument): Promise<OutlineNode[]> {
-  const proxy = doc.proxy as unknown as OutlineProxy
-  let raw: RawOutlineItem[] | null
   try {
-    raw = await proxy.getOutline()
+    const { bookmarks } = await doc.engine.getBookmarks(doc.handle).toPromise()
+    return (bookmarks ?? []).map(mapBookmark)
   } catch {
     return []
   }
-  if (!raw || raw.length === 0) return []
-
-  const nodes: OutlineNode[] = []
-  for (const item of raw) {
-    nodes.push(await mapItem(proxy, item))
-  }
-  return nodes
 }

@@ -29,7 +29,7 @@ Out of scope (for now):
 type PageSpaceHighlight = {
   id: string
   pageIndex: number // 0-based
-  // quad/rects in PDF page space (pdf.js / CSS pixel page coords — pick one and document)
+  // quad/rects in PDF page space (PDF points / CSS pixel page coords — pick one and document)
   rects: { x: number; y: number; w: number; h: number }[]
   color?: string
   text?: string

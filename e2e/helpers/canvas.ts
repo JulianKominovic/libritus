@@ -56,6 +56,62 @@ export async function excalidrawCanvas(page: Page) {
   return canvas
 }
 
+/**
+ * Arm `.pdf-text-pass` by re-moving over a PDF page each poll tick.
+ * A one-shot mouse.move before Excalidraw API/tool is ready leaves pass off forever.
+ */
+export async function expectPdfTextPass(
+  page: Page,
+  opts?: { pageIndex?: number; timeout?: number }
+): Promise<void> {
+  const pageIndex = opts?.pageIndex ?? 0
+  const pageEl = page.locator(`[data-pdf-page="${pageIndex}"]`)
+  await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+  await expect
+    .poll(
+      async () => {
+        const box = await pageEl.boundingBox()
+        if (!box) return false
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        return page.evaluate(() =>
+          document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
+        )
+      },
+      { timeout: opts?.timeout ?? 10_000 }
+    )
+    .toBe(true)
+}
+
+/**
+ * Drag-select PDF text via EmbedPDF SelectionLayer (no DOM `.textLayer`).
+ * Defaults aim at sample.pdf title: "Libritus e2e sample" at PDF (50, 700).
+ * xStartRatio 0.08 ≈ left edge of the glyph (50/612); 0.05 is empty margin (no hit);
+ * 0.15 cut mid-word ("itus e2e sample").
+ */
+export async function dragSelectPdfPage(
+  page: Page,
+  opts?: {
+    pageIndex?: number
+    yRatio?: number
+    xStartRatio?: number
+    xEndRatio?: number
+  }
+): Promise<void> {
+  const pageIndex = opts?.pageIndex ?? 0
+  const pageEl = page.locator(`[data-pdf-page="${pageIndex}"]`)
+  await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+  const box = await pageEl.boundingBox()
+  if (!box) throw new Error(`pdf page ${pageIndex} has no box`)
+  const y = box.y + box.height * (opts?.yRatio ?? 0.12)
+  const x0 = box.x + box.width * (opts?.xStartRatio ?? 0.08)
+  const x1 = box.x + box.width * (opts?.xEndRatio ?? 0.55)
+  // Hover first so the host enables `.pdf-text-pass` before pointerdown.
+  await page.mouse.move(x0, y)
+  await page.mouse.down()
+  await page.mouse.move(x1, y, { steps: 8 })
+  await page.mouse.up()
+}
+
 /** Click scene-ish point assuming restored camera scroll≈0 zoom≈1. */
 export async function clickScene(page: Page, sceneX: number, sceneY: number): Promise<void> {
   const canvas = await excalidrawCanvas(page)

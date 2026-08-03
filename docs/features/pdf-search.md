@@ -41,8 +41,8 @@ In `text-select-mode`, search chrome keeps `pointer-events-auto` like [`pdf-navi
 
 ## Model / approach
 
-- Source of truth for glyphs: pdf.js text content (`getTextContent`).
-- **Lazy / incremental** index: `PdfTextSearch` caches page→extracted text on demand with concurrency 2; results stay in refs, not React state.
+- Source of truth for glyphs: EmbedPDF engine text / `searchAllPages`.
+- **Lazy / incremental** index: `PdfTextSearch` via engine search; results stay in refs, not React state.
 - Match = `{ pageIndex, rects[] }` in **page space**; painted via `PdfLayer.setSearchHit` under the same camera transform as pages.
 - Jump: `PageLayout.scrollForWorldY` + Excalidraw `scrollY` only (stable X / zoom).
 

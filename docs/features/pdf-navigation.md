@@ -42,9 +42,8 @@ In `text-select-mode` Excalidraw’s interactive layer is `pointer-events-none`;
 
 ## Model / coords
 
-- App: `pageIndex` **0-based**.
+- App: `pageIndex` **0-based** (PDFium page indexes are already 0-based).
 - Nav UI: **1-based** (`displayPage = pageIndex + 1`).
-- pdf.js 1-based only inside `PdfDocument.getPage`.
 
 ### Current page derivation
 

@@ -2,13 +2,13 @@
 
 North star: Libritus as a **research canvas** — PDF as trigger, canvas as memory of the investigation. Product premises: [`docs/features/product-north.md`](features/product-north.md). Architecture: [`docs/architecture/infinite-pdf-canvas.md`](architecture/infinite-pdf-canvas.md). Agent conventions: [`AGENTS.md`](../AGENTS.md).
 
-**Stack decision:** Excalidraw + virtualized pdf.js is the canvas. We are **not** building a custom camera / Pixi engine while Excalidraw works well. Scale work = host culling, pools, density, memory — not a renderer rewrite.
+**Stack decision:** Excalidraw + virtualized EmbedPDF (PDFium) is the canvas. We are **not** building a custom camera / Pixi engine while Excalidraw works well. Scale work = host culling, pools, density, memory — not a renderer rewrite.
 
 ---
 
 ## v1 (current MVP)
 
-- Replace lector-based `/category/:categoryId/:pdfId` with Excalidraw + virtualized pdf.js layer.
+- Replace lector-based `/category/:categoryId/:pdfId` with Excalidraw + virtualized EmbedPDF layer.
 - Page pool, adaptive render density + CSS zoom, text select, locked highlights.
 - WYSIWYG notes (Plate + `pdfNote` embeddables; place free or from highlight).
 - Page navigator, find bar, outline + thumbs, annotation panel.
@@ -82,4 +82,4 @@ Plan: treat session JSON as the write path for new annotations; one-shot or lazy
 
 > Research lives on the **canvas**; AI only on **explicit ask** — never auto-summarize / auto-highlight / auto-keyword.
 
-Excalidraw is the canvas stack. Improve the pdf.js host and product surfaces; do not plan a second engine by default.
+Excalidraw is the canvas stack. Improve the EmbedPDF host and product surfaces; do not plan a second engine by default.

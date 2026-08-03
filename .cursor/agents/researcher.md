@@ -53,7 +53,7 @@ If the ask requires a code or doc change, **answer with findings + a short hando
 - **Cite, don’t vibe.** Every non-trivial claim needs a path (and symbol/section when useful) or a URL.
 - **Code over comments** when they disagree; **shipped tests/e2e** over aspirational docs when behavior is in question.
 - **Product status** (shipped vs planned): defer to feature docs / product-north / roadmap vocabulary — do not treat Pending roadmap rows as implemented.
-- **Web:** use only when repo sources are insufficient (upstream Excalidraw/pdf.js, Electron APIs, standards). Prefer stable docs over random blogs; note date/version when relevant.
+- **Web:** use only when repo sources are insufficient (upstream Excalidraw/EmbedPDF, Electron APIs, standards). Prefer stable docs over random blogs; note date/version when relevant.
 - Stay on the asked question. No drive-by architecture lectures.
 
 ## Output format (required)

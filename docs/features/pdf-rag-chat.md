@@ -56,7 +56,7 @@ Motion: short fade/slide on messages (~150ms); send `active:scale-[0.96]`; `tabu
 ## Pipeline
 
 ```
-PDF open → pdf.js text → chunk → ai:rag-enqueue (main serial queue)
+PDF open → EmbedPDF `extractText` → chunk → ai:rag-enqueue (main serial queue)
   → MiniLM embed → {pdfId}.rag.json
   → Chat: query embed → top-k cosine → OpenRouter stream → UI
 ```
@@ -82,7 +82,7 @@ Embedding model: `Xenova/all-MiniLM-L6-v2` (384-d, q8). Chat model preference in
 | Feature | Interaction |
 |---------|-------------|
 | **Outline** | Chapter titles on chunks when TOC exists (wait for outline before enqueue). |
-| **Search** | Shares `getTextContent` / extract path ideas; separate from find bar. |
+| **Search** | Shares engine text extraction ideas; separate from find bar. |
 | **Notes / AIKit** | Do not mount Plate AI in chat or notes. |
 | **Product north** | Canvas owns research; sidebar Chat is temporary. |
 
