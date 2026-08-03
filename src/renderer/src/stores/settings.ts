@@ -4,9 +4,13 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 /** Default cheap OpenRouter chat model (non-secret preference). */
 export const DEFAULT_OPENROUTER_CHAT_MODEL = 'openai/gpt-4o-mini'
 
+export type PdfSidebarTab = 'outline' | 'pages' | 'annotations'
+
 export type SettingsStore = {
   showPdfOutline: boolean
   setShowPdfOutline: (showPdfOutline: boolean) => void
+  pdfSidebarTab: PdfSidebarTab
+  setPdfSidebarTab: (pdfSidebarTab: PdfSidebarTab) => void
   showNavigationSidebar: boolean
   setShowNavigationSidebar: (showNavigationSidebar: boolean) => void
   appDataDir: string
@@ -20,6 +24,8 @@ export const useSettings = create<SettingsStore>()(
     (set) => ({
       showPdfOutline: true,
       setShowPdfOutline: (showPdfOutline: boolean) => set({ showPdfOutline }),
+      pdfSidebarTab: 'outline',
+      setPdfSidebarTab: (pdfSidebarTab: PdfSidebarTab) => set({ pdfSidebarTab }),
       showNavigationSidebar: true,
       setShowNavigationSidebar: (showNavigationSidebar: boolean) => set({ showNavigationSidebar }),
       appDataDir: '',

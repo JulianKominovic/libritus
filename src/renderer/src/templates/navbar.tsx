@@ -200,7 +200,11 @@ function Navbar() {
         {isPdf && (
           <Button
             variant="ghost"
-            className="!size-10 aspect-square !p-2 text-morphing-600"
+            className={
+              showPdfOutline
+                ? '!size-10 aspect-square !p-2 bg-morphing-100 text-morphing-700 hover:bg-morphing-200'
+                : '!size-10 aspect-square !p-2 text-morphing-600'
+            }
             aria-label="Toggle PDF sidebar"
             aria-pressed={showPdfOutline}
             onClick={() => setShowPdfOutline(!showPdfOutline)}

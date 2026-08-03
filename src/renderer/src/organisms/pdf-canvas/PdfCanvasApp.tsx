@@ -1861,6 +1861,9 @@ function PdfCanvasAppInner({
     if (!el) return
 
     const onWheel = (event: WheelEvent) => {
+      // Sidebar / Excalidraw chrome overlay the page AABB — don't steal their scroll.
+      if (isExcalidrawUiPointerTarget(event.target)) return
+
       const overPage =
         pdfTextPassRef.current ||
         (event.target instanceof Element && event.target.closest('[data-pdf-page]') != null)

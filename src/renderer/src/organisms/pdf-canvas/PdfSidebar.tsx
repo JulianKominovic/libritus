@@ -7,6 +7,7 @@ import {
 } from '@renderer/lib/pdf-canvas/pdfOutline'
 import type { ThumbPool, ThumbSlot } from '@renderer/lib/pdf-canvas/ThumbPool'
 import { cn } from '@renderer/lib/utils'
+import { useSettings, type PdfSidebarTab } from '@renderer/stores/settings'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import {
@@ -38,11 +39,12 @@ export type PdfSidebarProps = {
 const THUMB_MAX_H = 200
 /** Padding + gap + page label under the thumb. */
 const THUMB_ROW_CHROME = 36
-const ANN_MAX_H = 200
 /** Outline row min-h-10; measureElement corrects wrap. */
 const OUTLINE_ROW_EST = 40
+/** Header + FadeClip max-h + padding; measureElement corrects. */
+const ANN_ROW_EST = 248
 
-type Tab = 'outline' | 'pages' | 'annotations'
+type Tab = PdfSidebarTab
 
 const pressable = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.99]'
 
@@ -55,7 +57,13 @@ function formatAnnotationDate(iso: string): string {
 function kindLabel(kind: AnnotationListItem['kind']): string {
   if (kind === 'highlight') return 'Highlight'
   if (kind === 'note') return 'Note'
+  if (kind === 'image') return 'Image'
   return 'Search'
+}
+
+function initialTab(outlineLen: number, preferred: PdfSidebarTab): Tab {
+  if (preferred === 'annotations' || preferred === 'pages') return preferred
+  return outlineLen > 0 ? 'outline' : 'pages'
 }
 
 /** max-h 200px clip; bottom fade only when content overflows. */
@@ -91,6 +99,16 @@ function FadeClip({ children }: { children: ReactNode }) {
   )
 }
 
+function AnnotationThumb({ src, alt }: { src: string; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="block w-full rounded-lg object-cover object-top outline -outline-offset-1 outline-black/10"
+    />
+  )
+}
+
 function AnnotationRow({
   item,
   onGoToAnnotation
@@ -106,60 +124,63 @@ function AnnotationRow({
       : `${label}: ${item.preview}`
 
   return (
-    <li>
-      <button
-        type="button"
-        aria-label={aria}
-        className={cn('w-full rounded-xl px-2 py-2 text-left', pressable, 'hover:bg-neutral-200')}
-        onClick={() => onGoToAnnotation(item.id)}
-      >
-        <span className="mb-1 flex items-baseline justify-between gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
-          <span className="flex shrink-0 items-baseline gap-2 text-[10px] tabular-nums text-neutral-400">
-            {item.kind === 'highlight' && item.pageIndex != null ? (
-              <>
-                <span>Page {item.pageIndex + 1}</span>
-                <span className="-mx-1">•</span>
-              </>
-            ) : null}
-            {date ? <span>{date}</span> : null}
-          </span>
+    <button
+      type="button"
+      aria-label={aria}
+      className={cn('w-full rounded-xl px-2 py-2 text-left', pressable, 'hover:bg-neutral-200')}
+      onClick={() => onGoToAnnotation(item.id)}
+    >
+      <span className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
+        <span className="flex shrink-0 items-baseline gap-2 text-[10px] tabular-nums text-neutral-400">
+          {item.kind === 'highlight' && item.pageIndex != null ? (
+            <>
+              <span>Page {item.pageIndex + 1}</span>
+              <span className="-mx-1">•</span>
+            </>
+          ) : null}
+          {date ? <span>{date}</span> : null}
         </span>
-        <FadeClip>
-          {item.kind === 'highlight' ? (
-            <span className="block text-xs leading-snug text-neutral-900 italic">
-              {item.preview}
-            </span>
-          ) : null}
-          {item.kind === 'note' ? (
-            <div className="pointer-events-none overflow-hidden rounded-lg bg-white outline -outline-offset-1 outline-black/10">
-              <NoteStaticBody
-                value={item.plateValue ?? [{ type: 'p', children: [{ text: '' }] }]}
+      </span>
+      <FadeClip>
+        {item.kind === 'highlight' ? (
+          <span className="block text-xs leading-snug text-neutral-900 italic">{item.preview}</span>
+        ) : null}
+        {item.kind === 'note' ? (
+          <div className="pointer-events-none overflow-hidden rounded-lg bg-white outline -outline-offset-1 outline-black/10">
+            <NoteStaticBody value={item.plateValue ?? [{ type: 'p', children: [{ text: '' }] }]} />
+          </div>
+        ) : null}
+        {item.kind === 'search' ? (
+          item.fileDataURL ? (
+            <AnnotationThumb src={item.fileDataURL} alt={item.query || item.preview} />
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-3 text-xs text-neutral-700 ring-1 ring-black/5">
+              <DynamicIcon
+                name="globe"
+                className="size-3.5 shrink-0 text-neutral-400"
+                aria-hidden
               />
+              <span className="truncate">{item.query || item.preview}</span>
             </div>
-          ) : null}
-          {item.kind === 'search' ? (
-            item.fileDataURL ? (
-              <img
-                src={item.fileDataURL}
-                alt={item.query || item.preview}
-                className="block w-full rounded-lg object-cover object-top outline -outline-offset-1 outline-black/10"
-                style={{ maxHeight: ANN_MAX_H }}
+          )
+        ) : null}
+        {item.kind === 'image' ? (
+          item.fileDataURL ? (
+            <AnnotationThumb src={item.fileDataURL} alt={item.preview} />
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-3 text-xs text-neutral-700 ring-1 ring-black/5">
+              <DynamicIcon
+                name="image"
+                className="size-3.5 shrink-0 text-neutral-400"
+                aria-hidden
               />
-            ) : (
-              <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-3 text-xs text-neutral-700 ring-1 ring-black/5">
-                <DynamicIcon
-                  name="globe"
-                  className="size-3.5 shrink-0 text-neutral-400"
-                  aria-hidden
-                />
-                <span className="truncate">{item.query || item.preview}</span>
-              </div>
-            )
-          ) : null}
-        </FadeClip>
-      </button>
-    </li>
+              <span className="truncate">{item.preview}</span>
+            </div>
+          )
+        ) : null}
+      </FadeClip>
+    </button>
   )
 }
 
@@ -256,12 +277,21 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
   { outline, pageCount, thumbPool, annotations, initialPage = 1, onGoToPage, onGoToAnnotation },
   ref
 ) {
-  const [tab, setTab] = useState<Tab>(outline.length > 0 ? 'outline' : 'pages')
+  const preferredTab = useSettings((s) => s.pdfSidebarTab)
+  const setPdfSidebarTab = useSettings((s) => s.setPdfSidebarTab)
+  const [tab, setTab] = useState<Tab>(() => initialTab(outline.length, preferredTab))
   const [tick, setTick] = useState(0)
   const activePageRef = useRef(initialPage)
   const activeMarkerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const outlineListRef = useRef<HTMLDivElement>(null)
+  const annotationsListRef = useRef<HTMLDivElement>(null)
+
+  // Apply persisted tab after zustand rehydrate; also promote outline once nodes arrive
+  // when preference is outline (never steal pages/annotations).
+  useEffect(() => {
+    setTab(initialTab(outline.length, preferredTab))
+  }, [preferredTab, outline.length])
 
   const flatOutline = useMemo(() => flattenOutline(outline), [outline])
 
@@ -283,11 +313,24 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
   })
   const outlineVirtualItems = outlineVirtualizer.getVirtualItems()
 
-  // Sidebar often mounts before loadOutline resolves; flip Pages → Outline once nodes arrive.
-  useEffect(() => {
-    if (outline.length === 0) return
-    setTab((prev) => (prev === 'pages' ? 'outline' : prev))
-  }, [outline.length])
+  const annotationsVirtualizer = useVirtualizer({
+    count: annotations.length,
+    getScrollElement: () => annotationsListRef.current,
+    estimateSize: () => ANN_ROW_EST,
+    gap: 8,
+    overscan: 4,
+    enabled: tab === 'annotations' && annotations.length > 0
+  })
+  const annotationVirtualItems = annotationsVirtualizer.getVirtualItems()
+
+  const onTabChange = useCallback(
+    (v: string) => {
+      const next = v as Tab
+      setTab(next)
+      setPdfSidebarTab(next)
+    },
+    [setPdfSidebarTab]
+  )
 
   const syncActiveMarker = useCallback((page1Based: number) => {
     const el = activeMarkerRef.current
@@ -336,6 +379,12 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
     return () => cancelAnimationFrame(id)
   }, [tab, flatOutline.length, outlineVirtualizer])
 
+  useEffect(() => {
+    if (tab !== 'annotations' || annotations.length === 0) return
+    const id = requestAnimationFrame(() => annotationsVirtualizer.measure())
+    return () => cancelAnimationFrame(id)
+  }, [tab, annotations.length, annotationsVirtualizer])
+
   const active = activePageRef.current
   void tick // subscribe-driven re-renders
 
@@ -347,12 +396,9 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
         'rounded-xl bg-neutral-50 text-neutral-900',
         'shadow-md shadow-neutral-900/10 ring-1 ring-black/10'
       )}
+      data-pdf-sidebar
     >
-      <Tabs
-        value={tab}
-        onValueChange={(v) => setTab(v as Tab)}
-        className="flex min-h-0 flex-1 flex-col gap-0"
-      >
+      <Tabs value={tab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col gap-0">
         <TabsList className="m-2 h-auto min-h-10 w-[calc(100%-1rem)] flex-wrap rounded-lg">
           <TabsTrigger value="outline" className={pressable}>
             Outline
@@ -419,18 +465,36 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
           </div>
         </TabsContent>
 
-        <TabsContent
-          value="annotations"
-          className="mt-0 min-h-0 flex-1 overflow-y-auto px-1.5 pb-2"
-        >
+        <TabsContent value="annotations" className="relative mt-0 min-h-0 flex-1 overflow-hidden">
           {annotations.length === 0 ? (
             <p className="px-2 py-3 text-xs text-pretty text-neutral-400">No annotations yet.</p>
           ) : (
-            <ul className="space-y-1">
-              {annotations.map((item) => (
-                <AnnotationRow key={item.id} item={item} onGoToAnnotation={onGoToAnnotation} />
-              ))}
-            </ul>
+            <div
+              ref={annotationsListRef}
+              role="list"
+              className="absolute inset-0 overflow-y-auto px-1.5 pb-2"
+            >
+              <div
+                className="relative w-full"
+                style={{ height: annotationsVirtualizer.getTotalSize() }}
+              >
+                {annotationVirtualItems.map((item) => {
+                  const ann = annotations[item.index]!
+                  return (
+                    <div
+                      key={item.key}
+                      role="listitem"
+                      data-index={item.index}
+                      ref={annotationsVirtualizer.measureElement}
+                      className="absolute left-0 top-0 w-full"
+                      style={{ transform: `translateY(${item.start}px)` }}
+                    >
+                      <AnnotationRow item={ann} onGoToAnnotation={onGoToAnnotation} />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
