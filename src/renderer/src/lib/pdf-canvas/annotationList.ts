@@ -2,13 +2,8 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
 import { highlightGroupId, isPdfHighlight } from './pdfHighlightModel'
 import { getNotePlateValue, isPdfNote } from './pdfNoteModel'
-import {
-  getSearchCaptureFileId,
-  getSearchCaptureQuery,
-  isPdfSearchCapture
-} from './pdfSearchCapture'
 
-export type AnnotationKind = 'highlight' | 'note' | 'search'
+export type AnnotationKind = 'highlight' | 'note' | 'search' | 'image'
 
 export type AnnotationListItem = {
   id: string
@@ -28,6 +23,21 @@ export type ListAnnotationsOpts = {
 }
 
 const PREVIEW_MAX = 80
+
+// Inline flags — do not import pdfSearchCapture (pulls Excalidraw runtime into bun:test).
+function isSearchCapture(el: ExcalidrawElement): boolean {
+  return el.customData?.pdfSearchCapture === true
+}
+
+function searchQuery(el: ExcalidrawElement): string {
+  return typeof el.customData?.query === 'string' ? el.customData.query : ''
+}
+
+function searchFileId(el: ExcalidrawElement): string | null {
+  return typeof el.customData?.fileId === 'string' && el.customData.fileId
+    ? el.customData.fileId
+    : null
+}
 
 /** Walk Plate Value → plain text; collapse whitespace. */
 export function platePlainText(value: Value): string {
@@ -64,8 +74,13 @@ function notePreview(el: ExcalidrawElement): string {
 }
 
 function searchPreview(el: ExcalidrawElement): string {
-  const query = getSearchCaptureQuery(el).trim()
+  const query = searchQuery(el).trim()
   return query ? truncate(query) : 'Search'
+}
+
+function imageFileId(el: ExcalidrawElement): string | null {
+  const id = (el as { fileId?: unknown }).fileId
+  return typeof id === 'string' && id ? id : null
 }
 
 /** Sort/display timestamp. Legacy: createdAt → capturedAt → el.updated. */
@@ -116,15 +131,27 @@ export function listAnnotations(
       })
       continue
     }
-    if (isPdfSearchCapture(el)) {
-      const fileId = getSearchCaptureFileId(el)
+    if (isSearchCapture(el)) {
+      const fileId = searchFileId(el)
       const fileDataURL = fileId && opts?.fileDataURL ? opts.fileDataURL(fileId) : null
       items.push({
         id: el.id,
         kind: 'search',
         createdAt: annotationCreatedAt(el),
         preview: searchPreview(el),
-        query: getSearchCaptureQuery(el),
+        query: searchQuery(el),
+        fileDataURL
+      })
+      continue
+    }
+    if (el.type === 'image') {
+      const fileId = imageFileId(el)
+      const fileDataURL = fileId && opts?.fileDataURL ? opts.fileDataURL(fileId) : null
+      items.push({
+        id: el.id,
+        kind: 'image',
+        createdAt: annotationCreatedAt(el),
+        preview: 'Image',
         fileDataURL
       })
     }
@@ -156,7 +183,7 @@ export function countCanvasStats(elements: readonly ExcalidrawElement[]): Canvas
     if (el.isDeleted) continue
     if (isPdfHighlight(el)) highlightGroups.add(highlightGroupId(el))
     else if (isPdfNote(el)) notes++
-    else if (isPdfSearchCapture(el)) searches++
+    else if (isSearchCapture(el)) searches++
   }
   return { highlights: highlightGroups.size, notes, searches }
 }

@@ -111,6 +111,7 @@ import {
   clearSessionPersistFreeze,
   isSessionPersistFrozen
 } from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
+import { stripElbowArrows } from '@renderer/lib/pdf-canvas/stripElbowArrows'
 import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlockPopup'
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
@@ -836,11 +837,13 @@ function PdfCanvasAppInner({
         const zoom = (cam?.zoom ?? INITIAL_CAMERA.zoom) as NormalizedZoomValue
         const elements =
           migrated?.elements && Array.isArray(migrated.elements)
-            ? syncPdfSearchArrows(
-                syncPdfNoteArrows(
-                  (
-                    migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
-                  ).map((el) => normalizePdfSearchCapture(normalizePdfNote(el)))
+            ? stripElbowArrows(
+                syncPdfSearchArrows(
+                  syncPdfNoteArrows(
+                    (
+                      migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
+                    ).map((el) => normalizePdfSearchCapture(normalizePdfNote(el)))
+                  ).elements
                 ).elements
               ).elements
             : []
@@ -866,7 +869,9 @@ function PdfCanvasAppInner({
               scrollX,
               scrollY,
               zoom: { value: zoom },
-              viewBackgroundColor: 'transparent'
+              viewBackgroundColor: 'transparent',
+              // Elbow arrows hard-fail past ±1e6 scene coords (tall PDFs).
+              currentItemArrowType: 'sharp'
             },
             captureUpdate: CaptureUpdateAction.NEVER
           })
@@ -1136,6 +1141,22 @@ function PdfCanvasAppInner({
 
     let scene = api.getSceneElementsIncludingDeleted()
 
+    // Ban elbow arrows (Excalidraw ±1e6 render hard-limit). A-key still cycles to elbow.
+    const stripped = stripElbowArrows(scene)
+    if (stripped.changed) {
+      scene = stripped.elements
+      api.updateScene({
+        elements: scene,
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+    }
+    if (api.getAppState().currentItemArrowType === 'elbow') {
+      api.updateScene({
+        appState: { currentItemArrowType: 'sharp' },
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+    }
+
     if (scene.some((el) => !el.isDeleted && isPdfHighlight(el) && !el.locked)) {
       scene = scene.map((el) =>
         !el.isDeleted && isPdfHighlight(el) && !el.locked
@@ -1234,6 +1255,15 @@ function PdfCanvasAppInner({
           if (hlId) {
             const stillThere = api.getSceneElements().some((el) => el.id === hlId && !el.isDeleted)
             if (!stillThere) hideHighlightToolbar()
+          }
+
+          // Force sharp before draw starts — A while arrow tool cycles onto elbow.
+          // AppState-only; safe mid-draw (does not rewrite the in-progress element).
+          if (api.getAppState().currentItemArrowType === 'elbow') {
+            api.updateScene({
+              appState: { currentItemArrowType: 'sharp' },
+              captureUpdate: CaptureUpdateAction.NEVER
+            })
           }
 
           // ponytail: never host-updateScene mid-draw — fights Excalidraw's in-progress
@@ -1861,6 +1891,9 @@ function PdfCanvasAppInner({
     if (!el) return
 
     const onWheel = (event: WheelEvent) => {
+      // Sidebar / Excalidraw chrome overlay the page AABB — don't steal their scroll.
+      if (isExcalidrawUiPointerTarget(event.target)) return
+
       const overPage =
         pdfTextPassRef.current ||
         (event.target instanceof Element && event.target.closest('[data-pdf-page]') != null)

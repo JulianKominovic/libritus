@@ -108,6 +108,36 @@ describe('annotationList', () => {
     expect(items[2]!.plateValue).toBeDefined()
   })
 
+  test('listAnnotations includes bare images but not search-capture images twice', () => {
+    const bare = baseEl({
+      id: 'img1',
+      type: 'image',
+      customData: { createdAt: '2026-01-04T00:00:00.000Z' }
+    })
+    ;(bare as { fileId?: string }).fileId = 'f-bare'
+    const capture = baseEl({
+      id: 's1',
+      type: 'image',
+      customData: {
+        pdfSearchCapture: true,
+        query: 'q',
+        fileId: 'f-cap',
+        createdAt: '2026-01-03T00:00:00.000Z'
+      }
+    })
+    ;(capture as { fileId?: string }).fileId = 'f-cap'
+    const items = listAnnotations([bare, capture], {
+      fileDataURL: (id) => (id === 'f-bare' ? 'data:image/png;base64,bare' : null)
+    })
+    expect(items.filter((i) => i.kind === 'image')).toHaveLength(1)
+    expect(items.find((i) => i.id === 'img1')).toMatchObject({
+      kind: 'image',
+      preview: 'Image',
+      fileDataURL: 'data:image/png;base64,bare'
+    })
+    expect(items.find((i) => i.id === 's1')?.kind).toBe('search')
+  })
+
   test('listAnnotations uses pageIndexAt and fileDataURL opts', () => {
     const hl = baseEl({
       id: 'h1',

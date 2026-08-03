@@ -762,3 +762,15 @@ Al “arreglar” stutter al mover note/web embed, el plan propuso chip Saved/Un
 - No tocar el chip / no imperativizar `saveStatus` por esto.
 - Flechas rAF-coalesced (un `updateScene` por frame); drag hot path salta maintenance; `markUnsaved` barato si ya dirty + buttons down; al `pointerup`/`pointercancel`/`blur` flush flechas + `runHostSceneMaintenance` + firma completa.
 - Hover early-return: **sin** `markUnsaved` (no reintroducir stringify en el spam de hover de Excalidraw).
+
+### PDF sidebar: wheel robado cuando tapa la página
+
+#### Descripción más detallada
+
+Con el sidebar abierto sobre el AABB de una página PDF, no se podía scrollear Outline / Pages / Annotations. El host `wheel` (pan/zoom de cámara) hacía `preventDefault` si `pdfTextPassRef.current` — y el pass-through se arma por geometría de `[data-pdf-page]`, **sin** mirar z-order. El sidebar está encima (`pointer-events-auto`) pero el cursor sigue “sobre” la página → pass on → cualquier wheel (incluido el del sidebar) panéa el canvas.
+
+#### Corrección
+
+- Marcar el aside con `data-pdf-sidebar`.
+- Incluir `[data-pdf-sidebar]` en `EXCALIDRAW_UI_POINTER_SELECTOR` → pass off al hover (mismo patrón que browser chrome / layer-ui).
+- En el `onWheel` del canvas: early-return si `isExcalidrawUiPointerTarget(event.target)` antes de chequear pass / `[data-pdf-page]`.

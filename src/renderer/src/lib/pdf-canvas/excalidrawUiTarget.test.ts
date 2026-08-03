@@ -61,9 +61,20 @@ describe('isExcalidrawUiPointerTarget', () => {
     expect(isExcalidrawUiPointerTarget(embed)).toBe(false)
   })
 
+  test('pdf sidebar → true', () => {
+    const doc = makeDom()
+    const sidebar = doc.createElement('aside')
+    sidebar.setAttribute('data-pdf-sidebar', '')
+    const row = doc.createElement('button')
+    sidebar.appendChild(row)
+    doc.body.appendChild(sidebar)
+    expect(isExcalidrawUiPointerTarget(row)).toBe(true)
+  })
+
   test('selector covers the chrome classes we rely on', () => {
     expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('.layer-ui__wrapper')
     expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('[data-browser-chrome]')
+    expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('[data-pdf-sidebar]')
     expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('.context-menu')
   })
 })
