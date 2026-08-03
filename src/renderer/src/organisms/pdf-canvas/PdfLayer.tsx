@@ -11,6 +11,8 @@ import { PagePointerProvider } from '@embedpdf/plugin-interaction-manager/react'
 import { SelectionLayer } from '@embedpdf/plugin-selection/react'
 import type { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
+import type { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
+import { findPdfLinkAt, loadPageLinks, type PdfLinkHit } from '@renderer/lib/pdf-canvas/pdfLinks'
 import type { SearchMatch } from '@renderer/lib/pdf-canvas/pdfSearch'
 import { screenDeltaToPdfPoint } from '@renderer/lib/pdf-canvas/screenDeltaToPdfPoint'
 import { trimVisibleToCap, visibilityBuffer } from '@renderer/lib/pdf-canvas/visibilityBuffer'
@@ -21,12 +23,16 @@ export type PdfLayerHandle = {
   applyCamera: (camera: CameraState) => void
   /** Ephemeral search hit in page space; painted under the world camera transform. */
   setSearchHit: (hit: SearchMatch | null) => void
+  /** Scene-space hit-test against cached internal link rects. */
+  findLinkAt: (sceneX: number, sceneY: number) => number | null
 }
 
 type PdfLayerProps = {
   layout: PageLayout
   pool: PagePool
+  doc: PdfDocument
   documentId: string
+  onInternalLink: (pageIndex: number) => void
 }
 
 function visibleEqual(a: number[], b: number[]): boolean {
@@ -42,13 +48,17 @@ function PageSlotView({
   slot,
   documentId,
   scale,
-  cameraRef
+  cameraRef,
+  links,
+  onInternalLink
 }: {
   page: PageRect
   slot?: PageSlot
   documentId: string
   scale: number
   cameraRef: RefObject<CameraState | null>
+  links: PdfLinkHit[]
+  onInternalLink: (pageIndex: number) => void
 }) {
   const canvasHostRef = useRef<HTMLDivElement>(null)
 
@@ -102,6 +112,28 @@ function PageSlotView({
           <div className="pointer-events-none h-full w-full animate-pulse bg-neutral-100" />
         )}
         <SelectionLayer documentId={documentId} pageIndex={page.pageIndex} scale={scale} />
+        {links.map((link, i) => (
+          <button
+            key={`${link.targetPageIndex}-${i}`}
+            type="button"
+            data-pdf-link
+            data-target-page={link.targetPageIndex}
+            aria-label={`Go to page ${link.targetPageIndex + 1}`}
+            className="absolute cursor-pointer border-0 bg-transparent p-0"
+            style={{
+              left: link.localX,
+              top: link.localY,
+              width: link.localWidth,
+              height: link.localHeight,
+              zIndex: 2
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onInternalLink(link.targetPageIndex)
+            }}
+          />
+        ))}
       </PagePointerProvider>
     </div>
   )
@@ -116,22 +148,28 @@ function PageSlotView({
  * React — only CSS transform + culling when the visible page set changes.
  */
 export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLayer(
-  { layout, pool, documentId },
+  { layout, pool, doc, documentId, onInternalLink },
   ref
 ) {
   const [visible, setVisible] = useState<number[]>([])
+  const [linksByPage, setLinksByPage] = useState<Record<number, PdfLinkHit[]>>({})
   const [, setTick] = useState(0)
 
   const worldDivRef = useRef<HTMLDivElement>(null)
   const hitHostRef = useRef<HTMLDivElement>(null)
   const visibleRef = useRef<number[]>([])
   const syncGenRef = useRef(0)
+  const linkGenRef = useRef(0)
+  const linksByPageRef = useRef<Record<number, PdfLinkHit[]>>({})
   const lastCameraRef = useRef<CameraState | null>(null)
 
   const layoutRef = useRef(layout)
   const poolRef = useRef(pool)
+  const docRef = useRef(doc)
   layoutRef.current = layout
   poolRef.current = pool
+  docRef.current = doc
+  linksByPageRef.current = linksByPage
 
   const applyCamera = useCallback((camera: CameraState) => {
     lastCameraRef.current = camera
@@ -198,7 +236,19 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLa
     }
   }, [])
 
-  useImperativeHandle(ref, () => ({ applyCamera, setSearchHit }), [applyCamera, setSearchHit])
+  const findLinkAt = useCallback((sceneX: number, sceneY: number) => {
+    const all: PdfLinkHit[] = []
+    for (const hits of Object.values(linksByPageRef.current)) {
+      all.push(...hits)
+    }
+    return findPdfLinkAt(all, sceneX, sceneY)
+  }, [])
+
+  useImperativeHandle(
+    ref,
+    () => ({ applyCamera, setSearchHit, findLinkAt }),
+    [applyCamera, setSearchHit, findLinkAt]
+  )
 
   useEffect(() => {
     const unsubPool = pool.subscribe(() => setTick((t) => t + 1))
@@ -210,9 +260,49 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLa
   // Session / pool identity changed — re-cull with last camera if any.
   useEffect(() => {
     visibleRef.current = []
+    setLinksByPage({})
+    linksByPageRef.current = {}
     const cam = lastCameraRef.current
     if (cam) applyCamera(cam)
-  }, [layout, pool, documentId, applyCamera])
+  }, [layout, pool, doc, documentId, applyCamera])
+
+  // Fetch internal LINK annots for newly visible pages (skip already cached).
+  useEffect(() => {
+    const gen = ++linkGenRef.current
+    const currentLayout = layoutRef.current
+    const currentDoc = docRef.current
+    const scale = currentLayout.scale
+    const cached = linksByPageRef.current
+
+    const missing = visible.filter((i) => cached[i] === undefined)
+    if (missing.length === 0) return
+
+    let cancelled = false
+    void (async () => {
+      const additions: Record<number, PdfLinkHit[]> = {}
+      for (const pageIndex of missing) {
+        const page = currentLayout.pages[pageIndex]
+        if (!page) {
+          additions[pageIndex] = []
+          continue
+        }
+        try {
+          additions[pageIndex] = await loadPageLinks(currentDoc, pageIndex, page, scale)
+        } catch {
+          // Leave uncached so a later visible pass can retry.
+          if (cancelled || gen !== linkGenRef.current) return
+          continue
+        }
+        if (cancelled || gen !== linkGenRef.current) return
+      }
+      if (cancelled || gen !== linkGenRef.current) return
+      setLinksByPage((prev) => ({ ...prev, ...additions }))
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [visible, documentId, layout, doc])
 
   const pageIndices = new Set([...visible, ...pool.getSlots().map((s) => s.pageIndex)])
 
@@ -237,6 +327,8 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLa
               documentId={documentId}
               scale={layout.scale}
               cameraRef={lastCameraRef}
+              links={linksByPage[pageIndex] ?? []}
+              onInternalLink={onInternalLink}
             />
           )
         })}
