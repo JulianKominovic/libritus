@@ -715,6 +715,7 @@ Re-descargar el binary: `cd node_modules/electron && bun run install.js` (o `bun
 - Types: `@excalidraw/excalidraw/data/transform` → `@excalidraw/excalidraw/element/transform`.
 - `activeTool` requiere `fromSelection`.
 - Casts más estrictos (`LocalPoint`, `isDeleted: true` en `newElementWith`, `NonDeleted` en `activeEmbeddable`).
+- Arrow/elbow host helpers: `as OrderedExcalidrawElement` ya no basta — `points: [number,number][]` no overlappea con `readonly LocalPoint[]` (brand `_brand`). Usar `as unknown as OrderedExcalidrawElement`; en tests leer `elbowed`/`points` vía cast a shape propia (no están en el union base).
 - Leave-flush: `@next` stubbea `get*` y llama `onExcalidrawAPI(null)` _antes_ del cleanup del host → cachear escena (`sceneCacheRef`) + `liveExcalidrawApi` (`!isDestroyed`).
 - Pass-through: tratar `lasso` como `selection` (re-click selection → lasso en next).
 - E2E: `.App-menu__left` ya no existe → `getByRole('region', { name: 'Selected shape actions' })` / `.selected-shape-actions` (también `.compact-shape-actions` top-left).

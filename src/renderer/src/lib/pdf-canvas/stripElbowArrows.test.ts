@@ -54,7 +54,15 @@ describe('stripElbowArrows', () => {
     ]
     const { elements, changed } = stripElbowArrows(els)
     expect(changed).toBe(true)
-    const a = elements[0] as typeof els[0]
+    const a = elements[0] as {
+      elbowed?: boolean
+      points?: readonly [number, number][]
+      width: number
+      height: number
+      fixedSegments?: unknown
+      startIsSpecial?: boolean | null
+      endIsSpecial?: boolean | null
+    }
     expect(a.elbowed).toBe(false)
     expect(a.points).toEqual([
       [0, 0],

@@ -21,6 +21,7 @@ export function stripElbowArrows(
     const end = points.length > 1 ? points[points.length - 1]! : start
     // ponytail: plain spread — same as normalizePdfNote hot path; avoids
     // versionNonce churn and keeps bun:test free of Excalidraw runtime.
+    // LocalPoint is branded; plain tuples are fine at runtime (same as tests).
     return {
       ...el,
       elbowed: false,
@@ -30,7 +31,7 @@ export function stripElbowArrows(
       fixedSegments: null,
       startIsSpecial: null,
       endIsSpecial: null
-    } as OrderedExcalidrawElement
+    } as unknown as OrderedExcalidrawElement
   })
   return { elements: changed ? next : [...elements], changed }
 }
