@@ -1,5 +1,6 @@
-import { Globe } from 'lucide-react'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { memo } from 'react'
+import { EmbedActivateHint } from './EmbedActivateHint'
 
 type SearchCaptureEmbedProps = {
   captureId: string
@@ -17,12 +18,12 @@ export const SearchCaptureEmbed = memo(function SearchCaptureEmbed({
       data-pdf-search-capture-id={captureId}
       data-pdf-search-capture
     >
-      <Globe className="size-10 text-morphing-400" aria-hidden />
+      <DynamicIcon name="globe" className="size-10 text-morphing-400" aria-hidden />
       <p className="text-sm font-medium text-morphing-800">Web search</p>
       {query ? (
         <p className="line-clamp-4 text-xs text-morphing-500">&ldquo;{query}&rdquo;</p>
       ) : null}
-      <p className="text-xs text-morphing-400">Click center to browse</p>
+      <EmbedActivateHint label="Click to browse" icon="globe" />
     </div>
   )
 })

@@ -120,6 +120,14 @@ export async function clickScene(page: Page, sceneX: number, sceneY: number): Pr
   await page.mouse.click(box.x + sceneX, box.y + sceneY)
 }
 
+/** Move pointer to scene-ish point (same camera assumption as clickScene). */
+export async function moveScene(page: Page, sceneX: number, sceneY: number): Promise<void> {
+  const canvas = await excalidrawCanvas(page)
+  const box = await canvas.boundingBox()
+  if (!box) throw new Error('no canvas box')
+  await page.mouse.move(box.x + sceneX, box.y + sceneY, { steps: 5 })
+}
+
 export function tmpAppData(prefix: string): Promise<string> {
   return mkdtemp(path.join(tmpdir(), prefix))
 }

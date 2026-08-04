@@ -50,7 +50,6 @@ import {
   getNotePlateValue,
   idsDeletedWithHighlight,
   isPdfNote,
-  isPdfNoteCenterHit,
   normalizePdfNote,
   NOTE_EMBED_LINK,
   NOTE_HEIGHT,
@@ -70,7 +69,6 @@ import {
   fixDuplicatedPdfSearchCaptures,
   getSearchCaptureQuery,
   isPdfSearchCapture,
-  isPdfSearchCaptureCenterHit,
   normalizePdfSearchCapture,
   pastedHttpUrlForSearchCapture,
   SEARCH_CAPTURE_EMBED_LINK,
@@ -127,6 +125,7 @@ import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfFindBar } from './PdfFindBar'
 import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 import { PdfSidebar, type PdfSidebarHandle } from './PdfSidebar'
+import { SearchBrowseHint } from './SearchBrowseHint'
 import { SearchCaptureEmbed } from './SearchCaptureEmbed'
 import { liveExcalidrawApi, setSelectionToolLocked } from './selectionTool'
 import { usePdfFindBar } from './usePdfFindBar'
@@ -242,7 +241,10 @@ function PdfCanvasAppInner({
   const pageNavigatorRef = useRef<PageNavigatorHandle>(null)
   const pdfSidebarRef = useRef<PdfSidebarHandle>(null)
   const highlightToolbarRef = useRef<HTMLDivElement>(null)
+  const searchBrowseHintRef = useRef<HTMLDivElement>(null)
   const activeHighlightIdRef = useRef<string | null>(null)
+  /** Selected promoted search-capture image (hint chip); null when hidden. */
+  const activeSearchImageIdRef = useRef<string | null>(null)
   /** Text selection awaiting a color click — not yet in the scene. */
   const pendingHighlightRef = useRef<ExcalidrawElementSkeleton[] | null>(null)
   const placeNoteModeRef = useRef(false)
@@ -316,6 +318,12 @@ function PdfCanvasAppInner({
     if (toolbar) toolbar.style.display = 'none'
   }, [])
 
+  const hideSearchBrowseHint = useCallback(() => {
+    activeSearchImageIdRef.current = null
+    const hint = searchBrowseHintRef.current
+    if (hint) hint.style.display = 'none'
+  }, [])
+
   /** Keep Excalidraw shortcuts (undo) working after text-select / toolbar clicks. */
   const focusCanvasRoot = useCallback(() => {
     if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active') return
@@ -358,6 +366,9 @@ function PdfCanvasAppInner({
     clearActiveEmbeddable
   })
 
+  /** Promoted image under pointer (reading mode) — drives browse chip without selection. */
+  const hoveredSearchImageIdRef = useRef<string | null>(null)
+
   const positionHighlightToolbar = useCallback(() => {
     const toolbar = highlightToolbarRef.current
     const api = apiRef.current
@@ -394,6 +405,67 @@ function PdfCanvasAppInner({
     toolbar.style.display = 'flex'
   }, [hideHighlightToolbar])
 
+  const positionSearchBrowseHint = useCallback(() => {
+    const hint = searchBrowseHintRef.current
+    const api = apiRef.current
+    const container = containerRef.current
+    const imageId = activeSearchImageIdRef.current
+    if (!hint || !api || !container || !imageId) return
+
+    const el = api.getSceneElements().find((e) => e.id === imageId)
+    if (!el || el.isDeleted || !isPdfSearchCapture(el) || el.type !== 'image') {
+      hideSearchBrowseHint()
+      return
+    }
+
+    const appState = api.getAppState()
+    // Center of card — matches EmbedActivateHint on placeholders.
+    const mid = sceneCoordsToViewportCoords(
+      { sceneX: el.x + el.width / 2, sceneY: el.y + el.height / 2 },
+      appState
+    )
+    const bounds = container.getBoundingClientRect()
+    hint.style.left = `${mid.x - bounds.left}px`
+    hint.style.top = `${mid.y - bounds.top}px`
+    hint.style.display = 'flex'
+  }, [hideSearchBrowseHint])
+
+  /** Show chip for hovered or single-selected promoted search image (not browsing). */
+  const syncSearchBrowseHint = useCallback(() => {
+    if (isBrowsing()) {
+      hideSearchBrowseHint()
+      return
+    }
+    const api = apiRef.current
+    if (!api) {
+      hideSearchBrowseHint()
+      return
+    }
+
+    const pickImageId = (id: string | null | undefined): string | null => {
+      if (!id) return null
+      const el = api.getSceneElements().find((e) => e.id === id)
+      if (!el || el.isDeleted || !isPdfSearchCapture(el) || el.type !== 'image') return null
+      return el.id
+    }
+
+    const selected = api.getAppState().selectedElementIds ?? {}
+    const selectedIds = Object.keys(selected).filter((id) => selected[id])
+    const id =
+      pickImageId(hoveredSearchImageIdRef.current) ??
+      (selectedIds.length === 1 ? pickImageId(selectedIds[0]) : null)
+
+    if (!id) {
+      hideSearchBrowseHint()
+      return
+    }
+    activeSearchImageIdRef.current = id
+    positionSearchBrowseHint()
+  }, [hideSearchBrowseHint, isBrowsing, positionSearchBrowseHint])
+
+  const syncSearchBrowseHintRef = useRef(syncSearchBrowseHint)
+  syncSearchBrowseHintRef.current = syncSearchBrowseHint
+
   const showHighlightToolbar = useCallback(
     (highlightId: string) => {
       pendingHighlightRef.current = null
@@ -421,6 +493,8 @@ function PdfCanvasAppInner({
       const next = { ...cameraRef.current, ...patch }
       cameraRef.current = next
       pdfLayerRef.current?.applyCamera(next)
+      // EmbedActivateHint lives under Excalidraw scale(zoom); counter-scale via CSS var.
+      containerRef.current?.style.setProperty('--canvas-zoom', String(next.zoom))
 
       const layout = sessionRef.current?.layout
       if (layout) {
@@ -436,11 +510,14 @@ function PdfCanvasAppInner({
       if (activeHighlightIdRef.current || pendingHighlightRef.current) {
         positionHighlightToolbar()
       }
+      if (activeSearchImageIdRef.current) {
+        positionSearchBrowseHint()
+      }
       if (isBrowsing()) {
         syncActiveBrowserBounds()
       }
     },
-    [positionHighlightToolbar, isBrowsing, syncActiveBrowserBounds]
+    [positionHighlightToolbar, positionSearchBrowseHint, isBrowsing, syncActiveBrowserBounds]
   )
 
   /** List identity/preview only — skip setState when signature unchanged. */
@@ -670,6 +747,7 @@ function PdfCanvasAppInner({
     const prev = sessionRef.current
     if (!prev) return
     hideHighlightToolbar()
+    hideSearchBrowseHint()
     clearEmbedSelection()
     disposeBrowser()
     // Drop React/session refs before tearing down the worker so a stale PdfLayer
@@ -688,7 +766,7 @@ function PdfCanvasAppInner({
       }
     }
     await prev.doc.destroy()
-  }, [clearEmbedSelection, disposeBrowser, hideHighlightToolbar])
+  }, [clearEmbedSelection, disposeBrowser, hideHighlightToolbar, hideSearchBrowseHint])
 
   const clearScene = useCallback(() => {
     apiRef.current?.updateScene({
@@ -994,6 +1072,7 @@ function PdfCanvasAppInner({
       const current = sessionRef.current
       if (!current) return
       hideHighlightToolbar()
+      hideSearchBrowseHint()
       clearEmbedSelection()
       sessionRef.current = null
       current.pool.destroy()
@@ -1013,6 +1092,7 @@ function PdfCanvasAppInner({
     clearSaveTimer,
     disposeBrowser,
     hideHighlightToolbar,
+    hideSearchBrowseHint,
     pdfId,
     sceneElementsForPersist
   ])
@@ -1195,6 +1275,9 @@ function PdfCanvasAppInner({
 
     if (isBrowsing()) {
       syncActiveBrowserBounds()
+      hideSearchBrowseHint()
+    } else {
+      syncSearchBrowseHint()
     }
 
     if (!editingNote) {
@@ -1216,10 +1299,12 @@ function PdfCanvasAppInner({
     }
   }, [
     deactivateSearchBrowser,
+    hideSearchBrowseHint,
     isBrowsing,
     queueStripPdfNoteLinks,
     syncActiveBrowserBounds,
-    syncAnnotations
+    syncAnnotations,
+    syncSearchBrowseHint
   ])
 
   const endPointerGesture = useCallback(() => {
@@ -1257,6 +1342,10 @@ function PdfCanvasAppInner({
             if (!stillThere) hideHighlightToolbar()
           }
 
+          // Selection-driven browse chip — must run before hover early-return
+          // (pointermove over note/search center emits hover and would otherwise leave a ghost chip).
+          syncSearchBrowseHint()
+
           // Force sharp before draw starts — A while arrow tool cycles onto elbow.
           // AppState-only; safe mid-draw (does not rewrite the in-progress element).
           if (api.getAppState().currentItemArrowType === 'elbow') {
@@ -1289,6 +1378,7 @@ function PdfCanvasAppInner({
           // Drag hot path: arrows scheduled; skip O(n) scans + full persist until pointerup.
           if (pointerButtonsDownRef.current) {
             if (isBrowsing()) syncActiveBrowserBounds()
+            if (activeSearchImageIdRef.current) positionSearchBrowseHint()
             markUnsaved()
             return
           }
@@ -1302,9 +1392,11 @@ function PdfCanvasAppInner({
       hideHighlightToolbar,
       isBrowsing,
       markUnsaved,
+      positionSearchBrowseHint,
       runHostSceneMaintenance,
       scheduleHostArrowSync,
-      syncActiveBrowserBounds
+      syncActiveBrowserBounds,
+      syncSearchBrowseHint
     ]
   )
 
@@ -2269,36 +2361,115 @@ function PdfCanvasAppInner({
   }, [clearEmbedSelection, endPointerGesture, hideHighlightToolbar, isBrowsing, setPdfTextPass])
 
   // Excalidraw setStates activeEmbeddable "hover" on every pointermove over an
-  // embed center (no equality guard) → full App re-render. Stop those moves
-  // from reaching the canvas; pointerdown/up still activate click-to-edit.
-  // Skip while buttons down so edge-drag across the center keeps working.
+  // embed (no equality guard) → full App re-render / remount. Stop those moves
+  // from reaching the canvas for the full card AABB; pointerdown/up still
+  // activate click-to-edit and edge-drag. Also drives EmbedActivateHint.
   useEffect(() => {
     const host = excalidrawHostRef.current
     if (!host) return
 
+    let hoveredEmbedId: string | null = null
+
+    const hintRoot = () => containerRef.current ?? host
+
+    const clearActivateHintHover = () => {
+      if (!hoveredEmbedId) return
+      const prev = hintRoot().querySelector(
+        `[data-pdf-note-id="${hoveredEmbedId}"], [data-pdf-search-capture-id="${hoveredEmbedId}"]`
+      )
+      prev?.removeAttribute('data-activate-hint-hover')
+      hoveredEmbedId = null
+    }
+
+    const setActivateHintHover = (id: string | null) => {
+      if (id !== hoveredEmbedId) {
+        clearActivateHintHover()
+      }
+      if (!id) return
+      const el = hintRoot().querySelector(
+        `[data-pdf-note-id="${id}"], [data-pdf-search-capture-id="${id}"]`
+      )
+      if (!el) return
+      // Re-apply every move — Excalidraw hover remount can drop the attribute.
+      el.setAttribute('data-activate-hint-hover', '')
+      hoveredEmbedId = id
+    }
+
     const onPointerMoveCapture = (event: PointerEvent) => {
-      if (event.buttons !== 0) return
+      if (event.buttons !== 0) {
+        clearActivateHintHover()
+        hoveredSearchImageIdRef.current = null
+        syncSearchBrowseHintRef.current()
+        return
+      }
       if (event.altKey || event.shiftKey || event.metaKey || event.ctrlKey) return
       // Style panel / toolbars sit over the scene — don't steal their hover.
-      if (isExcalidrawUiPointerTarget(event.target)) return
+      if (isExcalidrawUiPointerTarget(event.target)) {
+        clearActivateHintHover()
+        hoveredSearchImageIdRef.current = null
+        syncSearchBrowseHintRef.current()
+        return
+      }
       const api = apiRef.current
       if (!api) return
       const appState = api.getAppState()
-      if (appState.activeEmbeddable?.state === 'active') return
+      if (appState.activeEmbeddable?.state === 'active') {
+        clearActivateHintHover()
+        hoveredSearchImageIdRef.current = null
+        syncSearchBrowseHintRef.current()
+        return
+      }
       const { x, y } = clientToSceneCoords(event.clientX, event.clientY, appState)
-      const note = findPdfNoteAt(api.getSceneElements(), x, y)
-      if (note && !note.locked && isPdfNoteCenterHit(note, x, y)) {
+      const elements = api.getSceneElements()
+      const note = findPdfNoteAt(elements, x, y)
+      const capture = findPdfSearchCaptureAt(elements, x, y)
+      const embedCapture =
+        capture && !capture.locked && capture.type === 'embeddable' ? capture : null
+      const imageCapture =
+        capture && !capture.locked && capture.type === 'image' ? capture : null
+
+      // Full-card stopPropagation (not just center): Excalidraw's embed "hover"
+      // remounts renderEmbeddable and would wipe data-activate-hint-hover.
+      // pointerdown/up still reach the canvas so edge-drag / center-activate work.
+      if (note && !note.locked) {
+        hoveredSearchImageIdRef.current = null
+        setActivateHintHover(note.id)
+        syncSearchBrowseHintRef.current()
         event.stopPropagation()
         return
       }
-      const capture = findPdfSearchCaptureAt(api.getSceneElements(), x, y)
-      if (capture && !capture.locked && isPdfSearchCaptureCenterHit(capture, x, y)) {
+      if (embedCapture) {
+        hoveredSearchImageIdRef.current = null
+        setActivateHintHover(embedCapture.id)
+        syncSearchBrowseHintRef.current()
         event.stopPropagation()
+        return
       }
+      // Reading-mode PNG: no embed DOM — host chip on hover (do not stopPropagation).
+      if (imageCapture) {
+        setActivateHintHover(null)
+        hoveredSearchImageIdRef.current = imageCapture.id
+        syncSearchBrowseHintRef.current()
+        return
+      }
+      hoveredSearchImageIdRef.current = null
+      setActivateHintHover(null)
+      syncSearchBrowseHintRef.current()
+    }
+
+    const onPointerLeave = () => {
+      clearActivateHintHover()
+      hoveredSearchImageIdRef.current = null
+      syncSearchBrowseHintRef.current()
     }
 
     host.addEventListener('pointermove', onPointerMoveCapture, true)
-    return () => host.removeEventListener('pointermove', onPointerMoveCapture, true)
+    host.addEventListener('pointerleave', onPointerLeave)
+    return () => {
+      host.removeEventListener('pointermove', onPointerMoveCapture, true)
+      host.removeEventListener('pointerleave', onPointerLeave)
+      clearActivateHintHover()
+    }
   }, [])
 
   return (
@@ -2448,6 +2619,7 @@ function PdfCanvasAppInner({
         onCopy={copyActiveHighlightText}
         onRemove={removeActiveHighlight}
       />
+      <SearchBrowseHint ref={searchBrowseHintRef} />
 
       <BrowserChrome
         ref={browserChromeRef}
