@@ -5,6 +5,7 @@ import { EditorStatic } from '@renderer/components/ui/editor-static'
 import { createSlateEditor, type Value } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
 import { memo, useEffect, useMemo, useRef } from 'react'
+import { EmbedActivateHint } from './EmbedActivateHint'
 
 type NoteEmbedProps = {
   noteId: string
@@ -126,7 +127,7 @@ export const NoteEmbed = memo(function NoteEmbed({
 
   return (
     <div
-      className="box-border h-full w-full overflow-hidden bg-neutral-50"
+      className="relative box-border h-full w-full overflow-hidden bg-neutral-50"
       data-pdf-note-id={noteId}
       data-pdf-note
       data-editing={editing ? '' : undefined}
@@ -139,7 +140,10 @@ export const NoteEmbed = memo(function NoteEmbed({
           onExitEdit={onExitEdit}
         />
       ) : (
-        <NoteStaticBody value={plateValue} />
+        <>
+          <NoteStaticBody value={plateValue} />
+          <EmbedActivateHint label="Click to edit" icon="pencil" />
+        </>
       )}
     </div>
   )
