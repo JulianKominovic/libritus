@@ -62,6 +62,12 @@ import {
 import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 // RAG parked — restore with enqueue in open effect (see src/main/ai/index.ts).
 // import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
+import { EmbedPDF } from '@embedpdf/core/react'
+import type { PdfEngine } from '@embedpdf/engines'
+import { useDocumentManagerCapability } from '@embedpdf/plugin-document-manager/react'
+import { useSelectionCapability } from '@embedpdf/plugin-selection/react'
+import { getPdfEngine } from '@renderer/lib/pdf-canvas/embedpdfEngine'
+import { EMBEDPDF_CANVAS_PLUGINS } from '@renderer/lib/pdf-canvas/embedpdfPlugins'
 import {
   attachmentFileIdsFromSearchCaptures,
   createSearchCapture,
@@ -92,12 +98,6 @@ import {
   setHighlightGroupColor,
   withHighlightSkeletonColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
-import { EMBEDPDF_CANVAS_PLUGINS } from '@renderer/lib/pdf-canvas/embedpdfPlugins'
-import { getPdfEngine } from '@renderer/lib/pdf-canvas/embedpdfEngine'
-import type { PdfEngine } from '@embedpdf/engines'
-import { EmbedPDF } from '@embedpdf/core/react'
-import { useDocumentManagerCapability } from '@embedpdf/plugin-document-manager/react'
-import { useSelectionCapability } from '@embedpdf/plugin-selection/react'
 import {
   readSession,
   SESSION_VERSION,
@@ -1841,10 +1841,7 @@ function PdfCanvasAppInner({
         // NoteEmbed onKeyDown only runs if focus is inside the note. After Place
         // note / toolbar clicks, contenteditable can be mounted but unfocused —
         // still exit edit (do not touch browse: guest owns Escape via IPC).
-        if (
-          apiRef.current?.getAppState().activeEmbeddable?.state === 'active' &&
-          !isBrowsing()
-        ) {
+        if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active' && !isBrowsing()) {
           clearActiveEmbeddable()
           event.preventDefault()
           return
@@ -1871,17 +1868,27 @@ function PdfCanvasAppInner({
         event.preventDefault()
         clearEmbedSelection()
         // Do not stopPropagation — Excalidraw's select-all must still run.
+        return
+      }
+
+      // Excalidraw hardcodes Ctrl/Cmd+Delete|Backspace → clear-canvas confirm,
+      // ignoring UIOptions.canvasActions.clearCanvas: false. Block it in host.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        (event.key === 'Backspace' || event.key === 'Delete') &&
+        !event.altKey
+      ) {
+        if (isWritableKeyTarget(event.target)) return
+        const api = apiRef.current
+        if (api?.getAppState().activeEmbeddable?.state === 'active') return
+        if (api?.getAppState().editingTextElement) return
+        event.preventDefault()
+        event.stopPropagation()
       }
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [
-    clearActiveEmbeddable,
-    clearEmbedSelection,
-    exitPlaceModes,
-    hideHighlightToolbar,
-    isBrowsing
-  ])
+  }, [clearActiveEmbeddable, clearEmbedSelection, exitPlaceModes, hideHighlightToolbar, isBrowsing])
 
   // EmbedPDF selection → pending highlight toolbar; clear → hide pending.
   useEffect(() => {
@@ -2495,8 +2502,7 @@ function PdfCanvasAppInner({
       const capture = findPdfSearchCaptureAt(elements, x, y)
       const embedCapture =
         capture && !capture.locked && capture.type === 'embeddable' ? capture : null
-      const imageCapture =
-        capture && !capture.locked && capture.type === 'image' ? capture : null
+      const imageCapture = capture && !capture.locked && capture.type === 'image' ? capture : null
 
       // Full-card stopPropagation (not just center): Excalidraw's embed "hover"
       // remounts renderEmbeddable and would wipe data-activate-hint-hover.
