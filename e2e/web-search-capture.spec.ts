@@ -59,6 +59,13 @@ async function expectBrowserChromeHidden(page: import('playwright').Page): Promi
   await expect(page.locator('[data-browser-chrome]')).toBeHidden({ timeout: 15_000 })
 }
 
+async function guestUrl(page: import('playwright').Page): Promise<string> {
+  const result = await page.evaluate(() =>
+    (window as any).electron.ipcRenderer.invoke('browser:getUrl')
+  )
+  return typeof result?.url === 'string' ? result.url : ''
+}
+
 /**
  * Outside-click for deactivate. Must land on the Excalidraw canvas inside
  * `.excalidraw-host` — not PDF tools (`top-12` centered toolbar) and not
@@ -1044,14 +1051,20 @@ test('center-click re-activates browse on native image capture', async () => {
 
     await clickScene(page, capX + capW / 2, capY + capH / 2)
     await expectBrowserChromeVisible(page)
+    await expect
+      .poll(() => guestUrl(page), { timeout: 15_000 })
+      .toMatch(/^https?:\/\//)
 
     await page.waitForTimeout(1200)
     await clickOutsideCapture(page)
     await expectBrowserChromeHidden(page)
 
-    // Re-activate the image-backed capture (not an embeddable).
+    // Re-activate ASAP (same URL) — must not stick on about:blank from deactivate.
     await clickScene(page, capX + capW / 2, capY + capH / 2)
     await expectBrowserChromeVisible(page)
+    await expect
+      .poll(() => guestUrl(page), { timeout: 15_000 })
+      .toMatch(/^https?:\/\/(?:www\.)?example\.com/i)
   } finally {
     await close()
   }

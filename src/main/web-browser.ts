@@ -423,7 +423,10 @@ function navigate(url: string): void {
 
   try {
     const current = wc.getURL()
-    if (current === url || loadedUrl === url) return
+    // Both must match: after deactivate, loadedUrl is cleared while about:blank is
+    // in-flight — current can still be the old http(s) URL; OR would skip reload
+    // and leave the guest blank when blank wins.
+    if (current === url && loadedUrl === url) return
   } catch {
     // ignore
   }
@@ -463,6 +466,8 @@ export function attachWebBrowserIpc(): void {
     view.setVisible(true)
     // Re-apply after visible — Chromium sometimes drops the pre-show zoomFactor.
     setGuestZoomFactor(zoomFactor)
+    // Deactivate mutes + blanks; unmute so the next page can play audio again.
+    view.webContents.setAudioMuted(false)
     navigate(payload.url)
     return { ok: true as const, zoomFactor }
   })
@@ -507,6 +512,17 @@ export function attachWebBrowserIpc(): void {
     return { ok: true as const, url }
   })
 
+  // E2E / debug: live guest URL (including about:blank after deactivate).
+  ipcMain.handle('browser:getUrl', () => {
+    const wc = guestContents()
+    if (!wc) return { url: '' as const }
+    try {
+      return { url: wc.getURL() }
+    } catch {
+      return { url: '' as const }
+    }
+  })
+
   ipcMain.handle('browser:deactivate', async () => {
     if (Date.now() < ignoreDeactivateUntil) {
       return { fileId: null as string | null, url: '', deferred: true as const }
@@ -534,14 +550,20 @@ export function attachWebBrowserIpc(): void {
       console.error('browser:deactivate capture failed', err)
     }
 
-    // Persist cookie jar to disk before hide (login / consent survives next open).
+    // Persist cookie jar to disk before blanking (login / consent survives next open).
     try {
       await wc.session.cookies.flushStore()
     } catch (err) {
       console.warn('browser:deactivate cookie flush failed', err)
     }
 
-    // Hide only — keep attached so the next open does not recreate mid-race.
+    // Stop media (YouTube etc.) without detach — hide-not-detach stays (historical ERR_FAILED).
+    wc.setAudioMuted(true)
+    loadedUrl = ''
+    void wc.loadURL('about:blank').catch(() => {
+      /* did-fail-load / destroyed — ignore */
+    })
+
     hideGuest()
     return { fileId, url: isHttpUrl(url) ? url : '' }
   })
