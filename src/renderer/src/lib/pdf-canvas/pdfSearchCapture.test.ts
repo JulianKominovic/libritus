@@ -82,6 +82,7 @@ const {
   normalizePdfSearchCapture,
   parsePastedHttpUrl,
   pastedHttpUrlForSearchCapture,
+  droppedHttpUrlForSearchCapture,
   resolveSearchCaptureOpenUrl,
   searchCaptureIdsForHighlight,
   stepGuestUserZoom,
@@ -253,6 +254,91 @@ describe('pastedHttpUrlForSearchCapture', () => {
 
   test('non-URL text returns null', () => {
     expect(pastedHttpUrlForSearchCapture(stubClipboard({ text: 'hello' }))).toBeNull()
+  })
+})
+
+function stubDrop(opts: {
+  uri?: string
+  text?: string
+  html?: string
+  types?: string[]
+  filesLength?: number
+}): DataTransfer {
+  const uri = opts.uri ?? ''
+  const text = opts.text ?? ''
+  const html = opts.html ?? ''
+  const types =
+    opts.types ??
+    [
+      ...(uri ? (['text/uri-list'] as const) : []),
+      ...(text ? (['text/plain'] as const) : []),
+      ...(html ? (['text/html'] as const) : [])
+    ]
+  return {
+    types,
+    files: { length: opts.filesLength ?? 0 } as FileList,
+    getData: (format: string) => {
+      if (format === 'text/uri-list') return uri
+      if (format === 'text/plain') return text
+      if (format === 'text/html') return html
+      return ''
+    }
+  } as unknown as DataTransfer
+}
+
+describe('droppedHttpUrlForSearchCapture', () => {
+  test('uri-list page URL', () => {
+    expect(
+      droppedHttpUrlForSearchCapture(stubDrop({ uri: 'https://example.com/dropped-page' }))
+    ).toBe('https://example.com/dropped-page')
+  })
+
+  test('plain text URL fallback', () => {
+    expect(
+      droppedHttpUrlForSearchCapture(stubDrop({ text: 'https://example.com/plain' }))
+    ).toBe('https://example.com/plain')
+  })
+
+  test('uri-list preferred over plain', () => {
+    expect(
+      droppedHttpUrlForSearchCapture(
+        stubDrop({
+          uri: 'https://example.com/from-uri',
+          text: 'https://example.com/from-plain'
+        })
+      )
+    ).toBe('https://example.com/from-uri')
+  })
+
+  test('Files present → null', () => {
+    expect(
+      droppedHttpUrlForSearchCapture(
+        stubDrop({
+          uri: 'https://example.com',
+          types: ['text/uri-list', 'Files'],
+          filesLength: 1
+        })
+      )
+    ).toBeNull()
+  })
+
+  test('junk → null', () => {
+    expect(droppedHttpUrlForSearchCapture(stubDrop({ uri: 'not-a-url' }))).toBeNull()
+    expect(droppedHttpUrlForSearchCapture(stubDrop({ text: 'hello' }))).toBeNull()
+    expect(droppedHttpUrlForSearchCapture(null)).toBeNull()
+  })
+
+  // Host must not call this when imageUrlFromDataTransfer is set; helper itself
+  // still returns the page uri-list URL even if HTML carries an img.
+  test('uri-list page URL even when HTML has img (host priority is the contract)', () => {
+    expect(
+      droppedHttpUrlForSearchCapture(
+        stubDrop({
+          uri: 'https://github.com/someone',
+          html: '<img src="https://cdn.example.com/a.png">'
+        })
+      )
+    ).toBe('https://github.com/someone')
   })
 })
 

@@ -188,6 +188,191 @@ test('Paste http(s) URL creates unanchored search capture', async () => {
   }
 })
 
+/**
+ * Chrome link / address-bar drag: text/uri-list (+ optional text/plain), no Files,
+ * no <img>. Host creates unanchored search capture at drop point + auto-activates.
+ * Image drops (HTML img src) remain preferred when present — covered by image-drop.spec.
+ */
+test('Drop http(s) URL creates unanchored search capture', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-drop-url-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const droppedUrl = 'https://example.com/dropped-page'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: []
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    const pageEl = page.locator('[data-pdf-page="0"]')
+    await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+    const box = await pageEl.boundingBox()
+    if (!box) throw new Error('pdf page has no box')
+    const clientX = box.x + box.width / 2
+    const clientY = box.y + box.height / 2
+
+    const dropResult = await page.evaluate(
+      ({ x, y, url }) => {
+        const root = document.querySelector('[data-pdf-canvas-root]')
+        if (!(root instanceof HTMLElement)) return { ok: false as const, reason: 'no-root' }
+
+        const dt = new DataTransfer()
+        dt.setData('text/uri-list', url)
+        dt.setData('text/plain', url)
+        // No Files, no HTML img — mirrors Chrome link / address-bar drag.
+
+        const hit = document.elementFromPoint(x, y)
+        if (!(hit instanceof Element)) return { ok: false as const, reason: 'no-hit' }
+
+        const over = new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          dataTransfer: dt
+        })
+        if (!over.dataTransfer) return { ok: false as const, reason: 'dragover-no-dt' }
+        hit.dispatchEvent(over)
+
+        const hit2 = document.elementFromPoint(x, y)
+        const dropTarget = hit2 instanceof Element ? hit2 : hit
+        const drop = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          dataTransfer: dt
+        })
+        if (!drop.dataTransfer) return { ok: false as const, reason: 'drop-no-dt' }
+        dropTarget.dispatchEvent(drop)
+
+        return { ok: true as const }
+      },
+      { x: clientX, y: clientY, url: droppedUrl }
+    )
+    expect(dropResult).toEqual({ ok: true })
+
+    await expectUnsaved(page)
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+    await expectBrowserChromeVisible(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => liveElements(s).some(isSearchCapture)
+    )
+
+    const els = liveElements(snap)
+    const captures = els.filter(isSearchCapture)
+    expect(captures).toHaveLength(1)
+    const capture = captures[0]!
+    expect(capture.type).toBe('embeddable')
+    expect(capture.link).toBe('libritus://pdf-search-capture')
+    const data = capture.customData as {
+      query?: string
+      url?: string
+      sourceHighlightId?: string
+    }
+    expect(data.query).toBe('')
+    expect(data.url).toBe(droppedUrl)
+    expect(data.sourceHighlightId).toBeUndefined()
+    expect(els.filter(isSearchArrow)).toHaveLength(0)
+  } finally {
+    await close()
+  }
+})
+
+/** text/plain-only URL drag (no uri-list / html types). */
+test('Drop text/plain-only http(s) URL creates search capture', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-drop-url-plain-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const droppedUrl = 'https://example.com/plain-only'
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: []
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    const pageEl = page.locator('[data-pdf-page="0"]')
+    await pageEl.waitFor({ state: 'visible', timeout: 60_000 })
+    const box = await pageEl.boundingBox()
+    if (!box) throw new Error('pdf page has no box')
+    const clientX = box.x + box.width / 2
+    const clientY = box.y + box.height / 2
+
+    const dropResult = await page.evaluate(
+      ({ x, y, url }) => {
+        const dt = new DataTransfer()
+        dt.setData('text/plain', url)
+
+        const hit = document.elementFromPoint(x, y)
+        if (!(hit instanceof Element)) return { ok: false as const, reason: 'no-hit' }
+
+        hit.dispatchEvent(
+          new DragEvent('dragover', {
+            bubbles: true,
+            cancelable: true,
+            clientX: x,
+            clientY: y,
+            dataTransfer: dt
+          })
+        )
+        const hit2 = document.elementFromPoint(x, y)
+        const dropTarget = hit2 instanceof Element ? hit2 : hit
+        dropTarget.dispatchEvent(
+          new DragEvent('drop', {
+            bubbles: true,
+            cancelable: true,
+            clientX: x,
+            clientY: y,
+            dataTransfer: dt
+          })
+        )
+        return { ok: true as const }
+      },
+      { x: clientX, y: clientY, url: droppedUrl }
+    )
+    expect(dropResult).toEqual({ ok: true })
+
+    await expectUnsaved(page)
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
+    await expectBrowserChromeVisible(page)
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => liveElements(s).some(isSearchCapture)
+    )
+    const capture = liveElements(snap).find(isSearchCapture)!
+    expect((capture.customData as { url?: string }).url).toBe(droppedUrl)
+  } finally {
+    await close()
+  }
+})
+
 test('Buscar from highlight creates search capture + host-managed arrow', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-buscar-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })

@@ -184,6 +184,31 @@ export function pastedHttpUrlForSearchCapture(
   return parsePastedHttpUrl(data.getData('text/plain') ?? '')
 }
 
+/** First http(s) line in uri-list (skip `#` comments). */
+function httpUrlFromUriList(uriList: string): string | null {
+  for (const line of uriList.split(/\r?\n/)) {
+    const url = line.trim()
+    if (!url || url.startsWith('#')) continue
+    const parsed = parsePastedHttpUrl(url)
+    if (parsed) return parsed
+  }
+  return null
+}
+
+/**
+ * URL for a search-capture drop, or null.
+ * Host must call only after `imageUrlFromDataTransfer` is null (image wins over page uri-list).
+ */
+export function droppedHttpUrlForSearchCapture(
+  data: DataTransfer | null | undefined
+): string | null {
+  if (!data || data.files?.length) return null
+  if (Array.from(data.types ?? []).includes('Files')) return null
+  const fromUri = httpUrlFromUriList(data.getData('text/uri-list') ?? '')
+  if (fromUri) return fromUri
+  return parsePastedHttpUrl(data.getData('text/plain') ?? '')
+}
+
 /** Prefer in-memory element URL, then scene, then Google from query. */
 export function resolveSearchCaptureOpenUrl(
   el: Pick<ExcalidrawElement, 'customData'>,
