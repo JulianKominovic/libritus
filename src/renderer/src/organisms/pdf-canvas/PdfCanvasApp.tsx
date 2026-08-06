@@ -1854,7 +1854,7 @@ function PdfCanvasAppInner({
         return
       }
 
-      // Cmd/Ctrl+A → Excalidraw select-all (not EmbedPDF select-all).
+      // Cmd/Ctrl+A: clear PDF text selection; do not Excalidraw select-all.
       if (
         (event.metaKey || event.ctrlKey) &&
         (event.key === 'a' || event.key === 'A') &&
@@ -1866,22 +1866,22 @@ function PdfCanvasAppInner({
         if (api?.getAppState().activeEmbeddable?.state === 'active') return
         if (api?.getAppState().editingTextElement) return
         event.preventDefault()
+        event.stopPropagation()
         clearEmbedSelection()
-        // Do not stopPropagation — Excalidraw's select-all must still run.
         return
       }
 
       // Excalidraw hardcodes Ctrl/Cmd+Delete|Backspace → clear-canvas confirm,
       // ignoring UIOptions.canvasActions.clearCanvas: false. Block it in host.
+      // Do not bail on activeEmbeddable alone: note can be active with focus
+      // outside contenteditable (chrome / portaled UI) and still open the wipe dialog.
       if (
         (event.metaKey || event.ctrlKey) &&
         (event.key === 'Backspace' || event.key === 'Delete') &&
         !event.altKey
       ) {
         if (isWritableKeyTarget(event.target)) return
-        const api = apiRef.current
-        if (api?.getAppState().activeEmbeddable?.state === 'active') return
-        if (api?.getAppState().editingTextElement) return
+        if (apiRef.current?.getAppState().editingTextElement) return
         event.preventDefault()
         event.stopPropagation()
       }

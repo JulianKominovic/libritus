@@ -599,7 +599,7 @@ Tras pass-through (`.pdf-text-pass`), Cmd/Ctrl+Z parecía interceptado por el ho
 #### Corrección
 
 - `handleKeyboardGlobally` en `<Excalidraw>` (document keydown).
-- Cmd/Ctrl+A: `preventDefault` + `removeAllRanges` (sin `stopPropagation`) salvo writable/note.
+- Cmd/Ctrl+A: `preventDefault` + `stopPropagation` + clear EmbedPDF selection (no Excalidraw select-all), salvo writable/note.
 - Toolbar: hide en selection collapsed, pointerdown fuera, Escape; Copiar también en pending.
 - E2E: rebuild (`electron-vite build`) antes de `playwright` directo — `test:e2e` ya buildea.
 

@@ -566,9 +566,47 @@ test('click outside pending toolbar dismisses without revive on mouseup', async 
   }
 })
 
-test('Cmd/Ctrl+A clears PDF text selection (Excalidraw select-all wins)', async () => {
+test('Cmd/Ctrl+A clears PDF text selection without selecting all canvas elements', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-hl-cmd-a-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+
+  // Unlocked shape so Excalidraw select-all would select it (locked highlights wouldn't).
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      {
+        id: 'cmd-a-bait',
+        type: 'rectangle',
+        x: 500,
+        y: 150,
+        width: 120,
+        height: 80,
+        angle: 0,
+        strokeColor: '#1e1e1e',
+        backgroundColor: '#a5d8ff',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        frameId: null,
+        index: 'a0',
+        roundness: null,
+        seed: 1,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+        boundElements: null,
+        updated: 1,
+        link: null,
+        locked: false
+      }
+    ]
+  })
 
   const { page, close } = await launchApp({ appDataDir })
   try {
@@ -585,6 +623,10 @@ test('Cmd/Ctrl+A clears PDF text selection (Excalidraw select-all wins)', async 
     await page.keyboard.press('ControlOrMeta+A')
 
     await expect(page.getByRole('button', { name: 'Add note' })).toBeHidden({ timeout: 5_000 })
+    // Host must stopPropagation — otherwise Excalidraw select-all selects the bait.
+    await expect(page.getByRole('region', { name: 'Selected shape actions' })).toBeHidden({
+      timeout: 5_000
+    })
   } finally {
     await close()
   }
