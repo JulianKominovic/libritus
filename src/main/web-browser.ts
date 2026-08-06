@@ -355,7 +355,9 @@ function ensureGuest(parent: BrowserWindow): WebContentsView {
       session: guestSession(),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false
+      sandbox: false,
+      // HTML5 FS (YouTube etc.) stays inside WCV bounds — do not resize/fullscreen the host.
+      disableHtmlFullscreenWindowResize: true
     }
   })
   guest.setBorderRadius(12)
