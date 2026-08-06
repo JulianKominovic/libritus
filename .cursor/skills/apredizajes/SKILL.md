@@ -213,9 +213,12 @@ El agente perdió tiempo con z-index / poner el HUD debajo de Excalidraw. Eso no
 
 `NoteLayer` hacía `stopPropagation` en `keydown` del HUD, así que `page.keyboard.press('Escape')` **no** llegaba al listener de `window` en `PdfCanvasApp`. Además, tras dblclick, el effect de caret de `NoteEditableBody` corría async y pisaba el selection si se tipeaba al toque → texto mangled (`beforlate-persist…`).
 
+Más tarde: Escape **solo** en `NoteEmbed` onKeyDown fallaba si el contenteditable estaba montado pero sin foco (p.ej. tras Place note → activate → Escape inmediato) → `contenteditable` seguía en 1.
+
 #### Corrección
 
-- Notas migraron a embeddable + `NoteEmbed`: Escape llama `onExitEdit` → `activeEmbeddable: null` (keyboard.press funciona).
+- Notas migraron a embeddable + `NoteEmbed`: Escape llama `onExitEdit` → `activeEmbeddable: null`.
+- Listener `window` capture Escape: si `activeEmbeddable.active` y no browsing → `clearActiveEmbeddable` (no depender del foco).
 - Tras abrir edit: esperar ~400ms, luego `ControlOrMeta+A` + `pressSequentially`.
 - Activar embed: click en el **centro de la card** (`[data-pdf-note]`), no solo el bounding box del texto (Excalidraw exige el tercio central).
 
@@ -596,7 +599,7 @@ Tras pass-through (`.pdf-text-pass`), Cmd/Ctrl+Z parecía interceptado por el ho
 #### Corrección
 
 - `handleKeyboardGlobally` en `<Excalidraw>` (document keydown).
-- Cmd/Ctrl+A: `preventDefault` + `removeAllRanges` (sin `stopPropagation`) salvo writable/note.
+- Cmd/Ctrl+A: `preventDefault` + `stopPropagation` + clear EmbedPDF selection (no Excalidraw select-all), salvo writable/note.
 - Toolbar: hide en selection collapsed, pointerdown fuera, Escape; Copiar también en pending.
 - E2E: rebuild (`electron-vite build`) antes de `playwright` directo — `test:e2e` ya buildea.
 
@@ -734,7 +737,7 @@ Arrastrar una `<img>` desde Chrome al canvas no insertaba nada (incluso sobre ca
 - Fetch en main vía `net.fetch` + IPC `fetch-image-url` (http(s), `image/*`, cap ~10MB).
 - Re-despachar un `drop` sintético con `File` a `.excalidraw` → `insertImages` + `persistNewBinaryFiles` existente.
 - En `dragover`, clear pass también para html/uri-list (no solo Files).
-- No ampliar CSP. URL sola → web embed sigue fuera de alcance.
+- No ampliar CSP. Non-image html/uri-list drops crean search capture (`droppedHttpUrlForSearchCapture` → `createSearchCapture` + `openSearchBrowser`); image path sigue preferido cuando hay `<img src>`.
 
 ### PDF blank pages: EmbedPDF abort ≠ cancel real + PagePool thrash
 

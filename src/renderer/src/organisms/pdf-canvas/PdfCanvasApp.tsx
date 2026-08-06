@@ -29,6 +29,7 @@ import {
 } from '@renderer/lib/pdf-canvas/attachments'
 import {
   dataTransferLooksLikeBrowserImageDrag,
+  dataTransferLooksLikeBrowserUrlOrImageDrag,
   imageUrlFromDataTransfer
 } from '@renderer/lib/pdf-canvas/browserImageDrop'
 import { syncCanvasStats, syncReadingProgress } from '@renderer/lib/pdf-canvas/catalogWriteback'
@@ -61,10 +62,17 @@ import {
 import { loadOutline, type OutlineNode } from '@renderer/lib/pdf-canvas/pdfOutline'
 // RAG parked — restore with enqueue in open effect (see src/main/ai/index.ts).
 // import { buildTextChunks, extractPageTexts } from '@renderer/lib/pdf-canvas/pdfRag'
+import { EmbedPDF } from '@embedpdf/core/react'
+import type { PdfEngine } from '@embedpdf/engines'
+import { useDocumentManagerCapability } from '@embedpdf/plugin-document-manager/react'
+import { useSelectionCapability } from '@embedpdf/plugin-selection/react'
+import { getPdfEngine } from '@renderer/lib/pdf-canvas/embedpdfEngine'
+import { EMBEDPDF_CANVAS_PLUGINS } from '@renderer/lib/pdf-canvas/embedpdfPlugins'
 import {
   attachmentFileIdsFromSearchCaptures,
   createSearchCapture,
   createSearchCaptureFromHighlight,
+  droppedHttpUrlForSearchCapture,
   findPdfSearchCaptureAt,
   fixDuplicatedPdfSearchCaptures,
   getSearchCaptureQuery,
@@ -90,12 +98,6 @@ import {
   setHighlightGroupColor,
   withHighlightSkeletonColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
-import { EMBEDPDF_CANVAS_PLUGINS } from '@renderer/lib/pdf-canvas/embedpdfPlugins'
-import { getPdfEngine } from '@renderer/lib/pdf-canvas/embedpdfEngine'
-import type { PdfEngine } from '@embedpdf/engines'
-import { EmbedPDF } from '@embedpdf/core/react'
-import { useDocumentManagerCapability } from '@embedpdf/plugin-document-manager/react'
-import { useSelectionCapability } from '@embedpdf/plugin-selection/react'
 import {
   readSession,
   SESSION_VERSION,
@@ -1836,6 +1838,14 @@ function PdfCanvasAppInner({
           event.preventDefault()
           return
         }
+        // NoteEmbed onKeyDown only runs if focus is inside the note. After Place
+        // note / toolbar clicks, contenteditable can be mounted but unfocused —
+        // still exit edit (do not touch browse: guest owns Escape via IPC).
+        if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active' && !isBrowsing()) {
+          clearActiveEmbeddable()
+          event.preventDefault()
+          return
+        }
         if (activeHighlightIdRef.current || pendingHighlightRef.current) {
           hideHighlightToolbar()
           clearEmbedSelection()
@@ -1844,7 +1854,7 @@ function PdfCanvasAppInner({
         return
       }
 
-      // Cmd/Ctrl+A → Excalidraw select-all (not EmbedPDF select-all).
+      // Cmd/Ctrl+A: clear PDF text selection; do not Excalidraw select-all.
       if (
         (event.metaKey || event.ctrlKey) &&
         (event.key === 'a' || event.key === 'A') &&
@@ -1856,13 +1866,29 @@ function PdfCanvasAppInner({
         if (api?.getAppState().activeEmbeddable?.state === 'active') return
         if (api?.getAppState().editingTextElement) return
         event.preventDefault()
+        event.stopPropagation()
         clearEmbedSelection()
-        // Do not stopPropagation — Excalidraw's select-all must still run.
+        return
+      }
+
+      // Excalidraw hardcodes Ctrl/Cmd+Delete|Backspace → clear-canvas confirm,
+      // ignoring UIOptions.canvasActions.clearCanvas: false. Block it in host.
+      // Do not bail on activeEmbeddable alone: note can be active with focus
+      // outside contenteditable (chrome / portaled UI) and still open the wipe dialog.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        (event.key === 'Backspace' || event.key === 'Delete') &&
+        !event.altKey
+      ) {
+        if (isWritableKeyTarget(event.target)) return
+        if (apiRef.current?.getAppState().editingTextElement) return
+        event.preventDefault()
+        event.stopPropagation()
       }
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [clearEmbedSelection, exitPlaceModes, hideHighlightToolbar])
+  }, [clearActiveEmbeddable, clearEmbedSelection, exitPlaceModes, hideHighlightToolbar, isBrowsing])
 
   // EmbedPDF selection → pending highlight toolbar; clear → hide pending.
   useEffect(() => {
@@ -2282,10 +2308,37 @@ function PdfCanvasAppInner({
         setPdfTextPass(false)
         return
       }
-      if (dataTransferLooksLikeBrowserImageDrag(event.dataTransfer)) {
+      if (dataTransferLooksLikeBrowserUrlOrImageDrag(event.dataTransfer)) {
         event.preventDefault()
         setPdfTextPass(false)
       }
+    }
+
+    const placeDroppedUrlCapture = (url: string, clientX: number, clientY: number) => {
+      const api = apiRef.current
+      if (!api) return
+      const appState = api.getAppState()
+      if (appState.activeEmbeddable?.state === 'active') return
+      if (appState.editingTextElement) return
+
+      const { x, y } = clientToSceneCoords(clientX, clientY, appState)
+      const capture = createSearchCapture({
+        x: x - SEARCH_CAPTURE_WIDTH / 2,
+        y: y - SEARCH_CAPTURE_HEIGHT / 2,
+        query: '',
+        url
+      })
+      api.updateScene({
+        elements: [...api.getSceneElements(), capture],
+        appState: {
+          selectedElementIds: { [capture.id]: true }
+        },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      setSelectionToolLocked(api, false)
+      queueStripPdfNoteLinks()
+      markUnsaved()
+      void openSearchBrowser(capture)
     }
 
     const onDropCapture = (event: DragEvent) => {
@@ -2326,20 +2379,35 @@ function PdfCanvasAppInner({
         event.preventDefault()
         event.stopPropagation()
         setPdfTextPass(false)
-        if (!imageUrl) return
-        const { clientX, clientY, screenX, screenY } = event
-        void (async () => {
-          const fetched = await fetchImageUrl(imageUrl)
-          if (!fetched) {
-            console.warn('browser image drop: fetch failed', imageUrl)
-            return
-          }
-          const ext = mimeToExt(fetched.mimeType)
-          const bytes = new Uint8Array(fetched.bytes)
-          const file = new File([bytes], `drop.${ext}`, { type: fetched.mimeType })
-          dispatchFileDropToExcalidraw(file, clientX, clientY, screenX, screenY)
-        })()
+        if (imageUrl) {
+          const { clientX, clientY, screenX, screenY } = event
+          void (async () => {
+            const fetched = await fetchImageUrl(imageUrl)
+            if (!fetched) {
+              console.warn('browser image drop: fetch failed', imageUrl)
+              return
+            }
+            const ext = mimeToExt(fetched.mimeType)
+            const bytes = new Uint8Array(fetched.bytes)
+            const file = new File([bytes], `drop.${ext}`, { type: fetched.mimeType })
+            dispatchFileDropToExcalidraw(file, clientX, clientY, screenX, screenY)
+          })()
+          return
+        }
+
+        // Non-image URL → search capture (image path already preferred above).
+        const url = droppedHttpUrlForSearchCapture(event.dataTransfer)
+        if (url) placeDroppedUrlCapture(url, event.clientX, event.clientY)
+        return
       }
+
+      // text/plain-only URL drag (no html/uri-list types).
+      const plainUrl = droppedHttpUrlForSearchCapture(event.dataTransfer)
+      if (!plainUrl) return
+      event.preventDefault()
+      event.stopPropagation()
+      setPdfTextPass(false)
+      placeDroppedUrlCapture(plainUrl, event.clientX, event.clientY)
     }
 
     el.addEventListener('pointermove', onPointerMove, true)
@@ -2358,7 +2426,16 @@ function PdfCanvasAppInner({
       window.removeEventListener('pointercancel', onPointerCancel)
       window.removeEventListener('blur', onBlur)
     }
-  }, [clearEmbedSelection, endPointerGesture, hideHighlightToolbar, isBrowsing, setPdfTextPass])
+  }, [
+    clearEmbedSelection,
+    endPointerGesture,
+    hideHighlightToolbar,
+    isBrowsing,
+    markUnsaved,
+    openSearchBrowser,
+    queueStripPdfNoteLinks,
+    setPdfTextPass
+  ])
 
   // Excalidraw setStates activeEmbeddable "hover" on every pointermove over an
   // embed (no equality guard) → full App re-render / remount. Stop those moves
@@ -2425,8 +2502,7 @@ function PdfCanvasAppInner({
       const capture = findPdfSearchCaptureAt(elements, x, y)
       const embedCapture =
         capture && !capture.locked && capture.type === 'embeddable' ? capture : null
-      const imageCapture =
-        capture && !capture.locked && capture.type === 'image' ? capture : null
+      const imageCapture = capture && !capture.locked && capture.type === 'image' ? capture : null
 
       // Full-card stopPropagation (not just center): Excalidraw's embed "hover"
       // remounts renderEmbeddable and would wipe data-activate-hint-hover.

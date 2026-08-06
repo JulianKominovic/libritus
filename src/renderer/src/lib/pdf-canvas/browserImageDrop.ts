@@ -74,6 +74,23 @@ export function dataTransferLooksLikeBrowserImageDrag(
   return types.includes('text/html') || types.includes('text/uri-list')
 }
 
+/**
+ * dragover hint: may be image or http(s) URL drop (html / uri-list / plain), no Files.
+ * Includes text/plain-only link drags; getData is empty during dragover.
+ */
+export function dataTransferLooksLikeBrowserUrlOrImageDrag(
+  dt: DataTransfer | null | undefined
+): boolean {
+  if (!dt) return false
+  if (dt.files?.length) return false
+  const types = Array.from(dt.types ?? [])
+  return (
+    types.includes('text/html') ||
+    types.includes('text/uri-list') ||
+    types.includes('text/plain')
+  )
+}
+
 export function isImageMime(contentType: string | null | undefined): boolean {
   if (!contentType) return false
   const mime = contentType.split(';')[0]?.trim().toLowerCase() ?? ''

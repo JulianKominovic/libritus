@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   dataTransferLooksLikeBrowserImageDrag,
+  dataTransferLooksLikeBrowserUrlOrImageDrag,
   imageUrlFromDataTransfer,
   imageUrlFromHtml,
   imageUrlFromUriList,
@@ -112,6 +113,24 @@ describe('dataTransferLooksLikeBrowserImageDrag', () => {
     ).toBe(true)
     expect(
       dataTransferLooksLikeBrowserImageDrag(stubDt({ types: ['Files'], filesLength: 1 }))
+    ).toBe(false)
+  })
+
+  test('text/plain alone is not an image drag', () => {
+    expect(dataTransferLooksLikeBrowserImageDrag(stubDt({ types: ['text/plain'] }))).toBe(false)
+  })
+})
+
+describe('dataTransferLooksLikeBrowserUrlOrImageDrag', () => {
+  test('html, uri-list, or plain without files', () => {
+    expect(
+      dataTransferLooksLikeBrowserUrlOrImageDrag(stubDt({ types: ['text/uri-list'] }))
+    ).toBe(true)
+    expect(dataTransferLooksLikeBrowserUrlOrImageDrag(stubDt({ types: ['text/plain'] }))).toBe(
+      true
+    )
+    expect(
+      dataTransferLooksLikeBrowserUrlOrImageDrag(stubDt({ types: ['Files'], filesLength: 1 }))
     ).toBe(false)
   })
 })
