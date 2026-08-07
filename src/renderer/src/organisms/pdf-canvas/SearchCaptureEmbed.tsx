@@ -14,7 +14,7 @@ export const SearchCaptureEmbed = memo(function SearchCaptureEmbed({
 }: SearchCaptureEmbedProps) {
   return (
     <div
-      className="relative box-border flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden bg-morphing-100 p-6 text-center"
+      className="relative box-border flex h-full w-full cursor-move flex-col items-center justify-center gap-3 overflow-hidden bg-morphing-100 p-6 text-center"
       data-pdf-search-capture-id={captureId}
       data-pdf-search-capture
     >

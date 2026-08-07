@@ -256,18 +256,23 @@ export function useSearchCaptureBrowser({
       const url = resolveSearchCaptureOpenUrl(el, sceneEl)
 
       // Image captures lock aspect ratio in Excalidraw — demote while browsing.
+      // Keep activeEmbeddable null so the inset ring stays on the canvas (move/resize).
       let demotedFromImage = false
+      const browseAppState = {
+        selectedElementIds: { [el.id]: true },
+        activeEmbeddable: null
+      }
       if (sceneEl && isPdfSearchCapture(sceneEl) && sceneEl.type === 'image' && api) {
         demotedFromImage = true
         const demoted = demoteSearchCaptureToEmbeddable(sceneEl)
         api.updateScene({
           elements: api.getSceneElements().map((e) => (e.id === el.id ? demoted : e)),
-          appState: { selectedElementIds: { [el.id]: true } },
+          appState: browseAppState,
           captureUpdate: CaptureUpdateAction.NEVER
         })
       } else if (api) {
         api.updateScene({
-          appState: { selectedElementIds: { [el.id]: true } },
+          appState: browseAppState,
           captureUpdate: CaptureUpdateAction.NEVER
         })
       }
@@ -280,6 +285,7 @@ export function useSearchCaptureBrowser({
       lastRequestedEffectiveZoomRef.current = effective
       syncBrowserChromeHud(full)
       setZoomPercentLabel(SEARCH_CAPTURE_DEFAULT_USER_ZOOM)
+      clearActiveEmbeddable()
       try {
         await browserOpen(url, guest, effective)
         // Left / swapped capture while open was in flight — do not touch a dead session.
@@ -330,6 +336,7 @@ export function useSearchCaptureBrowser({
       apiRef,
       applyEffectiveGuestZoom,
       canvasZoom,
+      clearActiveEmbeddable,
       deactivateSearchBrowser,
       elementScreenBounds,
       guestScreenBounds,
@@ -365,6 +372,21 @@ export function useSearchCaptureBrowser({
   }, [apiRef, disposeBrowser, syncGuestToElement])
 
   const isBrowsing = useCallback(() => activeBrowserCaptureIdRef.current != null, [])
+
+  /**
+   * Browse must stay in Excalidraw "selected" mode (thin border, PE-none on embed)
+   * so the 12px WCV inset ring stays canvas-draggable. Center-click schedules
+   * activeEmbeddable after ~100ms — clear now and whenever onChange re-activates it.
+   */
+  const suppressActiveEmbedWhileBrowsing = useCallback(() => {
+    const browsingId = activeBrowserCaptureIdRef.current
+    if (!browsingId) return
+    const api = liveExcalidrawApi(apiRef.current)
+    const active = api?.getAppState().activeEmbeddable
+    if (active?.state !== 'active') return
+    if (active.element?.id !== browsingId) return
+    clearActiveEmbeddable()
+  }, [apiRef, clearActiveEmbeddable])
 
   const zoomIn = useCallback(() => {
     stepUserZoom(1)
@@ -501,6 +523,7 @@ export function useSearchCaptureBrowser({
     resizeActiveBrowser,
     isBrowsing,
     syncActiveBrowserBounds,
+    suppressActiveEmbedWhileBrowsing,
     openSearchBrowser,
     deactivateSearchBrowser,
     disposeBrowser
