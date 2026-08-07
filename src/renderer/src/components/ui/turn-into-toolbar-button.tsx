@@ -15,31 +15,34 @@ import { KEYS } from 'platejs'
 import { useEditorRef, useSelectionFragmentProp } from 'platejs/react'
 import * as React from 'react'
 
+import { useLang } from '@renderer/i18n/lang-context'
+import type { TranslationsKeys } from '@renderer/i18n/translations-keys'
+
 import { ToolbarButton, ToolbarMenuGroup } from './toolbar'
 
-export const turnIntoItems = [
+const buildTurnIntoItems = (t: (key: TranslationsKeys) => string) => [
   {
     icon: <DynamicIcon name="pilcrow" />,
     keywords: ['paragraph'],
-    label: 'Text',
+    label: t('editor_text'),
     value: KEYS.p
   },
   {
     icon: <DynamicIcon name="heading-1" />,
     keywords: ['title', 'h1'],
-    label: 'Heading 1',
+    label: t('editor_heading_1'),
     value: 'h1'
   },
   {
     icon: <DynamicIcon name="heading-2" />,
     keywords: ['subtitle', 'h2'],
-    label: 'Heading 2',
+    label: t('editor_heading_2'),
     value: 'h2'
   },
   {
     icon: <DynamicIcon name="heading-3" />,
     keywords: ['subtitle', 'h3'],
-    label: 'Heading 3',
+    label: t('editor_heading_3'),
     value: 'h3'
   },
   // {
@@ -63,37 +66,37 @@ export const turnIntoItems = [
   {
     icon: <DynamicIcon name="list" />,
     keywords: ['unordered', 'ul', '-'],
-    label: 'Bulleted list',
+    label: t('editor_bulleted_list'),
     value: KEYS.ul
   },
   {
     icon: <DynamicIcon name="list-ordered" />,
     keywords: ['ordered', 'ol', '1'],
-    label: 'Numbered list',
+    label: t('editor_numbered_list'),
     value: KEYS.ol
   },
   {
     icon: <DynamicIcon name="square" />,
     keywords: ['checklist', 'task', 'checkbox', '[]'],
-    label: 'To-do list',
+    label: t('editor_todo_list'),
     value: KEYS.listTodo
   },
   {
     icon: <DynamicIcon name="chevron-right" />,
     keywords: ['collapsible', 'expandable'],
-    label: 'Toggle list',
+    label: t('editor_toggle_list'),
     value: KEYS.toggle
   },
   {
     icon: <DynamicIcon name="file-code" />,
     keywords: ['```'],
-    label: 'Code',
+    label: t('editor_code'),
     value: KEYS.codeBlock
   },
   {
     icon: <DynamicIcon name="quote" />,
     keywords: ['citation', 'blockquote', '>'],
-    label: 'Quote',
+    label: t('editor_quote'),
     value: KEYS.blockquote
   }
 ]
@@ -101,6 +104,9 @@ export const turnIntoItems = [
 export function TurnIntoToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef()
   const [open, setOpen] = React.useState(false)
+  const { t } = useLang()
+
+  const turnIntoItems = React.useMemo(() => buildTurnIntoItems(t), [t])
 
   const value = useSelectionFragmentProp({
     defaultValue: KEYS.p,
@@ -108,7 +114,7 @@ export function TurnIntoToolbarButton(props: DropdownMenuProps) {
   })
   const selectedItem = React.useMemo(
     () => turnIntoItems.find((item) => item.value === (value ?? KEYS.p)) ?? turnIntoItems[0],
-    [value]
+    [turnIntoItems, value]
   )
 
   return (
@@ -117,7 +123,7 @@ export function TurnIntoToolbarButton(props: DropdownMenuProps) {
         <ToolbarButton
           className="min-w-[125px] shrink-0"
           pressed={open}
-          tooltip="Turn into"
+          tooltip={t('editor_turn_into')}
           isDropdown
         >
           {selectedItem.label}
@@ -137,7 +143,7 @@ export function TurnIntoToolbarButton(props: DropdownMenuProps) {
           onValueChange={(type) => {
             setBlockType(editor, type)
           }}
-          label="Turn into"
+          label={t('editor_turn_into')}
         >
           {turnIntoItems.map(({ icon, label, value: itemValue }) => (
             <DropdownMenuRadioItem

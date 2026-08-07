@@ -9,6 +9,7 @@ import { getMentionOnSelectItem } from '@platejs/mention'
 import { KEYS } from 'platejs'
 import { PlateElement, useFocused, useReadOnly, useSelected } from 'platejs/react'
 
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 import { Category, Pdf, usePdfs } from '@renderer/stores/categories'
@@ -100,6 +101,7 @@ export function PdfMention({ pdf }: { pdf: Pdf }) {
   )
 }
 export function CategoryMention({ category }: { category: Category }) {
+  const { t } = useLang()
   return (
     <>
       <p className="flex items-center gap-2">
@@ -111,7 +113,9 @@ export function CategoryMention({ category }: { category: Category }) {
         />
         {category.name}
       </p>
-      <small className="text-morphing-700 font-serif">{category.pdfs.length} PDFs</small>
+      <small className="text-morphing-700 font-serif">
+        {t('mention_pdf_count', { count: category.pdfs.length })}
+      </small>
     </>
   )
 }
@@ -121,36 +125,45 @@ export function HighlightMention({
 }: {
   highlight: NonNullable<Pdf['highlights']>[0] & { pdf: Pdf }
 }) {
+  const { t } = useLang()
   return (
     <>
       <i className="flex items-center gap-2">{highlight.text}</i>
       <small className="text-morphing-700 font-serif">
-        Page {highlight.rects[0].pageNumber} from {highlight.pdf.name}
+        {t('mention_page_from', {
+          page: highlight.rects[0].pageNumber,
+          pdf: highlight.pdf.name
+        })}
       </small>
     </>
   )
 }
 
 export function EssayMention({ essay }: { essay: NonNullable<Pdf['essays']>[0] & { pdf: Pdf } }) {
+  const { t } = useLang()
   return (
     <>
       {essay.text?.slice(0, 50)}...
-      <small className="text-morphing-700 font-serif">from {essay.pdf.name}</small>
+      <small className="text-morphing-700 font-serif">
+        {t('mention_from_pdf', { pdf: essay.pdf.name })}
+      </small>
     </>
   )
 }
 
 export function PageMention({ page }: { page: number }) {
+  const { t } = useLang()
   return (
     <p className="flex items-center gap-2">
       <DynamicIcon name="file-text" size={16} />
-      Page {page}
+      {t('mention_page', { page })}
     </p>
   )
 }
 
 export function MentionInputElement(props: PlateElementProps<TComboboxInputElement>) {
   const { editor, element } = props
+  const { t } = useLang()
   const [search, setSearch] = React.useState('')
   const [, params] = useRoute('/category/:categoryId/:pdfId')
   const categories = usePdfs((s) => s.categories)
@@ -175,20 +188,26 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
         </span>
 
         <InlineComboboxContent className="my-1.5">
-          <InlineComboboxEmpty>No results</InlineComboboxEmpty>
+          <InlineComboboxEmpty>{t('editor_no_results')}</InlineComboboxEmpty>
 
           <InlineComboboxGroup>
-            <InlineComboboxGroupLabel>Current document</InlineComboboxGroupLabel>
+            <InlineComboboxGroupLabel>{t('mention_current_document')}</InlineComboboxGroupLabel>
             {pdf && params && (
               <InlineComboboxItem
                 className="h-auto flex-col gap-1 items-start"
                 key={pdf.id + 'page' + pdf.progress.pages.toString()}
-                value={`Page ${pdf.progress.pages.toString()} from ${pdf.name}`}
+                value={t('mention_page_from', {
+                  page: pdf.progress.pages.toString(),
+                  pdf: pdf.name
+                })}
                 onClick={() =>
                   onSelectItem(
                     editor,
                     {
-                      text: `Page ${pdf.progress.pages.toString()} from ${pdf.name}`,
+                      text: t('mention_page_from', {
+                        page: pdf.progress.pages.toString(),
+                        pdf: pdf.name
+                      }),
                       key: JSON.stringify({
                         categoryId: params.categoryId,
                         pdfId: params.pdfId,
@@ -206,7 +225,7 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
             )}
           </InlineComboboxGroup>
           <InlineComboboxGroup>
-            <InlineComboboxGroupLabel>Categories</InlineComboboxGroupLabel>
+            <InlineComboboxGroupLabel>{t('mention_categories')}</InlineComboboxGroupLabel>
             {categories.map((category) => {
               const id = category.id
               return (
@@ -232,7 +251,7 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
             })}
           </InlineComboboxGroup>
           <InlineComboboxGroup>
-            <InlineComboboxGroupLabel>PDFs</InlineComboboxGroupLabel>
+            <InlineComboboxGroupLabel>{t('mention_pdfs')}</InlineComboboxGroupLabel>
             {pdfs.map((pdf) => {
               const id = pdf.id
               return (
@@ -260,7 +279,7 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
             })}
           </InlineComboboxGroup>
           <InlineComboboxGroup>
-            <InlineComboboxGroupLabel>Highlights</InlineComboboxGroupLabel>
+            <InlineComboboxGroupLabel>{t('mention_highlights')}</InlineComboboxGroupLabel>
             {highlights.map((highlight) => {
               if (!highlight) return null
               const id = highlight.id
@@ -292,7 +311,7 @@ export function MentionInputElement(props: PlateElementProps<TComboboxInputEleme
           </InlineComboboxGroup>
 
           <InlineComboboxGroup>
-            <InlineComboboxGroupLabel>Essays</InlineComboboxGroupLabel>
+            <InlineComboboxGroupLabel>{t('mention_essays')}</InlineComboboxGroupLabel>
             {essays.map((essay) => {
               if (!essay || !essay.text) return null
               const id = essay.id

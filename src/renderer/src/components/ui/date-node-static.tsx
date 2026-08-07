@@ -2,8 +2,11 @@ import type { TDateElement } from 'platejs'
 import type { SlateElementProps } from 'platejs/static'
 import { SlateElement } from 'platejs/static'
 
+import { useLang } from '@renderer/i18n/lang-context'
+
 export function DateElementStatic(props: SlateElementProps<TDateElement>) {
   const { element } = props
+  const { t } = useLang()
 
   return (
     <SlateElement className="inline-block" {...props}>
@@ -24,9 +27,9 @@ export function DateElementStatic(props: SlateElementProps<TDateElement>) {
               new Date(today.setDate(today.getDate() + 2)).toDateString() ===
               elementDate.toDateString()
 
-            if (isToday) return 'Today'
-            if (isYesterday) return 'Yesterday'
-            if (isTomorrow) return 'Tomorrow'
+            if (isToday) return t('date_today')
+            if (isYesterday) return t('date_yesterday')
+            if (isTomorrow) return t('date_tomorrow')
 
             return elementDate.toLocaleDateString(undefined, {
               day: 'numeric',
@@ -35,7 +38,7 @@ export function DateElementStatic(props: SlateElementProps<TDateElement>) {
             })
           })()
         ) : (
-          <span>Pick a date</span>
+          <span>{t('date_pick')}</span>
         )}
       </span>
       {props.children}

@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
+import { useLang } from '@renderer/i18n/lang-context'
 
 const chromePress = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.96]'
 const chromeHover = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
@@ -20,6 +21,7 @@ export type PageNavigatorProps = {
 
 export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>(
   function PageNavigator({ pageCount, initialPage = 1, onGoToPage, onPrev, onNext }, ref) {
+    const { t } = useLang()
     const currentPageRef = useRef(initialPage)
     const editingRef = useRef(false)
     const skipCommitRef = useRef(false)
@@ -90,7 +92,7 @@ export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>
         <button
           ref={prevBtnRef}
           type="button"
-          aria-label="Previous page"
+          aria-label={t('navigator_prev_aria')}
           className={`flex h-full w-10 items-center justify-center rounded-lg text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
           onClick={onPrev}
         >
@@ -100,7 +102,7 @@ export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>
           ref={inputRef}
           type="text"
           inputMode="numeric"
-          aria-label="Current page"
+          aria-label={t('navigator_current_aria')}
           defaultValue={String(initialPage)}
           className="h-8 w-10 rounded-lg bg-neutral-200 px-1 text-center text-sm tabular-nums text-neutral-900 outline-none ring-0"
           onFocus={() => {
@@ -123,7 +125,7 @@ export const PageNavigator = forwardRef<PageNavigatorHandle, PageNavigatorProps>
         <button
           ref={nextBtnRef}
           type="button"
-          aria-label="Next page"
+          aria-label={t('navigator_next_aria')}
           className={`flex h-full w-10 items-center justify-center rounded-lg text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
           onClick={onNext}
         >

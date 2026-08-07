@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
 
 import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 import { usePdfs } from '@renderer/stores/categories'
 import { useMemo, useState } from 'react'
@@ -26,6 +27,7 @@ function DragAndDropZone({
     categories[0]?.id ||
     'default'
   const uploadPdf = usePdfs((p) => p.uploadPdf)
+  const { t } = useLang()
   const [message, setMessage] = useState<
     'success' | 'error' | 'idle' | 'waiting-drop' | 'uploading'
   >('idle')
@@ -74,20 +76,20 @@ function DragAndDropZone({
   )
 
   const title = useMemo(() => {
-    if (message === 'error') return 'One or more files are not PDFs'
-    if (message === 'success') return 'Successfully uploaded'
-    if (message === 'waiting-drop') return 'Waiting for drop'
-    if (message === 'uploading') return 'Uploading...'
-    return 'Drop the PDF here'
-  }, [message])
+    if (message === 'error') return t('drop_error_title')
+    if (message === 'success') return t('drop_success_title')
+    if (message === 'waiting-drop') return t('drop_waiting_title')
+    if (message === 'uploading') return t('drop_uploading_title')
+    return t('drop_idle_title')
+  }, [message, t])
 
   const description = useMemo(() => {
-    if (message === 'error') return 'Those files will not be uploaded.'
-    if (message === 'success') return 'Happy reading!'
-    if (message === 'waiting-drop') return 'Drop one or more PDFs here'
-    if (message === 'uploading') return 'This may take a few seconds if the files are large'
-    return 'Drop the PDF here'
-  }, [message])
+    if (message === 'error') return t('drop_error_desc')
+    if (message === 'success') return t('drop_success_desc')
+    if (message === 'waiting-drop') return t('drop_waiting_desc')
+    if (message === 'uploading') return t('drop_uploading_desc')
+    return t('drop_idle_desc')
+  }, [message, t])
 
   return (
     <div ref={drop as unknown as React.RefObject<HTMLDivElement>} {...props}>

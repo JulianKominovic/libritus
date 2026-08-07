@@ -75,6 +75,8 @@ import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlo
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { useSettings } from '@renderer/stores/settings'
+import { useLang } from '@renderer/i18n/lang-context'
+import type { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import { Globe, Search, StickyNote } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
@@ -164,6 +166,11 @@ function PdfCanvasAppInner({
   engine
 }: PdfCanvasAppProps & { engine: PdfEngine<Blob> }) {
   const [, setLocation] = useLocation()
+  const { t } = useLang()
+  // Stable identity for t so callbacks in the open-effect deps don't change on
+  // language switch (a changed dep would re-run the whole open/restore effect).
+  const tRef = useRef(t)
+  tRef.current = t
   const { provides: documentManager } = useDocumentManagerCapability()
   const { provides: selectionCapability } = useSelectionCapability()
   const documentManagerRef = useRef(documentManager)
@@ -216,7 +223,9 @@ function PdfCanvasAppInner({
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [annotations, setAnnotations] = useState<AnnotationListItem[]>([])
   const annotationsSigRef = useRef('')
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<{ key?: TranslationsKeys; message?: string } | null>(
+    null
+  )
 
   const initialData = useMemo(
     () => ({
@@ -528,7 +537,7 @@ function PdfCanvasAppInner({
         if (!shouldApplyOpenResult(cancelled, generation, openGenerationRef.current)) return
 
         if (!bytes) {
-          setLoadError('PDF file not found')
+          setLoadError({ key: 'canvas_error_pdf_not_found' })
           return
         }
 
@@ -540,7 +549,7 @@ function PdfCanvasAppInner({
 
         const docs = documentManagerRef.current
         if (!docs) {
-          setLoadError('PDF document manager not ready')
+          setLoadError({ key: 'canvas_error_doc_manager_not_ready' })
           return
         }
 
@@ -709,7 +718,8 @@ function PdfCanvasAppInner({
         syncSaveChip('saved')
       } catch (err) {
         console.error(err)
-        setLoadError(err instanceof Error ? err.message : 'Failed to open PDF')
+        const message = err instanceof Error ? err.message : null
+        setLoadError(message ? { message } : { key: 'canvas_error_open_failed' })
       }
     }
 
@@ -1148,7 +1158,7 @@ function PdfCanvasAppInner({
         <div className="pointer-events-none absolute left-0 top-[102px] z-10 grid grid-cols-[1fr_2fr_1fr] gap-8 2xl:grid-cols-3 w-full h-10 items-center 2xl:gap-12">
           <div
             role="toolbar"
-            aria-label="PDF tools"
+            aria-label={t('canvas_tools_aria')}
             className="pointer-events-auto flex h-full w-fit rounded-xl bg-neutral-100 p-1 shadow-md shadow-morphing-900/10 border border-black/10 py-1 col-[2/3] mx-auto"
           >
             <PageNavigator
@@ -1162,7 +1172,7 @@ function PdfCanvasAppInner({
             <div className="mx-2 h-full w-px shrink-0 bg-neutral-200" aria-hidden />
             <button
               type="button"
-              aria-label="Search"
+              aria-label={t('canvas_search_aria')}
               aria-pressed={findOpen}
               className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
                 findOpen
@@ -1175,7 +1185,7 @@ function PdfCanvasAppInner({
             </button>
             <button
               type="button"
-              aria-label="Place note"
+              aria-label={t('canvas_place_note_aria')}
               aria-pressed={placeNoteMode}
               className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
                 placeNoteMode
@@ -1188,7 +1198,7 @@ function PdfCanvasAppInner({
             </button>
             <button
               type="button"
-              aria-label="Place browser"
+              aria-label={t('canvas_place_browser_aria')}
               aria-pressed={placeBrowserMode}
               className={`flex h-full w-10 items-center justify-center rounded-lg transition-transform duration-150 ease-out active:scale-[0.96] ${
                 placeBrowserMode
@@ -1271,13 +1281,15 @@ function PdfCanvasAppInner({
 
       {loadError ? (
         <div className="pointer-events-none absolute inset-0 z-110 flex items-center justify-center bg-morphing-50/80">
-          <p className="rounded-md bg-white px-4 py-2 text-sm text-red-700 shadow">{loadError}</p>
+          <p className="rounded-md bg-white px-4 py-2 text-sm text-red-700 shadow">
+            {loadError.key ? t(loadError.key) : loadError.message}
+          </p>
         </div>
       ) : null}
 
       {!session && !loadError ? (
         <div className="pointer-events-none absolute inset-0 z-5 flex items-center justify-center">
-          <p className="text-sm text-neutral-500">Loading PDF…</p>
+          <p className="text-sm text-neutral-500">{t('canvas_loading_pdf')}</p>
         </div>
       ) : null}
     </div>

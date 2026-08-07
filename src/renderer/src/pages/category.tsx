@@ -1,5 +1,6 @@
 import { ContextMenu, ContextMenuTrigger } from '@renderer/components/ui/context-menu-animated'
 import { IconPicker } from '@renderer/components/ui/icon-picker'
+import { useLang } from '@renderer/i18n/lang-context'
 import { setGlobalTheme } from '@renderer/lib/app-theme'
 import { createColorPalette } from '@renderer/lib/colors'
 import { cn } from '@renderer/lib/utils'
@@ -23,6 +24,7 @@ const pdfStatPillClassName =
   'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1 tabular-nums'
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
+  const { t } = useLang()
   const updatePdf = usePdfs((s) => s.updatePdf)
   const debouncedUpdateName = useDebounceCallback((name: string) => {
     updatePdf(categoryId, pdf.id, { name })
@@ -85,7 +87,7 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
                 {pdf.progress.percentage > 0 ? (
                   `${pdf.progress.percentage.toFixed(0)}%`
                 ) : (
-                  <i className="font-serif">New</i>
+                  <i className="font-serif">{t('home_pdf_new_badge')}</i>
                 )}
               </p>
             </div>
@@ -111,6 +113,7 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
 
 function Category() {
   const { categoryId } = useParams()
+  const { t } = useLang()
 
   const categories = usePdfs((p) => p.categories)
   const updateCategory = usePdfs((p) => p.updateCategory)
@@ -203,7 +206,7 @@ function Category() {
         rows={3}
       />
       <h2 className="mb-6 text-sm tabular-nums text-muted-foreground">
-        {category.pdfs.length} pdfs
+        {t('category_pdf_count', { count: category.pdfs.length })}
       </h2>
       <div className="flex flex-wrap gap-8 group/container">
         {category.pdfs
@@ -216,12 +219,12 @@ function Category() {
           className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-56 bg-morphing-100 hover:bg-morphing-200 transition-colors duration-200"
         >
           <DynamicIcon name="plus" className="size-10 text-morphing-600" />
-          <p className="text-morphing-800 text-lg font-medium">Upload a PDF</p>
-          <p className="text-sm text-morphing-800">or drop it here</p>
+          <p className="text-morphing-800 text-lg font-medium">{t('category_upload_pdf')}</p>
+          <p className="text-sm text-morphing-800">{t('category_drop_hint')}</p>
           <input
             id={`pdf-upload-${categoryId}`}
             type="file"
-            placeholder="Upload a PDF"
+            placeholder={t('category_upload_pdf')}
             accept="application/pdf"
             hidden
             multiple

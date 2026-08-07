@@ -10,6 +10,7 @@ import { PlateElement, withHOC } from 'platejs/react'
 import LiteYouTubeEmbed from 'react-lite-youtube-embed'
 import { Tweet } from 'react-tweet'
 
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 import { Caption, CaptionTextarea } from './caption'
@@ -19,6 +20,7 @@ import { Resizable, ResizeHandle, mediaResizeHandleVariants } from './resize-han
 export const MediaEmbedElement = withHOC(
   ResizableProvider,
   function MediaEmbedElement(props: PlateElementProps<TMediaEmbedElement>) {
+    const { t } = useLang()
     const {
       align = 'center',
       embed,
@@ -117,7 +119,7 @@ export const MediaEmbedElement = withHOC(
             </Resizable>
 
             <Caption style={{ width }} align={align}>
-              <CaptionTextarea placeholder="Write a caption..." />
+              <CaptionTextarea placeholder={t('media_caption_placeholder')} />
             </Caption>
           </figure>
 
