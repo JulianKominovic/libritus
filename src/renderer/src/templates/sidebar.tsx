@@ -25,13 +25,13 @@ import { downloadUrlAsPdf } from '@renderer/integrations/ipc'
 import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { cn } from '@renderer/lib/utils'
 import { EmbeddingJobsIndicator } from '@renderer/organisms/embeddings/EmbeddingJobsIndicator'
-import { UpdateAvailableIndicator } from '@renderer/organisms/UpdateAvailableIndicator'
 import PdfCardContextMenuContent from '@renderer/organisms/pdf/pdf-card-context-menu-content'
+import { UpdateAvailableIndicator } from '@renderer/organisms/UpdateAvailableIndicator'
 import { type Category, type Pdf, usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDragDropManager } from 'react-dnd'
 import { NativeTypes } from 'react-dnd-html5-backend'
 import { Link, useLocation, useRoute } from 'wouter'
@@ -42,6 +42,7 @@ const PDF_CARD_DRAG_TYPE = 'libritus/pdf-card'
 type PdfTreeItem = Pdf & { type: 'P' }
 type CategoryTreeItem = Category & { type: 'C' }
 function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+  const { t } = useLang()
   const [, params2] = useRoute('/category/:categoryId')
   const [, params3] = useRoute('/category/:categoryId/:pdfId')
   const selectedCategoryId = params2?.categoryId || params3?.categoryId
@@ -87,7 +88,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
 
   const uploadPdf = usePdfs((s) => s.uploadPdf)
   const movePdf = usePdfs((s) => s.movePdf)
-  const initialOpen = useMemo(() => {
+  const initialOpen = useState<string[]>(() => {
     const openPaths: string[] = []
     if (selectedPdfId) {
       openPaths.push(selectedPdfId)
@@ -96,7 +97,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
       openPaths.push(selectedCategoryId)
     }
     return openPaths
-  }, [selectedPdfId, selectedCategoryId])
+  })[0]
 
   // From https://codesandbox.io/p/sandbox/scroll-control-ts-4s4pq4?file=%2Fsrc%2FTreeview.tsx%3A56%2C12-67%2C6
   const manager = useDragDropManager()
@@ -158,6 +159,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
       }}
       rootId={0}
       sort={false}
+      enableAnimateExpand
       // Highlight via ::before (inset padding look, no layout shift). See App.css.
       classes={{
         dropTarget: 'sidebar-drop-target'
@@ -221,11 +223,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
       initialOpen={initialOpen}
       render={(node, { depth, isOpen, onToggle, isDragging }) => {
         const isPdf = node.data?.type === 'P'
-        // const isActive =
-        //   (isPdf
-        //     ? node.id === selectedPdfId
-        //     : node.id === selectedCategoryId) || isOpen;
-        const isActive = isOpen
+        const isActive = isPdf ? node.id === selectedPdfId : node.id === selectedCategoryId
         if (isPdf) {
           const pdfNode = node.data as PdfTreeItem
           return (
@@ -242,16 +240,19 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                   }}
                   className={cn(
                     buttonVariants({ variant: 'none' }),
-                    'w-full justify-start ml-auto !p-0 h-auto mb-2 whitespace-pre-line line-clamp-2',
-                    isActive ? 'font-semibold active' : '',
+                    'w-full justify-start h-9 mb-1 rounded-lg',
+                    isActive ? 'bg-morphing-100 font-medium' : 'hover:bg-morphing-100/70',
                     isDragging ? 'animate-[pulse_1s_ease-in-out_infinite]' : ''
                   )}
                   style={{
-                    width: `calc(100% - ${depth * 24}px)`
+                    paddingLeft: `${depth * 36}px`,
+                    paddingRight: 8
                   }}
                   asChild
                 >
-                  <HoverCardTrigger>{pdfNode.name}</HoverCardTrigger>
+                  <HoverCardTrigger className="block w-full min-w-0 truncate" title={pdfNode.name}>
+                    {pdfNode.name}
+                  </HoverCardTrigger>
                 </ContextMenuTrigger>
                 <HoverCardContent
                   side="right"
@@ -260,7 +261,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                   <img
                     src={pdfNode.thumbnail}
                     alt={pdfNode.name}
-                    className="size-full object-cover rounded-lg shadow-md"
+                    className="size-full object-cover rounded-lg shadow-md ring-1 ring-black/10"
                   />
                 </HoverCardContent>
                 <PdfCardContextMenuContent pdf={pdfNode} categoryId={node.parent as string} />
@@ -272,7 +273,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
           return (
             <Button
               variant={'none'}
-              className="!p-0 h-10 w-full justify-start"
+              className="px-2! h-9 w-full justify-start rounded-lg hover:bg-morphing-100/70"
               onClick={() => {
                 createCategory().then(async (category) => {
                   await flushActiveSession()
@@ -280,8 +281,8 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                 })
               }}
             >
-              <DynamicIcon name="plus" />
-              Create new category
+              <DynamicIcon name="plus" size={16} className="text-morphing-600" />
+              <span className="text-morphing-600">{t('home_create_category')}</span>
             </Button>
           )
         }
@@ -292,8 +293,8 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
             <ContextMenuTrigger
               className={cn(
                 buttonVariants({ variant: 'none' }),
-                'w-full relative justify-start p-0! h-10 line-clamp-3 flex active:scale-100 hover:font-semibold transition-[transform,font-weight] duration-100',
-                isActive ? 'font-semibold active' : ''
+                'w-full relative justify-start px-2! h-9 mb-1 rounded-lg flex active:scale-100 transition-colors duration-100',
+                isActive ? 'bg-morphing-100 font-medium' : 'hover:bg-morphing-100/70'
               )}
               onClick={() => {
                 onToggle()
@@ -303,12 +304,20 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               }}
             >
               <DynamicIcon name={categoryNode.icon} size={16} />
-              <p className="text-sm cursor-pointer truncate w-full text-left overflow-hidden">
+              <p className="text-sm truncate w-full text-left overflow-hidden">
                 {categoryNode.name}
               </p>
               <p className="inline-block w-fit shrink-0 text-xs tabular-nums text-morphing-600">
                 {categoryNode.pdfs.length}
               </p>
+              <DynamicIcon
+                name="chevron-right"
+                size={14}
+                className={cn(
+                  'shrink-0 text-morphing-500 transition-transform duration-150',
+                  isOpen ? 'rotate-90' : ''
+                )}
+              />
             </ContextMenuTrigger>
             <ContextMenuContent className="w-fit max-w-sm">
               <div className="p-2">
@@ -377,40 +386,33 @@ function Sidebar() {
   const containerRef = useRef<HTMLDivElement>(null)
   return (
     <motion.aside
-      layout="position"
-      initial={{ opacity: 0, width: 0 }}
-      animate={{
-        opacity: showNavigationSidebar ? 1 : 0,
-        width: showNavigationSidebar ? '300px' : '0px'
-      }}
-      transition={{
-        duration: 0.3,
-        opacity: { duration: showNavigationSidebar ? 0.3 : 0.15 }
-      }}
-      className="overflow-hidden h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: showNavigationSidebar ? 1 : 0 }}
+      transition={{ duration: showNavigationSidebar ? 0.3 : 0.15 }}
+      className="overflow-hidden h-full border-r border-morphing-100/50"
       style={{ minWidth: 0 }}
     >
-      <div className="px-4 pt-[50px] w-[300px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">
+      <div className="px-2 pt-13 w-full h-full grid grid-rows-[auto_1fr_auto] gap-2">
         <Link
           to="/"
           className={(isActive) =>
             cn(
               buttonVariants({ variant: 'none' }),
-              'w-full justify-start !p-0 mb-0 active:scale-100 hover:font-semibold transition-[transform,font-weight] duration-100',
-              isActive ? 'font-semibold' : ''
+              'w-full justify-start px-2! mb-0 rounded-lg active:scale-100 transition-colors duration-100',
+              isActive ? 'bg-morphing-100 font-medium' : 'hover:bg-morphing-100/70'
             )
           }
         >
           <DynamicIcon name="home" /> {t('home')}
         </Link>
         <div className="overflow-y-auto h-full min-h-0 -mx-2 px-2" ref={containerRef}>
-          <p className="mb-2 w-full text-xs flex items-center justify-between text-morphing-600">
+          <p className="mb-2 w-full text-xs flex items-center justify-between px-2! text-morphing-600">
             <strong className="font-medium">{t('categories')} </strong>
             <span className="tabular-nums">{pdfsCount} pdfs</span>
           </p>
           <TreeView containerRef={containerRef} />
         </div>
-        <footer className="flex flex-col gap-1 pb-4 pt-1">
+        <footer className="flex flex-col gap-1 border-t border-morphing-100/50 pb-2 pt-1.5">
           <EmbeddingJobsIndicator />
           <UpdateAvailableIndicator />
           <Link
@@ -418,8 +420,10 @@ function Sidebar() {
             className={(isActive) =>
               cn(
                 buttonVariants({ variant: 'none' }),
-                'w-full justify-start !p-0 mb-0',
-                isActive ? 'font-semibold opacity-100' : 'opacity-60'
+                'w-full justify-start px-2! mb-0 rounded-lg transition-colors duration-100',
+                isActive
+                  ? 'bg-morphing-100 font-medium opacity-100'
+                  : 'opacity-60 hover:bg-morphing-100/70 hover:opacity-100'
               )
             }
           >

@@ -1,4 +1,4 @@
-import { ContextMenu, ContextMenuTrigger } from '@renderer/components/ui/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '@renderer/components/ui/context-menu-animated'
 import { IconPicker } from '@renderer/components/ui/icon-picker'
 import { setGlobalTheme } from '@renderer/lib/app-theme'
 import { createColorPalette } from '@renderer/lib/colors'
@@ -43,11 +43,11 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
   return (
     <div key={pdf.id} className="flex w-56 flex-col gap-2">
       <ContextMenu>
-        <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>} asChild>
+        <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>}>
           <Link
             to={`/category/${categoryId}/${pdf.id}`}
             className={
-              'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-[scale,box-shadow] duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:scale-105 group'
+              'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-[transform,box-shadow] duration-200 shadow-sm shadow-morphing-200 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-2xl group'
             }
           >
             <img
