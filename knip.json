@@ -1,0 +1,43 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/renderer/src/main.tsx",
+    "src/renderer/src/pages/*.tsx",
+    "src/main/index.ts",
+    "src/main/listeners/**/*.ts",
+    "src/preload/*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "e2e/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "ignore": [
+    "src/renderer/src/vite-env.d.ts",
+    "src/renderer/src/excalidraw-asset-path.ts",
+    "src/main/ai/embedder.ts",
+    "src/main/ai/ragIndex.ts",
+    "src/renderer/src/lib/pdf-canvas/pdfRagPersist.ts",
+    "src/renderer/src/organisms/pdf-canvas/PdfChatPanel.tsx",
+    "src/renderer/src/organisms/pdf-canvas/usePdfRagChat.ts",
+    "src/renderer/src/components/ui/avatar.tsx",
+    "src/renderer/src/components/ui/chat-container.tsx",
+    "src/renderer/src/components/ui/code-block.tsx",
+    "src/renderer/src/components/ui/markdown.tsx",
+    "src/renderer/src/components/ui/message.tsx",
+    "src/renderer/src/components/ui/prompt-input.tsx",
+    "src/renderer/src/components/ui/textarea.tsx"
+  ],
+  "ignoreDependencies": [
+    "@huggingface/transformers",
+    "@embedpdf/pdfium",
+    "@radix-ui/react-avatar",
+    "react-markdown",
+    "remark-breaks",
+    "tailwind-scrollbar-hide",
+    "tailwindcss",
+    "tw-animate-css",
+    "use-stick-to-bottom"
+  ],
+  "include": ["files", "dependencies"]
+}

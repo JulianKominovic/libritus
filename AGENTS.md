@@ -51,7 +51,7 @@ Guiding principles:
 | --------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | **v1.1**  | Finish annotation polish                                           | Copy selected PDF text without creating a highlight                                    |
 | **v1.1**  | Optional page-space annotation model (`pageIndex` + page geometry) | Today live in Excalidraw **scene coords** (intentional); not a renderer-migration path |
-| **v1.1**  | Migrate legacy highlights/comments/essays from `categories.json`   | Old lector model — not wired to canvas                                                 |
+| **v1.1**  | Migrate legacy highlights/comments/essays from `categories.json`   | Data transform only — lector Plate editor stack retired in dead-code sweep; migration parses stored fields against current WYSIWYG notes (see [`legacy-migration-and-export.md`](docs/features/legacy-migration-and-export.md)) |
 | **v1.1**  | Essays HUD / reading shortcuts / navigation history                | See feature specs                                                                      |
 | **Scale** | Visible-set cap, LOD beyond Phase 1, evict release, streaming/OPFS | Stay on Excalidraw — see roadmap                                                       |
 | **Later** | Canvas Q&A cards; nav-only PDF sidebar; retire Chat silo           | See [`product-north.md`](docs/features/product-north.md), roadmap                      |
