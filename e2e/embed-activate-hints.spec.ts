@@ -270,7 +270,7 @@ test('search browse chip screen size stays stable across zoom', async () => {
     const chip = page.locator('[data-search-browse-hint]')
 
     // Edge-select so the chip stays visible across zoom (no scene-coord hover after zoom).
-    await clickScene(page, capX + 4, capY + 4)
+    await clickScene(page, capX + 4, capY + 60)
     await expect(chip).toBeVisible({ timeout: 5_000 })
     const box1 = await chip.boundingBox()
     if (!box1) throw new Error('browse chip not laid out')
@@ -352,7 +352,7 @@ test('promoted search image: browse chip on select, hide on deselect/browse', as
     await expect(chip).toBeHidden({ timeout: 5_000 })
 
     // Edge select promoted image → chip
-    await clickScene(page, capX + 4, capY + 4)
+    await clickScene(page, capX + 4, capY + 60)
     await expect(chip).toBeVisible({ timeout: 5_000 })
     await expect(chip.getByText('Click to browse')).toBeVisible()
 
@@ -362,7 +362,7 @@ test('promoted search image: browse chip on select, hide on deselect/browse', as
     await expect(chip).toBeHidden({ timeout: 5_000 })
 
     // Select again, then center-click activates browse (chip must not block) and hides.
-    await clickScene(page, capX + 4, capY + 4)
+    await clickScene(page, capX + 4, capY + 60)
     await expect(chip).toBeVisible({ timeout: 5_000 })
     await clickScene(page, capX + capW / 2, capY + capH / 2)
     await expect(page.locator('[data-browser-chrome]')).toBeVisible({ timeout: 15_000 })
