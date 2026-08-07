@@ -69,7 +69,7 @@ When page-space lands ([`page-space-annotations.md`](page-space-annotations.md))
 | **Web search capture** | Listed; image thumb after promote. Catalog count is `canvasStats.searches`.                         |
 | **Canvas images**      | Bare Excalidraw images listed as `kind: 'image'` (search-capture images stay `kind: 'search'`). Not in `canvasStats`. |
 | **Sessions**           | No separate file — scene already persists.                                                          |
-| **PDF RAG chat**       | Chat tab hidden from sidebar; Settings AI / indexing unchanged.                                     |
+| **PDF RAG chat**       | Chat tab unmounted from sidebar; Settings AI UI parked / indexing unchanged.                     |
 | **Essays HUD**         | Essays are a different surface; do not mix into this list until essays exist.                       |
 
 ---

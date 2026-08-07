@@ -24,9 +24,9 @@ Feature write-ups: [`wysiwyg-notes`](features/wysiwyg-notes.md), [`persistence-a
 
 ## v1.1
 
-Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md).
+Feature specs (planned): [`reading-shortcuts`](features/reading-shortcuts.md) · [`essays-hud`](features/essays-hud.md) · [`page-space-annotations`](features/page-space-annotations.md) · [`legacy-migration-and-export`](features/legacy-migration-and-export.md) · [`navigation-history`](features/navigation-history.md).
 
-Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat tab **unmounted**; RAG backend kept), [`web-search-capture`](features/web-search-capture.md), [`annotation-polish`](features/annotation-polish.md), [`adaptive-pdf-render-scale`](features/adaptive-pdf-render-scale.md) (Phase 1).
+Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumbnails`](features/pdf-outline-and-thumbnails.md), [`annotation-panel`](features/annotation-panel.md), [`pdf-rag-chat`](features/pdf-rag-chat.md) (Chat tab **unmounted**; RAG backend kept; Settings AI UI parked), [`web-search-capture`](features/web-search-capture.md), [`annotation-polish`](features/annotation-polish.md), [`adaptive-pdf-render-scale`](features/adaptive-pdf-render-scale.md) (Phase 1).
 
 | Item                                  | Notes                                                                                                                                                                    |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -34,8 +34,9 @@ Done in v1.1 so far: [`pdf-search`](features/pdf-search.md), [`outline-and-thumb
 | Migrate legacy data                   | Map old `categories.json` highlights/comments into canvas session — [`legacy-migration-and-export.md`](features/legacy-migration-and-export.md)                          |
 | Essays HUD                            | Reintroduce as **canvas research surface** (not PdfSidebar tab) — [`essays-hud.md`](features/essays-hud.md)                                                              |
 | Reading shortcuts                     | PageUp/Down, fit page, etc. — [`reading-shortcuts.md`](features/reading-shortcuts.md)                                                                                    |
+| Navigation history                    | In-memory page-jump history + clock popover (spec exists) — [`navigation-history.md`](features/navigation-history.md)                                                    |
 | Library polish                        | Optional `contentHash`, rename, reveal in Finder                                                                                                                         |
-| PDF RAG (today)                       | Local MiniLM + OpenRouter BYOK; Chat UI hidden until canvas Q&A — [`pdf-rag-chat.md`](features/pdf-rag-chat.md)                                                          |
+| PDF RAG (today)                       | Local MiniLM + OpenRouter BYOK; Chat UI unmounted until canvas Q&A; **Settings AI UI parked** — [`pdf-rag-chat.md`](features/pdf-rag-chat.md)                  |
 
 ---
 
@@ -56,9 +57,9 @@ Aligned with [`product-north.md`](features/product-north.md). **Do not** ship au
 
 | Item                     | Notes                                                                                                   |
 | ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Hard visible-set cap     | Memory budget independent of zoom-out buffer                                                            |
+| Hard visible-set cap     | **Done (v1)** — pools hard-capped at `poolSize`; `trimVisibleToCap` keeps nearest-to-center visible set |
 | LOD / zoom-based density | Beyond Phase 1 adaptive scale — [`adaptive-pdf-render-scale.md`](features/adaptive-pdf-render-scale.md) |
-| Evict release            | Zero canvas buffers / `page.cleanup()` on pool evict                                                    |
+| Evict release            | **Done (v1)** — zero canvas buffers on pool evict / dispose                                             |
 | Spatial annotation index | Only if linear hit-test becomes a real cost                                                             |
 | Streaming / range / OPFS | Do not keep entire PDF ArrayBuffer in main forever                                                      |
 | Hi-res tiles             | Avoid giant GPU textures at high zoom                                                                   |
