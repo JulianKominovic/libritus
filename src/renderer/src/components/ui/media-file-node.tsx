@@ -7,12 +7,15 @@ import type { TFileElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, useReadOnly, withHOC } from 'platejs/react'
 
+import { useLang } from '@renderer/i18n/lang-context'
+
 import { Caption, CaptionTextarea } from './caption'
 
 export const FileElement = withHOC(
   ResizableProvider,
   function FileElement(props: PlateElementProps<TFileElement>) {
     const readOnly = useReadOnly()
+    const { t } = useLang()
     const { name, unsafeUrl } = useMediaState()
 
     return (
@@ -35,7 +38,7 @@ export const FileElement = withHOC(
             <CaptionTextarea
               className="text-left"
               readOnly={readOnly}
-              placeholder="Write a caption..."
+              placeholder={t('media_caption_placeholder')}
             />
           </Caption>
         </a>

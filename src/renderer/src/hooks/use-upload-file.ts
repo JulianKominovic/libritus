@@ -2,8 +2,11 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { useLang, type LangContextType } from '@renderer/i18n/lang-context'
+
 async function uploadFile(
   file: File,
+  t: LangContextType['t'],
   onProgress?: (progress: number) => void
 ): Promise<ClientUploadedFileData> {
   const searchParams = new URLSearchParams()
@@ -30,12 +33,14 @@ async function uploadFile(
           })
         )
       } else {
-        reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`))
+        reject(
+          new Error(t('upload_error_http', { status: xhr.status, statusText: xhr.statusText }))
+        )
       }
     })
 
     xhr.addEventListener('error', () => {
-      reject(new Error('Network error'))
+      reject(new Error(t('upload_error_network')))
     })
 
     xhr.open('POST', `/api/v1/upload-file?${searchParams.toString()}`)
@@ -87,6 +92,7 @@ export function useUploadFile({
   onUploadBegin,
   onUploadProgress
 }: UseUploadFileProps = {}) {
+  const { t } = useLang()
   const [uploadedFile, setUploadedFile] = React.useState<ClientUploadedFileData | undefined>()
   const [uploadingFile, setUploadingFile] = React.useState<File>()
   const [progress, setProgress] = React.useState<number>(0)
@@ -98,7 +104,7 @@ export function useUploadFile({
 
     try {
       onUploadBegin?.()
-      const uploaded = await uploadFile(file, (p) => {
+      const uploaded = await uploadFile(file, t, (p) => {
         setProgress(Math.min(p, 100))
         onUploadProgress?.(p)
       })
@@ -107,10 +113,9 @@ export function useUploadFile({
 
       return uploaded
     } catch (error) {
-      const errorMessage = getErrorMessage(error)
+      const errorMessage = getErrorMessage(error, t)
 
-      const message =
-        errorMessage.length > 0 ? errorMessage : 'Something went wrong, please try again later.'
+      const message = errorMessage.length > 0 ? errorMessage : t('upload_error_generic')
 
       toast.error(message)
 
@@ -131,8 +136,8 @@ export function useUploadFile({
   }
 }
 
-export function getErrorMessage(err: unknown) {
-  const unknownError = 'Something went wrong, please try again later.'
+export function getErrorMessage(err: unknown, t: LangContextType['t']) {
+  const unknownError = t('upload_error_generic')
 
   if (err instanceof z.ZodError) {
     const errors = err.issues.map((issue) => {
@@ -147,8 +152,8 @@ export function getErrorMessage(err: unknown) {
   }
 }
 
-export function showErrorToast(err: unknown) {
-  const errorMessage = getErrorMessage(err)
+export function showErrorToast(err: unknown, t: LangContextType['t']) {
+  const errorMessage = getErrorMessage(err, t)
 
   return toast.error(errorMessage)
 }

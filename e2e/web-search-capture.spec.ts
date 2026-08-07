@@ -380,7 +380,7 @@ test('Drop text/plain-only http(s) URL creates search capture', async () => {
   }
 })
 
-test('Buscar from highlight creates search capture + host-managed arrow', async () => {
+test('Search from highlight creates search capture + host-managed arrow', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-buscar-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
   const hlX = 80
@@ -403,7 +403,10 @@ test('Buscar from highlight creates search capture + host-managed arrow', async 
     await closePdfSidebar(page)
 
     await clickScene(page, hlX + 40, hlY + 9)
-    await page.getByRole('button', { name: 'Buscar' }).click({ timeout: 10_000 })
+    await page
+      .locator('[data-highlight-toolbar]')
+      .getByRole('button', { name: 'Search' })
+      .click({ timeout: 10_000 })
     await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
     await expectBrowserChromeVisible(page)
@@ -1051,9 +1054,7 @@ test('center-click re-activates browse on native image capture', async () => {
 
     await clickScene(page, capX + capW / 2, capY + capH / 2)
     await expectBrowserChromeVisible(page)
-    await expect
-      .poll(() => guestUrl(page), { timeout: 15_000 })
-      .toMatch(/^https?:\/\//)
+    await expect.poll(() => guestUrl(page), { timeout: 15_000 }).toMatch(/^https?:\/\//)
 
     await page.waitForTimeout(1200)
     await clickOutsideCapture(page)

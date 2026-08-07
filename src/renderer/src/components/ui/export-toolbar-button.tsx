@@ -17,6 +17,8 @@ import { serializeHtml } from 'platejs/static'
 import { useEditorRef } from 'platejs/react'
 import * as React from 'react'
 
+import { useLang } from '@renderer/i18n/lang-context'
+
 import { EditorStatic } from './editor-static'
 import { ToolbarButton } from './toolbar'
 
@@ -25,6 +27,7 @@ const siteUrl = 'https://platejs.org'
 export function ExportToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef()
   const [open, setOpen] = React.useState(false)
+  const { t } = useLang()
 
   const getCanvas = async () => {
     const { default: html2canvas } = await import('html2canvas-pro')
@@ -146,17 +149,19 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Export" isDropdown>
+        <ToolbarButton pressed={open} tooltip={t('editor_export')} isDropdown>
           <DynamicIcon name="arrow-down-to-line" className="size-4" />
         </ToolbarButton>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start">
         <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={exportToHtml}>Export as HTML</DropdownMenuItem>
-          <DropdownMenuItem onSelect={exportToPdf}>Export as PDF</DropdownMenuItem>
-          <DropdownMenuItem onSelect={exportToImage}>Export as Image</DropdownMenuItem>
-          <DropdownMenuItem onSelect={exportToMarkdown}>Export as Markdown</DropdownMenuItem>
+          <DropdownMenuItem onSelect={exportToHtml}>{t('editor_export_html')}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={exportToPdf}>{t('editor_export_pdf')}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={exportToImage}>{t('editor_export_image')}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={exportToMarkdown}>
+            {t('editor_export_markdown')}
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

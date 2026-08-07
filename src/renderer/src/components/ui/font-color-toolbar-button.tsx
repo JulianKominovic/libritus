@@ -20,6 +20,7 @@ import {
   TooltipTrigger
 } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/utils'
+import { useLang } from '@renderer/i18n/lang-context'
 
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { ToolbarButton, ToolbarMenuGroup } from './toolbar'
@@ -134,9 +135,11 @@ function PureColorPicker({
   updateCustomColor: (color: string) => void
   color?: string
 }) {
+  const { t } = useLang()
+
   return (
     <div className={cn('flex flex-col', className)} {...props}>
-      <ToolbarMenuGroup label="Custom Colors">
+      <ToolbarMenuGroup label={t('editor_custom_colors')}>
         <ColorCustom
           color={color}
           className="px-2"
@@ -146,7 +149,7 @@ function PureColorPicker({
           updateCustomColor={updateCustomColor}
         />
       </ToolbarMenuGroup>
-      <ToolbarMenuGroup label="Default Colors">
+      <ToolbarMenuGroup label={t('editor_default_colors')}>
         <ColorDropdownMenuItems
           color={color}
           className="px-2"
@@ -158,7 +161,7 @@ function PureColorPicker({
         <ToolbarMenuGroup>
           <DropdownMenuItem className="p-2" onClick={clearColor}>
             <DynamicIcon name="eraser" />
-            <span>Clear</span>
+            <span>{t('editor_clear')}</span>
           </DropdownMenuItem>
         </ToolbarMenuGroup>
       )}

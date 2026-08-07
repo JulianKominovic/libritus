@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 import { Editor, EditorContainer } from '@renderer/components/ui/editor'
@@ -65,6 +66,7 @@ export function Comment(props: {
     onEditorClick
   } = props
 
+  const { t } = useLang()
   const editor = useEditorRef()
   const userInfo = usePluginOption(discussionPlugin, 'user', comment.userId)
   const currentUserId = usePluginOption(discussionPlugin, 'currentUserId')
@@ -175,7 +177,7 @@ export function Comment(props: {
 
         <div className="text-xs leading-none text-muted-foreground/80">
           <span className="mr-1">{formatCommentDate(new Date(comment.createdAt))}</span>
-          {comment.isEdited && <span>(edited)</span>}
+          {comment.isEdited && <span>{t('comment_edited')}</span>}
         </div>
 
         {isMyComment && (hovering || dropdownOpen) && (
@@ -283,11 +285,12 @@ function CommentMoreDropdown(props: {
   } = props
 
   const editor = useEditorRef()
+  const { t } = useLang()
 
   const selectedEditCommentRef = React.useRef<boolean>(false)
 
   const onDeleteComment = React.useCallback(() => {
-    if (!comment.id) return alert('You are operating too quickly, please try again later.')
+    if (!comment.id) return alert(t('comment_too_fast_alert'))
 
     // Find and update the discussion
     const updatedDiscussions = editor
@@ -314,15 +317,15 @@ function CommentMoreDropdown(props: {
     // Save back to session storage
     editor.setOption(discussionPlugin, 'discussions', updatedDiscussions)
     onRemoveComment?.()
-  }, [comment.discussionId, comment.id, editor, onRemoveComment])
+  }, [comment.discussionId, comment.id, editor, onRemoveComment, t])
 
   const onEditComment = React.useCallback(() => {
     selectedEditCommentRef.current = true
 
-    if (!comment.id) return alert('You are operating too quickly, please try again later.')
+    if (!comment.id) return alert(t('comment_too_fast_alert'))
 
     setEditingId(comment.id)
-  }, [comment.id, setEditingId])
+  }, [comment.id, setEditingId, t])
 
   return (
     <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen} modal={false}>
@@ -345,11 +348,11 @@ function CommentMoreDropdown(props: {
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={onEditComment}>
             <DynamicIcon name="pencil" className="size-4" />
-            Edit comment
+            {t('comment_edit')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onDeleteComment}>
             <DynamicIcon name="trash" className="size-4" />
-            Delete comment
+            {t('comment_delete')}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
@@ -388,6 +391,7 @@ export function CommentCreateForm({
   const discussions = usePluginOption(discussionPlugin, 'discussions')
 
   const editor = useEditorRef()
+  const { t } = useLang()
   const commentId = useCommentId()
   const discussionId = discussionIdProp ?? commentId
 
@@ -530,7 +534,7 @@ export function CommentCreateForm({
                   onAddComment()
                 }
               }}
-              placeholder="Reply..."
+              placeholder={t('comment_reply_placeholder')}
               autoComplete="off"
               autoFocus={autoFocus}
             />

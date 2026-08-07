@@ -7,6 +7,7 @@ import { PlateElement } from 'platejs/react'
 import type * as React from 'react'
 
 import { insertBlock, insertInlineElement } from '@renderer/components/editor/transforms'
+import { useLang } from '@renderer/i18n/lang-context'
 
 import {
   InlineCombobox,
@@ -32,79 +33,79 @@ type Group = {
 }
 
 /** Slash menu for canvas notes — same blocks as essays, without AI. */
-const groups: Group[] = [
+const getGroups = (t: ReturnType<typeof useLang>['t']): Group[] => [
   {
-    group: 'Basic blocks',
+    group: t('editor_group_basic_blocks'),
     items: [
       {
         icon: <DynamicIcon name="pilcrow" />,
         keywords: ['paragraph'],
-        label: 'Text',
+        label: t('editor_text'),
         value: KEYS.p
       },
       {
         icon: <DynamicIcon name="heading-1" />,
         keywords: ['title', 'h1'],
-        label: 'Heading 1',
+        label: t('editor_heading_1'),
         value: KEYS.h1
       },
       {
         icon: <DynamicIcon name="heading-2" />,
         keywords: ['subtitle', 'h2'],
-        label: 'Heading 2',
+        label: t('editor_heading_2'),
         value: KEYS.h2
       },
       {
         icon: <DynamicIcon name="heading-3" />,
         keywords: ['subtitle', 'h3'],
-        label: 'Heading 3',
+        label: t('editor_heading_3'),
         value: KEYS.h3
       },
       {
         icon: <DynamicIcon name="list" />,
         keywords: ['unordered', 'ul', '-'],
-        label: 'Bulleted list',
+        label: t('editor_bulleted_list'),
         value: KEYS.ul
       },
       {
         icon: <DynamicIcon name="list-ordered" />,
         keywords: ['ordered', 'ol', '1'],
-        label: 'Numbered list',
+        label: t('editor_numbered_list'),
         value: KEYS.ol
       },
       {
         icon: <DynamicIcon name="square" />,
         keywords: ['checklist', 'task', 'checkbox', '[]'],
-        label: 'To-do list',
+        label: t('editor_todo_list'),
         value: KEYS.listTodo
       },
       {
         icon: <DynamicIcon name="chevron-right" />,
         keywords: ['collapsible', 'expandable'],
-        label: 'Toggle',
+        label: t('editor_toggle_list'),
         value: KEYS.toggle
       },
       {
         icon: <DynamicIcon name="code-2" />,
         keywords: ['```'],
-        label: 'Code Block',
+        label: t('editor_code_block'),
         value: KEYS.codeBlock
       },
       {
         icon: <DynamicIcon name="table" />,
-        label: 'Table',
+        label: t('editor_table'),
         value: KEYS.table
       },
       {
         icon: <DynamicIcon name="quote" />,
         keywords: ['citation', 'blockquote', 'quote', '>'],
-        label: 'Blockquote',
+        label: t('editor_blockquote'),
         value: KEYS.blockquote
       },
       {
         icon: <DynamicIcon name="lightbulb" />,
         keywords: ['note'],
-        label: 'Callout',
+        label: t('editor_callout'),
         value: KEYS.callout
       }
     ].map((item) => ({
@@ -115,12 +116,12 @@ const groups: Group[] = [
     }))
   },
   {
-    group: 'Advanced blocks',
+    group: t('editor_group_advanced_blocks'),
     items: [
       {
         focusEditor: false,
         icon: <DynamicIcon name="radical" />,
-        label: 'Equation',
+        label: t('editor_equation'),
         value: KEYS.equation
       }
     ].map((item) => ({
@@ -131,19 +132,19 @@ const groups: Group[] = [
     }))
   },
   {
-    group: 'Inline',
+    group: t('editor_group_inline'),
     items: [
       {
         focusEditor: true,
         icon: <DynamicIcon name="calendar" />,
         keywords: ['time'],
-        label: 'Date',
+        label: t('editor_date'),
         value: KEYS.date
       },
       {
         focusEditor: false,
         icon: <DynamicIcon name="radical" />,
-        label: 'Inline Equation',
+        label: t('editor_inline_equation'),
         value: KEYS.inlineEquation
       }
     ].map((item) => ({
@@ -157,6 +158,8 @@ const groups: Group[] = [
 
 export function NoteSlashInputElement(props: PlateElementProps<TComboboxInputElement>) {
   const { editor, element } = props
+  const { t } = useLang()
+  const groups = getGroups(t)
 
   return (
     <PlateElement {...props} as="span">
@@ -164,7 +167,7 @@ export function NoteSlashInputElement(props: PlateElementProps<TComboboxInputEle
         <InlineComboboxInput />
 
         <InlineComboboxContent>
-          <InlineComboboxEmpty>No results</InlineComboboxEmpty>
+          <InlineComboboxEmpty>{t('editor_no_results')}</InlineComboboxEmpty>
 
           {groups.map(({ group, items }) => (
             <InlineComboboxGroup key={group}>

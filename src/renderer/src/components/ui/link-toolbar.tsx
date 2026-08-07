@@ -19,6 +19,7 @@ import * as React from 'react'
 
 import { buttonVariants } from '@renderer/components/ui/button'
 import { Separator } from '@renderer/components/ui/separator'
+import { useLang } from '@renderer/i18n/lang-context'
 
 const popoverVariants = cva(
   'z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden'
@@ -31,6 +32,7 @@ const inputVariants = cva(
 export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarState }) {
   const activeCommentId = usePluginOption({ key: KEYS.comment }, 'activeId')
   const activeSuggestionId = usePluginOption({ key: KEYS.suggestion }, 'activeId')
+  const { t } = useLang()
 
   const floatingOptions: UseVirtualFloatingOptions = React.useMemo(() => {
     return {
@@ -87,7 +89,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 
         <FloatingLinkUrlInput
           className={inputVariants()}
-          placeholder="Paste link"
+          placeholder={t('link_paste_placeholder')}
           data-plate-focus
         />
       </div>
@@ -98,7 +100,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
         </div>
         <input
           className={inputVariants()}
-          placeholder="Text to display"
+          placeholder={t('link_text_placeholder')}
           data-plate-focus
           {...textInputProps}
         />
@@ -115,7 +117,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
         type="button"
         {...editButtonProps}
       >
-        Edit link
+        {t('link_edit')}
       </button>
 
       <Separator orientation="vertical" />
@@ -153,6 +155,7 @@ export function LinkFloatingToolbar({ state }: { state?: LinkFloatingToolbarStat
 function LinkOpenButton() {
   const editor = useEditorRef()
   const selection = useEditorSelection()
+  const { t } = useLang()
 
   const attributes = React.useMemo(
     () => {
@@ -179,7 +182,7 @@ function LinkOpenButton() {
       onMouseOver={(e) => {
         e.stopPropagation()
       }}
-      aria-label="Open link in a new tab"
+      aria-label={t('link_open_aria')}
       target="_blank"
     >
       <DynamicIcon name="external-link" width={18} />

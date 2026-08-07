@@ -2,6 +2,7 @@
 
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useUploadFile } from '@renderer/hooks/use-upload-file'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 import { PlaceholderPlugin, PlaceholderProvider, updateUploadHistory } from '@platejs/media/react'
 import type { TPlaceholderElement } from 'platejs'
@@ -11,35 +12,37 @@ import { PlateElement, useEditorPlugin, withHOC } from 'platejs/react'
 import * as React from 'react'
 import { useFilePicker } from 'use-file-picker'
 
-const CONTENT: Record<
+const getContent = (
+  t: ReturnType<typeof useLang>['t']
+): Record<
   string,
   {
     accept: string[]
     content: React.ReactNode
     icon: React.ReactNode
   }
-> = {
+> => ({
   [KEYS.audio]: {
     accept: ['audio/*'],
-    content: 'Add an audio file',
+    content: t('media_add_audio'),
     icon: <DynamicIcon name="audio-lines" />
   },
   [KEYS.file]: {
     accept: ['*'],
-    content: 'Add a file',
+    content: t('media_add_file'),
     icon: <DynamicIcon name="file-up" />
   },
   [KEYS.img]: {
     accept: ['image/*'],
-    content: 'Add an image',
+    content: t('media_add_image'),
     icon: <DynamicIcon name="image" />
   },
   [KEYS.video]: {
     accept: ['video/*'],
-    content: 'Add a video',
+    content: t('media_add_video'),
     icon: <DynamicIcon name="film" />
   }
-}
+})
 
 export const PlaceholderElement = withHOC(
   PlaceholderProvider,
@@ -47,12 +50,13 @@ export const PlaceholderElement = withHOC(
     const { editor, element } = props
 
     const { api } = useEditorPlugin(PlaceholderPlugin)
+    const { t } = useLang()
 
     const { isUploading, progress, uploadedFile, uploadFile, uploadingFile } = useUploadFile()
 
     const loading = isUploading && uploadingFile
 
-    const currentContent = CONTENT[element.mediaType]
+    const currentContent = getContent(t)[element.mediaType]
 
     const isImage = element.mediaType === KEYS.img
 

@@ -21,6 +21,7 @@ import {
   ContextMenuTrigger
 } from '@renderer/components/ui/context-menu'
 import { useIsTouchDevice } from '@renderer/hooks/use-is-touch-device'
+import { useLang } from '@renderer/i18n/lang-context'
 
 type Value = 'askAI' | null
 
@@ -29,6 +30,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
   const [value, setValue] = React.useState<Value>(null)
   const isTouch = useIsTouchDevice()
   const [readOnly] = usePlateState('readOnly')
+  const { t } = useLang()
 
   const handleTurnInto = React.useCallback(
     (type: string) => {
@@ -107,7 +109,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
               setValue('askAI')
             }}
           >
-            Ask AI
+            {t('editor_ask_ai')}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => {
@@ -115,26 +117,34 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
               editor.tf.focus()
             }}
           >
-            Delete
+            {t('editor_delete')}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => {
               editor.getTransforms(BlockSelectionPlugin).blockSelection.duplicate()
             }}
           >
-            Duplicate
+            {t('editor_duplicate')}
             {/* <ContextMenuShortcut>⌘ + D</ContextMenuShortcut> */}
           </ContextMenuItem>
           <ContextMenuSub>
-            <ContextMenuSubTrigger>Turn into</ContextMenuSubTrigger>
+            <ContextMenuSubTrigger>{t('editor_turn_into')}</ContextMenuSubTrigger>
             <ContextMenuSubContent className="w-48">
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.p)}>Paragraph</ContextMenuItem>
+              <ContextMenuItem onClick={() => handleTurnInto(KEYS.p)}>
+                {t('editor_paragraph')}
+              </ContextMenuItem>
 
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h1)}>Heading 1</ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h2)}>Heading 2</ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h3)}>Heading 3</ContextMenuItem>
+              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h1)}>
+                {t('editor_heading_1')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h2)}>
+                {t('editor_heading_2')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h3)}>
+                {t('editor_heading_3')}
+              </ContextMenuItem>
               <ContextMenuItem onClick={() => handleTurnInto(KEYS.blockquote)}>
-                Blockquote
+                {t('editor_blockquote')}
               </ContextMenuItem>
             </ContextMenuSubContent>
           </ContextMenuSub>
@@ -144,19 +154,25 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
           <ContextMenuItem
             onClick={() => editor.getTransforms(BlockSelectionPlugin).blockSelection.setIndent(1)}
           >
-            Indent
+            {t('editor_indent')}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => editor.getTransforms(BlockSelectionPlugin).blockSelection.setIndent(-1)}
           >
-            Outdent
+            {t('editor_outdent')}
           </ContextMenuItem>
           <ContextMenuSub>
-            <ContextMenuSubTrigger>Align</ContextMenuSubTrigger>
+            <ContextMenuSubTrigger>{t('editor_align')}</ContextMenuSubTrigger>
             <ContextMenuSubContent className="w-48">
-              <ContextMenuItem onClick={() => handleAlign('left')}>Left</ContextMenuItem>
-              <ContextMenuItem onClick={() => handleAlign('center')}>Center</ContextMenuItem>
-              <ContextMenuItem onClick={() => handleAlign('right')}>Right</ContextMenuItem>
+              <ContextMenuItem onClick={() => handleAlign('left')}>
+                {t('editor_align_left')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleAlign('center')}>
+                {t('editor_align_center')}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleAlign('right')}>
+                {t('editor_align_right')}
+              </ContextMenuItem>
             </ContextMenuSubContent>
           </ContextMenuSub>
         </ContextMenuGroup>

@@ -17,6 +17,7 @@ import {
 import fs from 'fs/promises'
 import path from 'path'
 import { APP_DATA_DIR } from '.'
+import { tMenu } from './i18n'
 import { chromeLikeUserAgent, isBlockedUrl, isHttpUrl } from './web-browser-url'
 
 export type BrowserBounds = { x: number; y: number; width: number; height: number }
@@ -192,7 +193,9 @@ async function saveGuestImage(wc: WebContents, srcURL: string): Promise<void> {
 
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
     defaultPath: name,
-    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }]
+    filters: [
+      { name: tMenu('imagesFilter'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }
+    ]
   })
   if (canceled || !filePath || wc.isDestroyed()) return
 
@@ -218,21 +221,21 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
   const hist = wc.navigationHistory
   const items: MenuItemConstructorOptions[] = [
     {
-      label: 'Back',
+      label: tMenu('back'),
       enabled: hist.canGoBack(),
       click: () => {
         if (alive()) hist.goBack()
       }
     },
     {
-      label: 'Forward',
+      label: tMenu('forward'),
       enabled: hist.canGoForward(),
       click: () => {
         if (alive()) hist.goForward()
       }
     },
     {
-      label: 'Reload',
+      label: tMenu('reload'),
       click: () => {
         if (alive()) wc.reload()
       }
@@ -242,7 +245,7 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
 
   if (params.selectionText.trim()) {
     items.push({
-      label: 'Copy',
+      label: tMenu('copy'),
       click: () => clipboard.writeText(params.selectionText)
     })
   }
@@ -250,14 +253,14 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
   if (params.linkURL) {
     items.push(
       {
-        label: 'Open Link',
+        label: tMenu('openLink'),
         enabled: isHttpUrl(params.linkURL),
         click: () => {
           if (alive() && isHttpUrl(params.linkURL)) void wc.loadURL(params.linkURL)
         }
       },
       {
-        label: 'Copy Link',
+        label: tMenu('copyLink'),
         click: () => clipboard.writeText(params.linkURL)
       }
     )
@@ -267,17 +270,17 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
     const canSave = isHttpUrl(params.srcURL) || params.srcURL.startsWith('data:')
     items.push(
       {
-        label: 'Copy Image',
+        label: tMenu('copyImage'),
         click: () => {
           if (alive()) wc.copyImageAt(params.x, params.y)
         }
       },
       {
-        label: 'Copy Image Address',
+        label: tMenu('copyImageAddress'),
         click: () => clipboard.writeText(params.srcURL)
       },
       {
-        label: 'Save Image As…',
+        label: tMenu('saveImageAs'),
         enabled: canSave,
         click: () => {
           if (!alive()) return
@@ -294,28 +297,28 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
     items.push(
       { type: 'separator' },
       {
-        label: 'Cut',
+        label: tMenu('cut'),
         enabled: params.editFlags.canCut,
         click: () => {
           if (alive()) wc.cut()
         }
       },
       {
-        label: 'Copy',
+        label: tMenu('copy'),
         enabled: params.editFlags.canCopy,
         click: () => {
           if (alive()) wc.copy()
         }
       },
       {
-        label: 'Paste',
+        label: tMenu('paste'),
         enabled: params.editFlags.canPaste,
         click: () => {
           if (alive()) wc.paste()
         }
       },
       {
-        label: 'Select All',
+        label: tMenu('selectAll'),
         enabled: params.editFlags.canSelectAll,
         click: () => {
           if (alive()) wc.selectAll()
@@ -327,7 +330,7 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
   items.push(
     { type: 'separator' },
     {
-      label: 'Open in System Browser',
+      label: tMenu('openInSystemBrowser'),
       click: () => {
         if (!alive()) return
         try {

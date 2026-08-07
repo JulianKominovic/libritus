@@ -4,6 +4,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from '@renderer/components/ui/collapsible'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useState } from 'react'
@@ -25,6 +26,7 @@ export type ToolProps = {
 
 const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const { t } = useLang()
 
   const { state, input, output, toolCallId } = toolPart
 
@@ -48,18 +50,34 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
     switch (state) {
       case 'input-streaming':
         return (
-          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-700')}>Processing</span>
+          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-700')}>
+            {t('tool_state_processing')}
+          </span>
         )
       case 'input-available':
-        return <span className={cn(baseClasses, 'bg-morphing-200 text-morphing-800')}>Ready</span>
+        return (
+          <span className={cn(baseClasses, 'bg-morphing-200 text-morphing-800')}>
+            {t('tool_state_ready')}
+          </span>
+        )
       case 'output-available':
         return (
-          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-900')}>Completed</span>
+          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-900')}>
+            {t('tool_state_completed')}
+          </span>
         )
       case 'output-error':
-        return <span className={cn(baseClasses, 'bg-destructive/10 text-destructive')}>Error</span>
+        return (
+          <span className={cn(baseClasses, 'bg-destructive/10 text-destructive')}>
+            {t('tool_state_error')}
+          </span>
+        )
       default:
-        return <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-600')}>Pending</span>
+        return (
+          <span className={cn(baseClasses, 'bg-morphing-100 text-morphing-600')}>
+            {t('tool_state_pending')}
+          </span>
+        )
     }
   }
 
@@ -98,7 +116,9 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
           <div className="bg-background space-y-3 p-3">
             {input && Object.keys(input).length > 0 && (
               <div>
-                <h4 className="text-muted-foreground mb-2 text-sm font-medium">Input</h4>
+                <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+                  {t('tool_input')}
+                </h4>
                 <div className="bg-background rounded border p-2 font-mono text-sm">
                   {Object.entries(input).map(([key, value]) => (
                     <div key={key} className="mb-1">
@@ -112,7 +132,9 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
 
             {output && (
               <div>
-                <h4 className="text-muted-foreground mb-2 text-sm font-medium">Output</h4>
+                <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+                  {t('tool_output')}
+                </h4>
                 <div className="bg-background max-h-60 overflow-auto rounded border p-2 font-mono text-sm">
                   <pre className="whitespace-pre-wrap">{formatValue(output)}</pre>
                 </div>
@@ -121,7 +143,7 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
 
             {state === 'output-error' && toolPart.errorText && (
               <div>
-                <h4 className="mb-2 text-sm font-medium text-red-500">Error</h4>
+                <h4 className="mb-2 text-sm font-medium text-red-500">{t('tool_state_error')}</h4>
                 <div className="bg-morphing-50 rounded border border-destructive/30 p-2 text-sm">
                   {toolPart.errorText}
                 </div>
@@ -129,12 +151,12 @@ const Tool = ({ toolPart, defaultOpen = false, className }: ToolProps) => {
             )}
 
             {state === 'input-streaming' && (
-              <div className="text-muted-foreground text-sm">Processing tool call...</div>
+              <div className="text-muted-foreground text-sm">{t('tool_processing_call')}</div>
             )}
 
             {toolCallId && (
               <div className="text-muted-foreground border-t border-blue-200 pt-2 text-xs">
-                <span className="font-mono">Call ID: {toolCallId}</span>
+                <span className="font-mono">{t('tool_call_id', { id: toolCallId })}</span>
               </div>
             )}
           </div>

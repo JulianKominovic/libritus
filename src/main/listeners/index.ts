@@ -5,6 +5,7 @@ import { APP_DATA_DIR } from '..'
 import { attachAiIpcListeners } from '../ai'
 import { atomicWriteFile } from '../atomicWrite'
 import { readBodyCapped } from '../fetchImageBody'
+import { setMainLocale, type MainLocale } from '../i18n'
 import { attachWebBrowserIpc } from '../web-browser'
 import { isHttpUrl } from '../web-browser-url'
 //@ts-expect-error - this is a raw file
@@ -22,6 +23,10 @@ function isImageMime(contentType: string | null): boolean {
 const attachIPCListeners = (): void => {
   attachAiIpcListeners()
   attachWebBrowserIpc()
+
+  ipcMain.on('app:set-locale', (_event, locale: MainLocale) => {
+    setMainLocale(locale)
+  })
 
   ipcMain.handle('fetch-image-url', async (_, { url }: { url: string }) => {
     if (typeof url !== 'string' || !isHttpUrl(url)) return null
