@@ -355,6 +355,7 @@ function PdfCanvasAppInner({
     resizeActiveBrowser,
     isBrowsing,
     syncActiveBrowserBounds,
+    suppressActiveEmbedWhileBrowsing,
     openSearchBrowser,
     deactivateSearchBrowser,
     disposeBrowser
@@ -1348,6 +1349,10 @@ function PdfCanvasAppInner({
           // (pointermove over note/search center emits hover and would otherwise leave a ghost chip).
           syncSearchBrowseHint()
 
+          // Browse owns the guest via activeBrowserCaptureIdRef — keep Excalidraw
+          // from flipping the capture into activeEmbeddable (blocks ring drag).
+          suppressActiveEmbedWhileBrowsing()
+
           // Force sharp before draw starts — A while arrow tool cycles onto elbow.
           // AppState-only; safe mid-draw (does not rewrite the in-progress element).
           if (api.getAppState().currentItemArrowType === 'elbow') {
@@ -1397,6 +1402,7 @@ function PdfCanvasAppInner({
       positionSearchBrowseHint,
       runHostSceneMaintenance,
       scheduleHostArrowSync,
+      suppressActiveEmbedWhileBrowsing,
       syncActiveBrowserBounds,
       syncSearchBrowseHint
     ]
