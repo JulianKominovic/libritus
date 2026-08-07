@@ -1,6 +1,6 @@
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
-import { ContextMenu, ContextMenuTrigger } from '@renderer/components/ui/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '@renderer/components/ui/context-menu-animated'
 import { useLang } from '@renderer/i18n/lang-context'
 import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { recentPdfs } from '@renderer/lib/recentPdfs'
@@ -41,10 +41,10 @@ function HomePdfCard({
   return (
     <div className="flex flex-col w-56">
       <ContextMenu>
-        <ContextMenuTrigger asChild>
+        <ContextMenuTrigger>
           <Link
             to={`/category/${categoryId}/${pdf.id}`}
-            className="p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-transform duration-200 [@media(hover:hover)_and_(pointer:fine)]:hover:scale-105 active:scale-[0.96]"
+            className="p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-[transform,box-shadow] duration-200 shadow-sm shadow-morphing-900/15 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-lg [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-morphing-900/30 active:scale-[0.96]"
           >
             <img
               src={pdf.thumbnail || ''}

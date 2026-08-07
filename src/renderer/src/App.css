@@ -213,11 +213,11 @@
   @media (hover: hover) and (pointer: fine) {
     .pdf-card-content:hover {
       box-shadow:
-        color-mix(in srgb, var(--color-morphing-900) 18%, transparent) 0px 2px 3px,
-        color-mix(in srgb, var(--color-morphing-900) 14%, transparent) 0px 6px 9px,
-        color-mix(in srgb, var(--color-morphing-900) 11%, transparent) 0px 14px 20px,
-        color-mix(in srgb, var(--color-morphing-900) 8%, transparent) 0px 28px 40px,
-        color-mix(in srgb, var(--color-morphing-900) 6%, transparent) 0px 56px 72px;
+        color-mix(in srgb, black 18%, transparent) 0px 2px 3px,
+        color-mix(in srgb, black 14%, transparent) 0px 6px 9px,
+        color-mix(in srgb, black 11%, transparent) 0px 14px 20px,
+        color-mix(in srgb, black 8%, transparent) 0px 28px 40px,
+        color-mix(in srgb, black 6%, transparent) 0px 56px 72px;
     }
   }
 
