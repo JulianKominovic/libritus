@@ -53,7 +53,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
       const fixed: NodeModel<{ type: 'C' }>[] = [
         {
           id: 'add-category',
-          text: 'Add Category',
+          text: t('sidebar_add_category'),
           data: { type: 'C' },
           parent: 0,
           droppable: true
@@ -81,7 +81,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
         )
       )
       return [...mappedCategories, ...mappedPdfs, ...fixed]
-    }, [categories])
+    }, [categories, t])
   const createCategory = usePdfs((s) => s.createCategory)
   const [, navigate] = useLocation()
   const deleteCategory = usePdfs((s) => s.deleteCategory)
@@ -341,17 +341,19 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                       })}
                     >
                       <DynamicIcon name="trash" />
-                      Delete category
+                      {t('sidebar_delete_category')}
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          {t('sidebar_delete_category_confirm_title')}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          You are about to delete this category and all the pdfs in it.
+                          {t('sidebar_delete_category_confirm_desc')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>No! I want to keep it</AlertDialogCancel>
+                        <AlertDialogCancel>{t('sidebar_delete_category_cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                           className={buttonVariants({
                             variant: 'destructive'
@@ -360,7 +362,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                             deleteCategory(categoryNode.id)
                           }}
                         >
-                          Yes! Delete it
+                          {t('sidebar_delete_category_confirm')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -408,7 +410,7 @@ function Sidebar() {
         <div className="overflow-y-auto h-full min-h-0 -mx-2 px-2" ref={containerRef}>
           <p className="mb-2 w-full text-xs flex items-center justify-between px-2! text-morphing-600">
             <strong className="font-medium">{t('categories')} </strong>
-            <span className="tabular-nums">{pdfsCount} pdfs</span>
+            <span className="tabular-nums">{t('sidebar_pdf_count', { count: pdfsCount })}</span>
           </p>
           <TreeView containerRef={containerRef} />
         </div>
@@ -432,7 +434,7 @@ function Sidebar() {
               fill={isSettings ? 'var(--color-morphing-100)' : 'none'}
               name="settings"
             />
-            Settings
+            {t('settings')}
           </Link>
           {/* <Link to="/trash">
             <DynamicIcon

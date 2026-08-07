@@ -1,4 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs'
+import { useLang } from '@renderer/i18n/lang-context'
+import type { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import type { AnnotationListItem } from '@renderer/lib/pdf-canvas/annotationList'
 import {
   flattenOutline,
@@ -48,17 +50,17 @@ type Tab = PdfSidebarTab
 
 const pressable = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.99]'
 
-function formatAnnotationDate(iso: string): string {
+function formatAnnotationDate(iso: string, lang: 'en' | 'es'): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(lang, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-function kindLabel(kind: AnnotationListItem['kind']): string {
-  if (kind === 'highlight') return 'Highlight'
-  if (kind === 'note') return 'Note'
-  if (kind === 'image') return 'Image'
-  return 'Search'
+function kindLabel(kind: AnnotationListItem['kind']): TranslationsKeys {
+  if (kind === 'highlight') return 'sidebar_annotation_kind_highlight'
+  if (kind === 'note') return 'sidebar_annotation_kind_note'
+  if (kind === 'image') return 'sidebar_annotation_kind_image'
+  return 'sidebar_annotation_kind_search'
 }
 
 function initialTab(outlineLen: number, preferred: PdfSidebarTab): Tab {
@@ -116,11 +118,12 @@ function AnnotationRow({
   item: AnnotationListItem
   onGoToAnnotation: (id: string) => void
 }) {
-  const label = kindLabel(item.kind)
-  const date = formatAnnotationDate(item.createdAt)
+  const { t, lang } = useLang()
+  const label = t(kindLabel(item.kind))
+  const date = formatAnnotationDate(item.createdAt, lang)
   const aria =
     item.kind === 'highlight' && item.pageIndex != null
-      ? `${label}, page ${item.pageIndex + 1}: ${item.preview}`
+      ? `${label}, ${t('sidebar_page_label', { page: item.pageIndex + 1 })}: ${item.preview}`
       : `${label}: ${item.preview}`
 
   return (
@@ -135,7 +138,7 @@ function AnnotationRow({
         <span className="flex shrink-0 items-baseline gap-2 text-[10px] tabular-nums text-neutral-400">
           {item.kind === 'highlight' && item.pageIndex != null ? (
             <>
-              <span>Page {item.pageIndex + 1}</span>
+              <span>{t('sidebar_page_label', { page: item.pageIndex + 1 })}</span>
               <span className="-mx-1">•</span>
             </>
           ) : null}
@@ -191,13 +194,16 @@ function OutlineRow({
   row: FlatOutlineRow
   onGoToPage: (pageIndex0: number) => void
 }) {
+  const { t } = useLang()
   const enabled = row.pageIndex != null
   return (
     <button
       type="button"
       disabled={!enabled}
       aria-label={
-        enabled ? `Go to ${row.title}, page ${row.pageIndex! + 1}` : `${row.title} (unavailable)`
+        enabled
+          ? t('sidebar_outline_go_to_page', { title: row.title, page: row.pageIndex! + 1 })
+          : t('sidebar_outline_unavailable', { title: row.title })
       }
       className={cn(
         'min-h-10 w-full rounded-xl px-2 py-2 text-left text-xs leading-snug',
@@ -226,6 +232,7 @@ function ThumbRow({
   slot: ThumbSlot | undefined
   onGoToPage: (pageIndex0: number) => void
 }) {
+  const { t } = useLang()
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -246,7 +253,7 @@ function ThumbRow({
   return (
     <button
       type="button"
-      aria-label={`Go to page ${pageIndex0 + 1}`}
+      aria-label={t('sidebar_thumb_go_to_page', { page: pageIndex0 + 1 })}
       aria-current={active ? 'page' : undefined}
       className={cn(
         'flex w-full flex-col items-center gap-1.5 rounded-xl px-2.5 py-1.5',
@@ -277,6 +284,9 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
   { outline, pageCount, thumbPool, annotations, initialPage = 1, onGoToPage, onGoToAnnotation },
   ref
 ) {
+  const { t } = useLang()
+  const tRef = useRef(t)
+  tRef.current = t
   const preferredTab = useSettings((s) => s.pdfSidebarTab)
   const setPdfSidebarTab = useSettings((s) => s.setPdfSidebarTab)
   const [tab, setTab] = useState<Tab>(() => initialTab(outline.length, preferredTab))
@@ -335,7 +345,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
   const syncActiveMarker = useCallback((page1Based: number) => {
     const el = activeMarkerRef.current
     if (!el) return
-    el.textContent = `Page ${page1Based}`
+    el.textContent = tRef.current('sidebar_page_label', { page: page1Based })
   }, [])
 
   useImperativeHandle(
@@ -390,7 +400,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
 
   return (
     <aside
-      aria-label="Document outline, page thumbnails, and annotations"
+      aria-label={t('sidebar_aria')}
       className={cn(
         'pointer-events-auto absolute bottom-3 right-3 top-[52px] z-100 flex max-w-sm w-full flex-col overflow-hidden',
         'rounded-xl bg-neutral-50 text-neutral-900',
@@ -401,20 +411,20 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
       <Tabs value={tab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col gap-0">
         <TabsList className="m-2 h-auto min-h-10 w-[calc(100%-1rem)] flex-wrap rounded-lg">
           <TabsTrigger value="outline" className={pressable}>
-            Outline
+            {t('sidebar_tab_outline')}
           </TabsTrigger>
           <TabsTrigger value="pages" className={pressable}>
-            Pages
+            {t('sidebar_tab_pages')}
           </TabsTrigger>
           <TabsTrigger value="annotations" className={pressable}>
-            Annotations
+            {t('sidebar_tab_annotations')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="outline" className="relative mt-0 min-h-0 flex-1 overflow-hidden">
           {flatOutline.length === 0 ? (
             <p className="px-2 py-3 text-xs text-pretty text-neutral-400">
-              No outline in this PDF.
+              {t('sidebar_outline_empty')}
             </p>
           ) : (
             <div ref={outlineListRef} className="absolute inset-0 overflow-y-auto px-1.5 pb-2">
@@ -467,7 +477,9 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
 
         <TabsContent value="annotations" className="relative mt-0 min-h-0 flex-1 overflow-hidden">
           {annotations.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-pretty text-neutral-400">No annotations yet.</p>
+            <p className="px-2 py-3 text-xs text-pretty text-neutral-400">
+              {t('sidebar_annotations_empty')}
+            </p>
           ) : (
             <div
               ref={annotationsListRef}

@@ -23,6 +23,7 @@ import * as React from 'react'
 import { Button, buttonVariants } from '@renderer/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
 import { Separator } from '@renderer/components/ui/separator'
+import { useLang } from '@renderer/i18n/lang-context'
 
 import { CaptionButton } from './caption'
 
@@ -45,6 +46,7 @@ export function MediaToolbar({
   const isImagePreviewOpen = useImagePreviewValue('isOpen', editor.id)
   const open = isFocusedLast && !readOnly && selected && selectionCollapsed && !isImagePreviewOpen
   const isEditing = useFloatingMediaValue('isEditing')
+  const { t } = useLang()
 
   React.useEffect(() => {
     if (!open && isEditing) {
@@ -70,7 +72,7 @@ export function MediaToolbar({
 
               <FloatingMediaPrimitive.UrlInput
                 className={inputVariants()}
-                placeholder="Paste the embed link..."
+                placeholder={t('media_paste_link_placeholder')}
                 options={{ plugin }}
               />
             </div>
@@ -80,11 +82,11 @@ export function MediaToolbar({
             <FloatingMediaPrimitive.EditButton
               className={buttonVariants({ size: 'sm', variant: 'ghost' })}
             >
-              Edit link
+              {t('link_edit')}
             </FloatingMediaPrimitive.EditButton>
 
             <CaptionButton size="sm" variant="ghost">
-              Caption
+              {t('media_caption')}
             </CaptionButton>
 
             <Separator orientation="vertical" className="mx-1 h-6" />

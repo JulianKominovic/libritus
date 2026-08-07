@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { PagePointerProvider } from '@embedpdf/plugin-interaction-manager/react'
 import { SelectionLayer } from '@embedpdf/plugin-selection/react'
+import { useLang } from '@renderer/i18n/lang-context'
 import type { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { worldAABBFromCamera } from '@renderer/lib/pdf-canvas/PageLayout'
 import type { PdfDocument } from '@renderer/lib/pdf-canvas/PdfDocument'
@@ -60,6 +61,7 @@ function PageSlotView({
   links: PdfLinkHit[]
   onInternalLink: (pageIndex: number) => void
 }) {
+  const { t } = useLang()
   const canvasHostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -118,7 +120,7 @@ function PageSlotView({
             type="button"
             data-pdf-link
             data-target-page={link.targetPageIndex}
-            aria-label={`Go to page ${link.targetPageIndex + 1}`}
+            aria-label={t('layer_link_go_to_page_aria', { page: link.targetPageIndex + 1 })}
             className="absolute cursor-pointer border-0 bg-transparent p-0"
             style={{
               left: link.localX,
@@ -244,11 +246,11 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLa
     return findPdfLinkAt(all, sceneX, sceneY)
   }, [])
 
-  useImperativeHandle(
-    ref,
-    () => ({ applyCamera, setSearchHit, findLinkAt }),
-    [applyCamera, setSearchHit, findLinkAt]
-  )
+  useImperativeHandle(ref, () => ({ applyCamera, setSearchHit, findLinkAt }), [
+    applyCamera,
+    setSearchHit,
+    findLinkAt
+  ])
 
   useEffect(() => {
     const unsubPool = pool.subscribe(() => setTick((t) => t + 1))

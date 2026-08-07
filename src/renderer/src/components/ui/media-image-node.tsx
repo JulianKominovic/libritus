@@ -7,6 +7,7 @@ import type { TImageElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, withHOC } from 'platejs/react'
 
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 import { Caption, CaptionTextarea } from './caption'
@@ -16,6 +17,7 @@ import { Resizable, ResizeHandle, mediaResizeHandleVariants } from './resize-han
 export const ImageElement = withHOC(
   ResizableProvider,
   function ImageElement(props: PlateElementProps<TImageElement>) {
+    const { t } = useLang()
     const { align = 'center', focused, readOnly, selected } = useMediaState()
     const width = useResizableValue('width')
 
@@ -62,7 +64,7 @@ export const ImageElement = withHOC(
                 onFocus={(e) => {
                   e.preventDefault()
                 }}
-                placeholder="Write a caption..."
+                placeholder={t('media_caption_placeholder')}
               />
             </Caption>
           </figure>

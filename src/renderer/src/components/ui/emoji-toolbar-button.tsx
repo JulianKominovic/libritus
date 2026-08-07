@@ -5,7 +5,8 @@ import {
   type EmojiCategoryList,
   type EmojiIconList,
   EmojiSettings,
-  type GridRow
+  type GridRow,
+  i18n as defaultEmojiI18n
 } from '@platejs/emoji'
 import {
   type EmojiDropdownMenuOptions,
@@ -18,6 +19,7 @@ import * as React from 'react'
 
 import { Button } from '@renderer/components/ui/button'
 import { ToolbarButton } from '@renderer/components/ui/toolbar'
+import { useLang } from '@renderer/i18n/lang-context'
 import {
   Tooltip,
   TooltipContent,
@@ -33,11 +35,24 @@ export function EmojiToolbarButton({
   options?: EmojiDropdownMenuOptions
 } & React.ComponentPropsWithoutRef<typeof ToolbarButton>) {
   const { emojiPickerState, isOpen, setIsOpen } = useEmojiDropdownMenuState(options)
+  const { t } = useLang()
+  const pickerI18n = React.useMemo(
+    () => ({
+      ...defaultEmojiI18n,
+      search: t('emoji_search'),
+      clear: t('emoji_clear'),
+      pick: t('emoji_pick'),
+      searchResult: t('emoji_search_result'),
+      searchNoResultsTitle: t('emoji_no_results_title'),
+      searchNoResultsSubtitle: t('emoji_no_results_subtitle')
+    }),
+    [t]
+  )
 
   return (
     <EmojiPopover
       control={
-        <ToolbarButton pressed={isOpen} tooltip="Emoji" isDropdown {...props}>
+        <ToolbarButton pressed={isOpen} tooltip={t('editor_emoji')} isDropdown {...props}>
           <DynamicIcon name="smile" />
         </ToolbarButton>
       }
@@ -46,6 +61,7 @@ export function EmojiToolbarButton({
     >
       <EmojiPicker
         {...emojiPickerState}
+        i18n={pickerI18n}
         isOpen={isOpen}
         setIsOpen={setIsOpen}
         settings={options?.settings}
@@ -335,7 +351,7 @@ function EmojiPickerSearchBar({
           value={searchValue}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={i18n.search}
-          aria-label="Search"
+          aria-label={i18n.search}
           autoComplete="off"
           type="text"
           autoFocus
@@ -369,7 +385,7 @@ function EmojiPickerSearchAndClear({
           )}
           onClick={clearSearch}
           title={i18n.clear}
-          aria-label="Clear"
+          aria-label={i18n.clear}
           type="button"
         >
           {emojiSearchIcons.delete}

@@ -7,12 +7,14 @@ import { PlateElement, useReadOnly } from 'platejs/react'
 
 import { Calendar } from '@renderer/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 export function DateElement(props: PlateElementProps<TDateElement>) {
   const { editor, element } = props
 
   const readOnly = useReadOnly()
+  const { t } = useLang()
 
   const trigger = (
     <span
@@ -36,9 +38,9 @@ export function DateElement(props: PlateElementProps<TDateElement>) {
             new Date(today.setDate(today.getDate() + 2)).toDateString() ===
             elementDate.toDateString()
 
-          if (isToday) return 'Today'
-          if (isYesterday) return 'Yesterday'
-          if (isTomorrow) return 'Tomorrow'
+          if (isToday) return t('date_today')
+          if (isYesterday) return t('date_yesterday')
+          if (isTomorrow) return t('date_tomorrow')
 
           return elementDate.toLocaleDateString(undefined, {
             day: 'numeric',
@@ -47,7 +49,7 @@ export function DateElement(props: PlateElementProps<TDateElement>) {
           })
         })()
       ) : (
-        <span>Pick a date</span>
+        <span>{t('date_pick')}</span>
       )}
     </span>
   )

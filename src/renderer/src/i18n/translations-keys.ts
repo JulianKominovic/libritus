@@ -1,21 +1,8 @@
-export type TranslationsKeys =
-  | 'home'
-  | 'categories'
-  | 'settings'
-  | 'trash'
-  | 'info'
-  | 'home_welcome'
-  | 'home_welcome_description'
-  | 'home_step_upload_title'
-  | 'home_step_upload_desc'
-  | 'home_step_category_title'
-  | 'home_step_category_desc'
-  | 'home_step_read_title'
-  | 'home_step_read_desc'
-  | 'home_continue_reading'
-  | 'home_create_category'
-  | 'home_see_all'
-  | 'home_drop_hint'
-  | 'pdf'
-  | 'navigation'
-  | 'ai'
+import { en } from './en'
+
+/**
+ * Union of all translation keys, derived from the English dictionary
+ * (source of truth). Adding a key to `en` automatically expands this type,
+ * and TypeScript then requires the same key in `es.ts`.
+ */
+export type TranslationsKeys = keyof typeof en

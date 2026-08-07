@@ -1,4 +1,5 @@
 import { Progress } from '@renderer/components/ui/progress'
+import { useLang } from '@renderer/i18n/lang-context'
 import { getRagQueueSnapshot, onRagQueue, type RagQueueSnapshot } from '@renderer/lib/ai/ipc'
 import { usePdfs } from '@renderer/stores/categories'
 import { useEffect, useMemo, useState } from 'react'
@@ -21,6 +22,7 @@ function pdfTitle(
  * always stays idle until the feature is redone.
  */
 export function EmbeddingJobsIndicator() {
+  const { t } = useLang()
   const [snapshot, setSnapshot] = useState<RagQueueSnapshot>(IDLE)
   const categories = usePdfs((s) => s.categories)
 
@@ -55,7 +57,7 @@ export function EmbeddingJobsIndicator() {
   return (
     <div className="mb-2 w-full space-y-1.5 rounded-md bg-morphing-50 px-2.5 py-2 ring-1 ring-morphing-200">
       <p className="text-[10px] font-medium uppercase tracking-wide text-morphing-500">
-        Embeddings
+        {t('embedding_indicator_header')}
       </p>
       {active ? (
         <div className="space-y-1">
@@ -67,8 +69,8 @@ export function EmbeddingJobsIndicator() {
           </p>
           <p className="text-[10px] tabular-nums text-morphing-600">
             {active.phase === 'downloading_model'
-              ? 'Downloading model…'
-              : `Indexing ${active.done}/${active.total}`}
+              ? t('embedding_downloading_model')
+              : t('embedding_indexing_progress', { done: active.done, total: active.total })}
           </p>
           {pct != null && active.phase === 'embedding' ? (
             <Progress value={pct} className="h-1" />
@@ -77,7 +79,9 @@ export function EmbeddingJobsIndicator() {
       ) : null}
       {snapshot.pending.length > 0 ? (
         <ul className="space-y-0.5 border-t border-morphing-200 pt-1.5">
-          <li className="text-[10px] uppercase tracking-wide text-morphing-500">Queued</li>
+          <li className="text-[10px] uppercase tracking-wide text-morphing-500">
+            {t('embedding_queued')}
+          </li>
           {snapshot.pending.map((p) => (
             <li
               key={p.pdfId}

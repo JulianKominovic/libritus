@@ -63,6 +63,10 @@ test('place note selects without entering edit; Escape leaves edit', async () =>
 
     // Click center → activate embed → Escape leaves edit
     await activateNoteEmbed(page, 'editable note')
+    // Embed activate + Plate focus settle (same as edit-persist tests).
+    await page.waitForTimeout(400)
+    const editable = page.locator('[contenteditable="true"]').first()
+    await editable.click()
     await page.keyboard.press('Escape')
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0, { timeout: 5_000 })
   } finally {
