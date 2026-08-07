@@ -230,7 +230,7 @@ test('pointerdown on shape while pdf-text-pass still on selects', async () => {
     if (!sb || !cb) throw new Error('missing boxes')
 
     // Arm pass-through on PDF text; stay there (do not move onto the rect).
-    await page.mouse.move(sb.x + 4, sb.y + 4)
+    await page.mouse.move(sb.x + 4, sb.y + 60)
     await expectPassOn(page)
 
     const rx = cb.x + 560
@@ -319,7 +319,7 @@ test('selected arrow endpoint drag over PDF text transforms', async () => {
     if (!sb) throw new Error('missing span box')
 
     // Outside hairline AABB+pad but over PDF text — latch must keep PE.
-    await page.mouse.move(sb.x + 4, sb.y + 4)
+    await page.mouse.move(sb.x + 4, sb.y + 60)
     await expectPassOff(page)
 
     // Drag right endpoint down (handle chrome over text). Without the latch,

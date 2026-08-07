@@ -571,11 +571,12 @@ test('Cmd/Ctrl+A clears PDF text selection without selecting all canvas elements
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
 
   // Unlocked shape so Excalidraw select-all would select it (locked highlights wouldn't).
+  // scrollY: 60 matches INITIAL_CAMERA offset so title drag-select clears the overlay navbar.
   await seedSession(appDataDir, pdfId, {
     version: 1,
     docId: pdfId,
     updatedAt: new Date().toISOString(),
-    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    camera: { scrollX: 100, scrollY: 60, zoom: 1 },
     elements: [
       {
         id: 'cmd-a-bait',

@@ -10,7 +10,7 @@ test('empty library shows onboarding, not continue reading', async () => {
       timeout: 30_000
     })
     await expect(page.getByRole('heading', { name: 'Upload a PDF' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create category' })).toBeVisible()
+    await expect(page.locator('main').getByRole('button', { name: 'Create category' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Continue reading' })).toHaveCount(0)
   } finally {
     await close()
@@ -31,7 +31,7 @@ test('seeded library shows continue reading and opens PDF', async () => {
 
     await expect(page.locator('main').getByRole('link', { name: 'E2E' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'See all' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create category' })).toBeVisible()
+    await expect(page.locator('main').getByRole('button', { name: 'Create category' })).toBeVisible()
     await expect(page.getByText('Drop a PDF anywhere to add it')).toBeVisible()
 
     await page.getByRole('link', { name: 'See all' }).click()

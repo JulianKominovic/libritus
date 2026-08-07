@@ -599,7 +599,7 @@ test('deleting search capture cascades arrow', async () => {
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
 
     // Edge click selects without activating the guest browser (center third).
-    await clickScene(page, capX + 4, capY + 4)
+    await clickScene(page, capX + 4, capY + 60)
     await page.keyboard.press('Backspace')
     await expectUnsaved(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(0, { timeout: 10_000 })
@@ -667,7 +667,7 @@ test('deleting search capture while browsing disposes guest', async () => {
     await page.waitForTimeout(900)
 
     // Edge select keeps guest; Backspace must dispose without an outside click.
-    await clickScene(page, capX + 4, capY + 4)
+    await clickScene(page, capX + 4, capY + 60)
     await page.keyboard.press('Backspace')
 
     await expectBrowserChromeHidden(page)
@@ -728,7 +728,7 @@ test('undo delete search capture restores arrow', async () => {
 
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
 
-    await clickScene(page, capX + 4, capY + 4)
+    await clickScene(page, capX + 4, capY + 60)
     await page.keyboard.press('Backspace')
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(0, { timeout: 10_000 })
     await expectUnsaved(page)
