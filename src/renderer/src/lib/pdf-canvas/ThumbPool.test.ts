@@ -71,6 +71,7 @@ describe('ThumbPool', () => {
     const pool = new ThumbPool(doc, { poolSize: 2 })
 
     await pool.syncVisible([0, 1, 2, 3, 4])
+    expect(pool.capacity).toBe(2)
     expect(pool.getSlots().length).toBeLessThanOrEqual(2)
     expect(THUMB_SCALE).toBe(0.75)
 

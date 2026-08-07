@@ -1,6 +1,7 @@
 import type { PdfDocument } from './PdfDocument'
 import { isPdfJobCancelled } from './isPdfJobCancelled'
 import { renderPageToCanvas, type AbortableRender } from './PdfRenderer'
+import { PoolCore } from './pool-core'
 
 // Sidebar ~220px wide; 0.75 keeps thumbs sharp on retina without PagePool-scale cost.
 export const THUMB_SCALE = 0.75
@@ -29,38 +30,16 @@ export type ThumbPoolOptions = {
  * visibility never inflates the main render buffer.
  * Capacity is always poolSize — never grows with needed (AGENTS.md memory trap).
  */
-export class ThumbPool {
-  private readonly slots = new Map<number, ThumbSlot>()
+export class ThumbPool extends PoolCore<ThumbSlot> {
   private readonly jobs = new Map<number, ActiveJob>()
-  private readonly poolSize: number
   private generation = 0
-  private clock = 0
   private lastVisibleKey = ''
-  private destroyed = false
-  private listeners = new Set<() => void>()
 
   constructor(
     private doc: PdfDocument,
     options: ThumbPoolOptions = {}
   ) {
-    this.poolSize = options.poolSize ?? DEFAULT_POOL_SIZE
-  }
-
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
-
-  private notify(): void {
-    for (const listener of this.listeners) listener()
-  }
-
-  getSlots(): ThumbSlot[] {
-    return [...this.slots.values()]
-  }
-
-  getSlot(pageIndex: number): ThumbSlot | undefined {
-    return this.slots.get(pageIndex)
+    super(options.poolSize ?? DEFAULT_POOL_SIZE)
   }
 
   async syncVisible(visibleIndices: number[]): Promise<void> {
@@ -78,7 +57,7 @@ export class ThumbPool {
     if (visibleKey === this.lastVisibleKey) {
       for (const pageIndex of capped) {
         const slot = this.slots.get(pageIndex)
-        if (slot) slot.lastUsed = ++this.clock
+        if (slot) this.touch(slot)
       }
       return
     }
@@ -100,7 +79,7 @@ export class ThumbPool {
 
     for (const pageIndex of capped) {
       const slot = this.slots.get(pageIndex)
-      if (slot) slot.lastUsed = ++this.clock
+      if (slot) this.touch(slot)
     }
 
     this.evictUntil()
@@ -109,12 +88,12 @@ export class ThumbPool {
     for (const pageIndex of capped) {
       const existing = this.slots.get(pageIndex)
       if (existing?.ready) {
-        existing.lastUsed = ++this.clock
+        this.touch(existing)
         continue
       }
 
       if (!this.slots.has(pageIndex) && this.slots.size >= this.poolSize) {
-        this.evictOne(visible)
+        this.evictLru(visible)
       }
 
       renders.push(this.renderSlot(pageIndex, gen))
@@ -123,35 +102,17 @@ export class ThumbPool {
     await Promise.all(renders)
   }
 
-  /** Hard cap: capacity is always poolSize. */
-  private evictUntil(): void {
-    while (this.slots.size > this.poolSize) {
-      this.evictOne(new Set())
-    }
-  }
-
-  private evictOne(keep: Set<number>): void {
-    let victim: ThumbSlot | null = null
-    for (const slot of this.slots.values()) {
-      if (keep.has(slot.pageIndex)) continue
-      if (!victim || slot.lastUsed < victim.lastUsed) {
-        victim = slot
-      }
-    }
-    if (!victim) return
-
-    const job = this.jobs.get(victim.pageIndex)
+  /** Cancel/drop the job for an evicted page. */
+  protected onEvict(pageIndex: number): void {
+    const job = this.jobs.get(pageIndex)
     if (job) {
       try {
         job.task.cancel()
       } catch {
         /* ignore */
       }
-      this.jobs.delete(victim.pageIndex)
+      this.jobs.delete(pageIndex)
     }
-    victim.canvas.width = 0
-    victim.canvas.height = 0
-    this.slots.delete(victim.pageIndex)
   }
 
   private async renderSlot(pageIndex: number, gen: number): Promise<void> {
@@ -169,7 +130,7 @@ export class ThumbPool {
     } else {
       slot.ready = false
       slot.scale = scale
-      slot.lastUsed = ++this.clock
+      this.touch(slot)
     }
 
     const existingJob = this.jobs.get(pageIndex)
@@ -216,12 +177,7 @@ export class ThumbPool {
       }
     }
     this.jobs.clear()
-    for (const slot of this.slots.values()) {
-      slot.canvas.width = 0
-      slot.canvas.height = 0
-    }
-    this.slots.clear()
-    this.listeners.clear()
+    this.clearSlotsAndListeners()
     this.lastVisibleKey = ''
   }
 }
