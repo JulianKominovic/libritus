@@ -24,6 +24,7 @@ import {
   writeChatHistory
 } from '@renderer/lib/pdf-canvas/pdfRagPersist'
 import { useSettings } from '@renderer/stores/settings'
+import { useLang } from '@renderer/i18n/lang-context'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type IndexStatus =
@@ -64,6 +65,9 @@ function statusFromQueue(pdfId: string, snap: RagQueueSnapshot): IndexStatus {
 }
 
 export function usePdfRagChat({ pdfId, active }: UsePdfRagChatArgs) {
+  const { t } = useLang()
+  const tRef = useRef(t)
+  tRef.current = t
   const chatModel = useSettings((s) => s.openRouterChatModel)
   const [messages, setMessages] = useState<ChatHistoryMessage[]>([])
   const [indexStatus, setIndexStatus] = useState<IndexStatus>({ kind: 'idle' })
@@ -153,7 +157,7 @@ export function usePdfRagChat({ pdfId, active }: UsePdfRagChatArgs) {
       const keyOk = await hasOpenRouterKey()
       setHasKey(keyOk)
       if (!keyOk) {
-        setError('Add an OpenRouter API key in Settings to chat.')
+        setError(tRef.current('rag_error_no_key'))
         return
       }
 
@@ -163,7 +167,7 @@ export function usePdfRagChat({ pdfId, active }: UsePdfRagChatArgs) {
         indexRef.current = index
       }
       if (!index || index.chunks.length === 0) {
-        setError('No searchable text in this PDF.')
+        setError(tRef.current('rag_error_no_text'))
         return
       }
 
@@ -248,7 +252,7 @@ export function usePdfRagChat({ pdfId, active }: UsePdfRagChatArgs) {
       })
 
       if (!result.ok) {
-        finish('error' in result ? result.error : 'Failed to start chat')
+        finish('error' in result ? result.error : tRef.current('rag_error_start_failed'))
       }
     },
     [chatModel, pdfId, streaming]

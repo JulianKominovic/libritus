@@ -24,10 +24,12 @@ import {
   CommandList
 } from '@renderer/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
   const { editor, element } = props
+  const { t } = useLang()
 
   return (
     <PlateElement
@@ -49,7 +51,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
               variant="ghost"
               className="size-6 text-xs"
               onClick={() => formatCodeBlock(editor, { element })}
-              title="Format code"
+              title={t('code_format_title')}
             >
               <DynamicIcon name="braces" className="!size-3.5 text-muted-foreground" />
             </Button>
@@ -74,6 +76,7 @@ function CodeBlockCombobox() {
   const readOnly = useReadOnly()
   const editor = useEditorRef()
   const element = useElement<TCodeBlockElement>()
+  const { t } = useLang()
   const value = element.lang || 'plaintext'
   const [searchValue, setSearchValue] = React.useState('')
 
@@ -98,7 +101,8 @@ function CodeBlockCombobox() {
           aria-expanded={open}
           role="combobox"
         >
-          {languages.find((language) => language.value === value)?.label ?? 'Plain Text'}
+          {languages.find((language) => language.value === value)?.label ??
+            t('code_lang_plain_text')}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" onCloseAutoFocus={() => setSearchValue('')}>
@@ -107,9 +111,9 @@ function CodeBlockCombobox() {
             className="h-9"
             value={searchValue}
             onValueChange={(value) => setSearchValue(value)}
-            placeholder="Search language..."
+            placeholder={t('code_search_language')}
           />
-          <CommandEmpty>No language found.</CommandEmpty>
+          <CommandEmpty>{t('code_no_language')}</CommandEmpty>
 
           <CommandList className="h-[344px] overflow-y-auto">
             <CommandGroup>
@@ -144,6 +148,7 @@ function CopyButton({
   ...props
 }: { value: (() => string) | string } & Omit<React.ComponentProps<typeof Button>, 'value'>) {
   const [hasCopied, setHasCopied] = React.useState(false)
+  const { t } = useLang()
 
   React.useEffect(() => {
     setTimeout(() => {
@@ -159,7 +164,7 @@ function CopyButton({
       }}
       {...props}
     >
-      <span className="sr-only">Copy</span>
+      <span className="sr-only">{t('code_copy')}</span>
       {hasCopied ? (
         <DynamicIcon name="check" className="!size-3" />
       ) : (

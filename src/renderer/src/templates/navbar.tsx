@@ -205,7 +205,7 @@ function Navbar() {
                 ? '!size-10 aspect-square !p-2 bg-morphing-100 text-morphing-700 hover:bg-morphing-200'
                 : '!size-10 aspect-square !p-2 text-morphing-600'
             }
-            aria-label="Toggle PDF sidebar"
+            aria-label={t('navbar_toggle_pdf_sidebar_aria')}
             aria-pressed={showPdfOutline}
             onClick={() => setShowPdfOutline(!showPdfOutline)}
           >

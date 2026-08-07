@@ -15,12 +15,15 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { DynamicIcon } from 'lucide-react/dynamic'
 
+import { useLang } from '@renderer/i18n/lang-context'
+
 import { ToolbarButton } from './toolbar'
 
 export function ModeToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef()
   const [readOnly, setReadOnly] = usePlateState('readOnly')
   const [open, setOpen] = React.useState(false)
+  const { t } = useLang()
 
   const isSuggesting = usePluginOption(SuggestionPlugin, 'isSuggesting')
 
@@ -33,22 +36,22 @@ export function ModeToolbarButton(props: DropdownMenuProps) {
   const item: Record<string, { icon: React.ReactNode; label: string }> = {
     editing: {
       icon: <DynamicIcon name="pen" />,
-      label: 'Editing'
+      label: t('editor_mode_editing')
     },
     suggestion: {
       icon: <DynamicIcon name="pencil-line" />,
-      label: 'Suggestion'
+      label: t('editor_mode_suggestion')
     },
     viewing: {
       icon: <DynamicIcon name="eye" />,
-      label: 'Viewing'
+      label: t('editor_mode_viewing')
     }
   }
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Editing mode" isDropdown>
+        <ToolbarButton pressed={open} tooltip={t('editor_mode_editing')} isDropdown>
           {item[value].icon}
           <span className="hidden lg:inline">{item[value].label}</span>
         </ToolbarButton>

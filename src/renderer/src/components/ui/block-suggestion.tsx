@@ -31,6 +31,7 @@ import {
 import { suggestionPlugin } from '@renderer/components/editor/plugins/suggestion-kit'
 import { Avatar, AvatarFallback, AvatarImage } from '@renderer/components/ui/avatar'
 import { Button } from '@renderer/components/ui/button'
+import { useLang, type LangContextType } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 import { DynamicIcon } from 'lucide-react/dynamic'
@@ -42,34 +43,34 @@ export interface ResolvedSuggestion extends TResolvedSuggestion {
 
 const BLOCK_SUGGESTION = '__block__'
 
-const TYPE_TEXT_MAP: Record<string, (node?: TElement) => string> = {
-  [KEYS.audio]: () => 'Audio',
-  [KEYS.blockquote]: () => 'Blockquote',
-  [KEYS.callout]: () => 'Callout',
-  [KEYS.codeBlock]: () => 'Code Block',
-  [KEYS.column]: () => 'Column',
-  [KEYS.equation]: () => 'Equation',
-  [KEYS.file]: () => 'File',
-  [KEYS.h1]: () => `Heading 1`,
-  [KEYS.h2]: () => `Heading 2`,
-  [KEYS.h3]: () => `Heading 3`,
-  [KEYS.h4]: () => `Heading 4`,
-  [KEYS.h5]: () => `Heading 5`,
-  [KEYS.h6]: () => `Heading 6`,
-  [KEYS.hr]: () => 'Horizontal Rule',
-  [KEYS.img]: () => 'Image',
-  [KEYS.mediaEmbed]: () => 'Media',
-  [KEYS.p]: (node) => {
-    if (node?.[KEYS.listType] === KEYS.listTodo) return 'Todo List'
-    if (node?.[KEYS.listType] === KEYS.ol) return 'Ordered List'
-    if (node?.[KEYS.listType] === KEYS.ul) return 'List'
+const TYPE_TEXT_MAP: Record<string, (t: LangContextType['t'], node?: TElement) => string> = {
+  [KEYS.audio]: (t) => t('editor_block_audio'),
+  [KEYS.blockquote]: (t) => t('editor_block_blockquote'),
+  [KEYS.callout]: (t) => t('editor_block_callout'),
+  [KEYS.codeBlock]: (t) => t('editor_block_code'),
+  [KEYS.column]: (t) => t('editor_block_column'),
+  [KEYS.equation]: (t) => t('editor_block_equation'),
+  [KEYS.file]: (t) => t('editor_block_file'),
+  [KEYS.h1]: (t) => `${t('editor_block_heading')} 1`,
+  [KEYS.h2]: (t) => `${t('editor_block_heading')} 2`,
+  [KEYS.h3]: (t) => `${t('editor_block_heading')} 3`,
+  [KEYS.h4]: (t) => `${t('editor_block_heading')} 4`,
+  [KEYS.h5]: (t) => `${t('editor_block_heading')} 5`,
+  [KEYS.h6]: (t) => `${t('editor_block_heading')} 6`,
+  [KEYS.hr]: (t) => t('editor_block_horizontal_rule'),
+  [KEYS.img]: (t) => t('editor_block_image'),
+  [KEYS.mediaEmbed]: (t) => t('editor_block_media'),
+  [KEYS.p]: (t, node) => {
+    if (node?.[KEYS.listType] === KEYS.listTodo) return t('editor_block_todo')
+    if (node?.[KEYS.listType] === KEYS.ol) return t('editor_block_ordered_list')
+    if (node?.[KEYS.listType] === KEYS.ul) return t('editor_block_list')
 
-    return 'Paragraph'
+    return t('editor_block_paragraph')
   },
-  [KEYS.table]: () => 'Table',
-  [KEYS.toc]: () => 'Table of Contents',
-  [KEYS.toggle]: () => 'Toggle',
-  [KEYS.video]: () => 'Video'
+  [KEYS.table]: (t) => t('editor_block_table'),
+  [KEYS.toc]: (t) => t('editor_block_table_of_contents'),
+  [KEYS.toggle]: (t) => t('editor_block_toggle'),
+  [KEYS.video]: (t) => t('editor_block_video')
 }
 
 export function BlockSuggestion({ element }: { element: TSuggestionElement }) {
@@ -102,6 +103,7 @@ export function BlockSuggestionCard({
   const { api, editor } = useEditorPlugin(SuggestionPlugin)
 
   const userInfo = usePluginOption(discussionPlugin, 'user', suggestion.userId)
+  const { t } = useLang()
 
   const accept = (suggestion: ResolvedSuggestion) => {
     api.suggestion.withoutSuggestions(() => {
@@ -118,7 +120,7 @@ export function BlockSuggestionCard({
   const [hovering, setHovering] = React.useState(false)
 
   const suggestionText2Array = (text: string) => {
-    if (text === BLOCK_SUGGESTION) return ['line breaks']
+    if (text === BLOCK_SUGGESTION) return [t('suggestion_line_breaks')]
 
     return text.split(BLOCK_SUGGESTION).filter(Boolean)
   }
@@ -151,7 +153,7 @@ export function BlockSuggestionCard({
               <React.Fragment>
                 {suggestionText2Array(suggestion.text!).map((text, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Delete:</span>
+                    <span className="text-sm text-muted-foreground">{t('suggestion_delete')}</span>
 
                     <span key={index} className="text-sm">
                       {text}
@@ -165,10 +167,10 @@ export function BlockSuggestionCard({
               <React.Fragment>
                 {suggestionText2Array(suggestion.newText!).map((text, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Add:</span>
+                    <span className="text-sm text-muted-foreground">{t('suggestion_add')}</span>
 
                     <span key={index} className="text-sm">
-                      {text || 'line breaks'}
+                      {text || t('suggestion_line_breaks')}
                     </span>
                   </div>
                 ))}
@@ -180,8 +182,8 @@ export function BlockSuggestionCard({
                 {suggestionText2Array(suggestion.newText!).map((text, index) => (
                   <React.Fragment key={index}>
                     <div key={index} className="flex items-start gap-2 text-brand/80">
-                      <span className="text-sm">with:</span>
-                      <span className="text-sm">{text || 'line breaks'}</span>
+                      <span className="text-sm">{t('suggestion_with')}</span>
+                      <span className="text-sm">{text || t('suggestion_line_breaks')}</span>
                     </div>
                   </React.Fragment>
                 ))}
@@ -190,9 +192,9 @@ export function BlockSuggestionCard({
                   <React.Fragment key={index}>
                     <div key={index} className="flex items-start gap-2">
                       <span className="text-sm text-muted-foreground">
-                        {index === 0 ? 'Replace:' : 'Delete:'}
+                        {index === 0 ? t('suggestion_replace') : t('suggestion_delete')}
                       </span>
-                      <span className="text-sm">{text || 'line breaks'}</span>
+                      <span className="text-sm">{text || t('suggestion_line_breaks')}</span>
                     </div>
                   </React.Fragment>
                 ))}
@@ -261,6 +263,7 @@ export const useResolveSuggestion = (
   blockPath: Path
 ) => {
   const discussions = usePluginOption(discussionPlugin, 'discussions')
+  const { t } = useLang()
 
   const { api, editor, getOption, setOption } = useEditorPlugin(suggestionPlugin)
 
@@ -388,11 +391,11 @@ export const useResolveSuggestion = (
           if (lineBreakData.type === 'insert') {
             newText += lineBreakData.isLineBreak
               ? BLOCK_SUGGESTION
-              : BLOCK_SUGGESTION + TYPE_TEXT_MAP[node.type](node)
+              : BLOCK_SUGGESTION + TYPE_TEXT_MAP[node.type](t, node)
           } else if (lineBreakData.type === 'remove') {
             text += lineBreakData.isLineBreak
               ? BLOCK_SUGGESTION
-              : BLOCK_SUGGESTION + TYPE_TEXT_MAP[node.type](node)
+              : BLOCK_SUGGESTION + TYPE_TEXT_MAP[node.type](t, node)
           }
         }
       })
@@ -459,7 +462,7 @@ export const useResolveSuggestion = (
     })
 
     return res
-  }, [api.suggestion, blockPath, discussions, editor.api, getOption, suggestionNodes])
+  }, [api.suggestion, blockPath, discussions, editor.api, getOption, suggestionNodes, t])
 
   return resolvedSuggestion
 }

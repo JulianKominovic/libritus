@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { Input } from '@renderer/components/ui/input'
+import { useLang } from '@renderer/i18n/lang-context'
 
 import {
   ToolbarSplitButton,
@@ -35,7 +36,9 @@ import {
   ToolbarSplitButtonSecondary
 } from './toolbar'
 
-const MEDIA_CONFIG: Record<
+const getMediaConfig = (
+  t: ReturnType<typeof useLang>['t']
+): Record<
   string,
   {
     accept: string[]
@@ -43,38 +46,39 @@ const MEDIA_CONFIG: Record<
     title: string
     tooltip: string
   }
-> = {
+> => ({
   [KEYS.audio]: {
     accept: ['audio/*'],
     icon: <DynamicIcon name="audio-lines" className="size-4" />,
-    title: 'Insert Audio',
-    tooltip: 'Audio'
+    title: t('media_insert_audio'),
+    tooltip: t('media_audio')
   },
   [KEYS.file]: {
     accept: ['*'],
     icon: <DynamicIcon name="file-up" className="size-4" />,
-    title: 'Insert File',
-    tooltip: 'File'
+    title: t('media_insert_file'),
+    tooltip: t('media_file')
   },
   [KEYS.img]: {
     accept: ['image/*'],
     icon: <DynamicIcon name="image" className="size-4" />,
-    title: 'Insert Image',
-    tooltip: 'Image'
+    title: t('media_insert_image'),
+    tooltip: t('media_image')
   },
   [KEYS.video]: {
     accept: ['video/*'],
     icon: <DynamicIcon name="film" className="size-4" />,
-    title: 'Insert Video',
-    tooltip: 'Video'
+    title: t('media_insert_video'),
+    tooltip: t('media_video')
   }
-}
+})
 
 export function MediaToolbarButton({
   nodeType,
   ...props
 }: DropdownMenuProps & { nodeType: string }) {
-  const currentConfig = MEDIA_CONFIG[nodeType]
+  const { t } = useLang()
+  const currentConfig = getMediaConfig(t)[nodeType]
 
   const editor = useEditorRef()
   const [open, setOpen] = React.useState(false)
@@ -114,11 +118,11 @@ export function MediaToolbarButton({
             <DropdownMenuGroup>
               <DropdownMenuItem onSelect={() => openFilePicker()}>
                 {currentConfig.icon}
-                Upload from computer
+                {t('media_upload_from_computer')}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
                 <DynamicIcon name="link" />
-                Insert via URL
+                {t('media_insert_via_url')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
@@ -148,15 +152,16 @@ function MediaUrlDialogContent({
   nodeType,
   setOpen
 }: {
-  currentConfig: (typeof MEDIA_CONFIG)[string]
+  currentConfig: ReturnType<typeof getMediaConfig>[string]
   nodeType: string
   setOpen: (value: boolean) => void
 }) {
   const editor = useEditorRef()
+  const { t } = useLang()
   const [url, setUrl] = React.useState('')
 
   const embedMedia = React.useCallback(() => {
-    if (!isUrl(url)) return toast.error('Invalid URL')
+    if (!isUrl(url)) return toast.error(t('media_invalid_url'))
 
     setOpen(false)
     editor.tf.insertNodes({
@@ -165,7 +170,7 @@ function MediaUrlDialogContent({
       type: nodeType,
       url
     })
-  }, [url, editor, nodeType, setOpen])
+  }, [url, editor, nodeType, setOpen, t])
 
   return (
     <>
@@ -178,7 +183,7 @@ function MediaUrlDialogContent({
           className="absolute top-1/2 block -translate-y-1/2 cursor-text px-1 text-sm text-muted-foreground/70 transition-all group-focus-within:pointer-events-none group-focus-within:top-0 group-focus-within:cursor-default group-focus-within:text-xs group-focus-within:font-medium group-focus-within:text-foreground has-[+input:not(:placeholder-shown)]:pointer-events-none has-[+input:not(:placeholder-shown)]:top-0 has-[+input:not(:placeholder-shown)]:cursor-default has-[+input:not(:placeholder-shown)]:text-xs has-[+input:not(:placeholder-shown)]:font-medium has-[+input:not(:placeholder-shown)]:text-foreground"
           htmlFor="url"
         >
-          <span className="inline-flex bg-background px-2">URL</span>
+          <span className="inline-flex bg-background px-2">{t('media_url_label')}</span>
         </label>
         <Input
           id="url"
@@ -195,14 +200,14 @@ function MediaUrlDialogContent({
       </AlertDialogDescription>
 
       <AlertDialogFooter>
-        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogCancel>{t('common_cancel')}</AlertDialogCancel>
         <AlertDialogAction
           onClick={(e) => {
             e.preventDefault()
             embedMedia()
           }}
         >
-          Accept
+          {t('common_accept')}
         </AlertDialogAction>
       </AlertDialogFooter>
     </>

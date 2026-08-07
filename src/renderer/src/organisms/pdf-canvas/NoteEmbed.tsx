@@ -5,6 +5,7 @@ import { EditorStatic } from '@renderer/components/ui/editor-static'
 import { createSlateEditor, type Value } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
 import { memo, useEffect, useMemo, useRef } from 'react'
+import { useLang } from '@renderer/i18n/lang-context'
 import { EmbedActivateHint } from './EmbedActivateHint'
 
 type NoteEmbedProps = {
@@ -120,6 +121,7 @@ export const NoteEmbed = memo(function NoteEmbed({
   onValueChange,
   onExitEdit
 }: NoteEmbedProps) {
+  const { t } = useLang()
   const initialValueRef = useRef(plateValue)
   if (!editing) {
     initialValueRef.current = plateValue
@@ -142,7 +144,7 @@ export const NoteEmbed = memo(function NoteEmbed({
       ) : (
         <>
           <NoteStaticBody value={plateValue} />
-          <EmbedActivateHint label="Click to edit" icon="pencil" />
+          <EmbedActivateHint label={t('note_activate_hint_edit')} icon="pencil" />
         </>
       )}
     </div>

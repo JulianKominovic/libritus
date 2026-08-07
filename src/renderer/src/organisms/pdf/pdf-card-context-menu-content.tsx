@@ -4,6 +4,7 @@ import {
   ContextMenuSeparator
 } from '@renderer/components/ui/context-menu'
 import { Input } from '@renderer/components/ui/input'
+import { useLang } from '@renderer/i18n/lang-context'
 import { type Pdf, usePdfs } from '@renderer/stores/categories'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { useDebounceCallback } from 'usehooks-ts'
@@ -14,6 +15,7 @@ type Props = {
 }
 
 function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
+  const { t, lang } = useLang()
   const deletePdf = usePdfs((s) => s.deletePdf)
   const updatePdf = usePdfs((s) => s.updatePdf)
   const debouncedUpdatePdf = useDebounceCallback((categoryId, pdfId, name) => {
@@ -55,36 +57,39 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
         </div>
       )}
       <p className="text-sm text-morphing-700 px-2 mb-2">
-        Read {pdf.progress.pages} of {pdf.pages} pages{' '}
+        {t('pdfcard_read_progress', {
+          read: pdf.progress.pages,
+          pages: pdf.pages
+        })}{' '}
         <i className="font-serif tracking-tighter">({pdf.progress.percentage.toFixed(0)}%)</i>
       </p>
 
       <ContextMenuSeparator className="mb-2" />
 
       <p className="text-xs text-morphing-700 px-2">
-        <u>By</u>: {pdf.author}
+        <u>{t('pdfcard_author_label')}</u>: {pdf.author}
       </p>
       {pdf.creationDate && (
         <p className="text-xs text-morphing-700 px-2">
-          <u>Created</u>: {pdf.creationDate?.toLocaleDateString()}
+          <u>{t('pdfcard_created_label')}</u>: {pdf.creationDate?.toLocaleDateString(lang)}
         </p>
       )}
       {pdf.modificationDate && (
         <p className="text-xs text-morphing-700 px-2">
-          <u>Modified</u>: {pdf.modificationDate?.toLocaleDateString()}
+          <u>{t('pdfcard_modified_label')}</u>: {pdf.modificationDate?.toLocaleDateString(lang)}
         </p>
       )}
       <p className="text-xs text-morphing-700 px-2">
-        <u>Size</u>: {pdf.size} bytes
+        <u>{t('pdfcard_size_label')}</u>: {pdf.size} bytes
       </p>
       <p className="text-xs text-morphing-700 px-2">
-        <u>Pages</u>: {pdf.pages}
+        <u>{t('pdfcard_pages_label')}</u>: {pdf.pages}
       </p>
       <p className="text-xs text-morphing-700 px-2">
-        <u>Filename</u>: {pdf.filename}
+        <u>{t('pdfcard_filename_label')}</u>: {pdf.filename}
       </p>
       <p className="text-xs text-morphing-700 px-2">
-        <u>ID</u>: {pdf.id}
+        <u>{t('pdfcard_id_label')}</u>: {pdf.id}
       </p>
 
       <ContextMenuSeparator />
@@ -95,7 +100,7 @@ function PdfCardContextMenuContent({ pdf, categoryId }: Props) {
         }}
       >
         <DynamicIcon name="trash" />
-        Delete
+        {t('pdfcard_delete')}
       </ContextMenuItem>
     </ContextMenuContent>
   )

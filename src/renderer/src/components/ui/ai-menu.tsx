@@ -6,6 +6,8 @@ import { Button } from '@renderer/components/ui/button'
 import { Command, CommandGroup, CommandItem, CommandList } from '@renderer/components/ui/command'
 import { Popover, PopoverAnchor, PopoverContent } from '@renderer/components/ui/popover'
 import { cn } from '@renderer/lib/utils'
+import { useLang } from '@renderer/i18n/lang-context'
+import type { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import { Command as CommandPrimitive } from 'cmdk'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { NodeApi, type NodeEntry, type SlateEditor, isHotkey } from 'platejs'
@@ -30,6 +32,7 @@ export function AIMenu() {
   const open = usePluginOption(AIChatPlugin, 'open') && isFocusedLast
   const [value, setValue] = React.useState('')
   const [input, setInput] = React.useState('')
+  const { t } = useLang()
 
   const chat = usePluginOption(AIChatPlugin, 'chat')
   const { messages, status } = chat
@@ -127,7 +130,7 @@ export function AIMenu() {
           {isLoading ? (
             <div className="flex items-center gap-2 p-2 text-sm select-none grow text-muted-foreground">
               <DynamicIcon name="loader-2" className="size-4 animate-spin" />
-              {messages.length > 1 ? 'Editing...' : 'Thinking...'}
+              {messages.length > 1 ? t('ai_menu_editing') : t('ai_menu_thinking')}
             </div>
           ) : (
             <CommandPrimitive.Input
@@ -149,7 +152,7 @@ export function AIMenu() {
                 }
               }}
               onValueChange={setInput}
-              placeholder="Ask AI anything..."
+              placeholder={t('ai_menu_placeholder')}
               data-plate-focus
               autoFocus
             />
@@ -412,6 +415,25 @@ const menuStateItems: Record<
   ]
 }
 
+const aiChatItemLabelKeys: Record<string, TranslationsKeys> = {
+  accept: 'ai_menu_accept',
+  continueWrite: 'ai_menu_continue_writing',
+  discard: 'ai_menu_discard',
+  emojify: 'ai_menu_emojify',
+  explain: 'ai_menu_explain',
+  fixSpelling: 'ai_menu_fix_spelling',
+  generateMarkdownSample: 'ai_menu_generate_md',
+  generateMdxSample: 'ai_menu_generate_mdx',
+  improveWriting: 'ai_menu_improve_writing',
+  insertBelow: 'ai_menu_insert_below',
+  makeLonger: 'ai_menu_make_longer',
+  makeShorter: 'ai_menu_make_shorter',
+  replace: 'ai_menu_replace_selection',
+  simplifyLanguage: 'ai_menu_simplify_language',
+  summarize: 'ai_menu_add_summary',
+  tryAgain: 'ai_menu_try_again'
+}
+
 export const AIMenuItems = ({
   input,
   setInput,
@@ -425,6 +447,7 @@ export const AIMenuItems = ({
   const { messages } = usePluginOption(AIChatPlugin, 'chat')
   const aiEditor = usePluginOption(AIChatPlugin, 'aiEditor')!
   const isSelecting = useIsSelecting()
+  const { t } = useLang()
 
   const menuState = React.useMemo(() => {
     if (messages && messages.length > 0) {
@@ -465,7 +488,11 @@ export const AIMenuItems = ({
               }}
             >
               {menuItem.icon}
-              <span>{menuItem.label}</span>
+              <span>
+                {aiChatItemLabelKeys[menuItem.value]
+                  ? t(aiChatItemLabelKeys[menuItem.value])
+                  : menuItem.label}
+              </span>
             </CommandItem>
           ))}
         </CommandGroup>
@@ -477,6 +504,7 @@ export const AIMenuItems = ({
 export function AILoadingBar() {
   const chat = usePluginOption(AIChatPlugin, 'chat')
   const mode = usePluginOption(AIChatPlugin, 'mode')
+  const { t } = useLang()
 
   const { status } = chat
 
@@ -495,7 +523,7 @@ export function AILoadingBar() {
       )}
     >
       <span className="w-4 h-4 border-2 rounded-full animate-spin border-muted-foreground border-t-transparent" />
-      <span>{status === 'submitted' ? 'Thinking...' : 'Writing...'}</span>
+      <span>{status === 'submitted' ? t('ai_loading_thinking') : t('ai_loading_writing')}</span>
       <Button
         size="sm"
         variant="ghost"
@@ -503,7 +531,7 @@ export function AILoadingBar() {
         onClick={() => api.aiChat.stop()}
       >
         <DynamicIcon name="pause" className="w-4 h-4" />
-        Stop
+        {t('ai_loading_stop')}
         <kbd className="ml-1 rounded bg-border px-1 font-mono text-[10px] text-muted-foreground shadow-sm">
           Esc
         </kbd>

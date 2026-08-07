@@ -33,7 +33,7 @@ export async function launchApp(opts?: { appDataDir?: string }): Promise<Launche
 
   const app = await electron.launch({
     executablePath: electronExecutable(),
-    args: [mainEntry],
+    args: [mainEntry, '--lang=en-US'],
     env: env as Record<string, string>,
     timeout: 60_000
   })
