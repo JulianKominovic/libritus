@@ -392,7 +392,7 @@ export const PdfSidebar = forwardRef<PdfSidebarHandle, PdfSidebarProps>(function
     <aside
       aria-label="Document outline, page thumbnails, and annotations"
       className={cn(
-        'pointer-events-auto absolute bottom-3 right-3 top-0.5 z-100 flex max-w-sm w-full flex-col overflow-hidden',
+        'pointer-events-auto absolute bottom-3 right-3 top-[52px] z-100 flex max-w-sm w-full flex-col overflow-hidden',
         'rounded-xl bg-neutral-50 text-neutral-900',
         'shadow-md shadow-neutral-900/10 ring-1 ring-black/10'
       )}

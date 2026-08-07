@@ -2622,7 +2622,7 @@ function PdfCanvasAppInner({
         ></Excalidraw>
       </div>
       {session && pageCount > 0 ? (
-        <div className="pointer-events-none absolute left-0 top-12 z-10 grid grid-cols-[1fr_2fr_1fr] gap-8 2xl:grid-cols-3 w-full h-10 items-center 2xl:gap-12">
+        <div className="pointer-events-none absolute left-0 top-[102px] z-10 grid grid-cols-[1fr_2fr_1fr] gap-8 2xl:grid-cols-3 w-full h-10 items-center 2xl:gap-12">
           <div
             role="toolbar"
             aria-label="PDF tools"
@@ -2730,7 +2730,7 @@ function PdfCanvasAppInner({
       ) : null}
 
       {saveStatus !== 'saved' ? (
-        <div className="pointer-events-none absolute left-3 top-3 z-100">
+        <div className="pointer-events-none absolute left-3 top-[62px] z-100">
           <span
             ref={saveChipRef}
             className={`min-w-18 rounded-md px-2.5 py-1.5 text-center text-xs shadow-md shadow-morphing-900/10 ring-1 ring-black/10 ${

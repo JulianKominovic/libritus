@@ -15,7 +15,7 @@ const Category = lazy(() => import('./pages/category'))
 const PdfPage = lazy(() => import('./pages/pdf'))
 const SettingsPage = lazy(() => import('./pages/settings'))
 
-const scrollPageClassName = 'px-6 md:px-8 pb-32 overflow-y-auto'
+const scrollPageClassName = 'px-6 md:px-8 pt-[50px] pb-32 overflow-y-auto'
 
 if (import.meta.env.DEV) {
   import('react-scan').then(({ scan }) => scan({ enabled: true }))
@@ -29,7 +29,7 @@ function App() {
     <>
       <Navbar />
       <motion.div
-        className={cn('grid gap-0 h-[calc(100%-50px)] text-morphing-900')}
+        className={cn('grid gap-0 h-full text-morphing-900')}
         initial={{ opacity: 0 }}
         animate={{
           opacity: 1,
