@@ -19,9 +19,11 @@ import TextareaAutosize, { type TextareaAutosizeProps } from 'react-textarea-aut
 
 import { Button } from '@renderer/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 export function EquationElement(props: PlateElementProps<TEquationElement>) {
+  const { t } = useLang()
   const selected = useSelected()
   const [open, setOpen] = React.useState(selected)
   const katexRef = React.useRef<HTMLDivElement | null>(null)
@@ -60,7 +62,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
             ) : (
               <div className="flex h-7 w-full items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
                 <DynamicIcon name="radical" className="size-6 text-muted-foreground/80" />
-                <div>Add a Tex equation</div>
+                <div>{t('equation_add_tex')}</div>
               </div>
             )}
           </div>
@@ -80,6 +82,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
 }
 
 export function InlineEquationElement(props: PlateElementProps<TEquationElement>) {
+  const { t } = useLang()
   const element = props.element
   const katexRef = React.useRef<HTMLDivElement | null>(null)
   const selected = useSelected()
@@ -137,7 +140,7 @@ export function InlineEquationElement(props: PlateElementProps<TEquationElement>
                   name="radical"
                   className="mr-1 inline-block h-[19px] w-4 py-[1.5px] align-text-bottom"
                 />
-                New equation
+                {t('equation_new')}
               </span>
             )}
           </div>
@@ -175,6 +178,7 @@ const EquationPopoverContent = ({
   const editor = useEditorRef()
   const readOnly = useReadOnly()
   const element = useElement<TEquationElement>()
+  const { t } = useLang()
 
   React.useEffect(() => {
     if (isInline && open) {
@@ -210,7 +214,7 @@ const EquationPopoverContent = ({
       />
 
       <Button variant="secondary" className="px-3" onClick={onClose}>
-        Done <DynamicIcon name="corner-down-left" className="size-3.5" />
+        {t('equation_done')} <DynamicIcon name="corner-down-left" className="size-3.5" />
       </Button>
     </PopoverContent>
   )

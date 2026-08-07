@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { useLang } from '@renderer/i18n/lang-context'
 
 const chromePress = 'transition-transform duration-150 ease-out active:not-disabled:scale-[0.99]'
 const chromeHover = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-200'
@@ -21,6 +22,7 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(function
   { onQueryChange, onNext, onPrev, onClose },
   ref
 ) {
+  const { t } = useLang()
   const inputRef = useRef<HTMLInputElement>(null)
   const countRef = useRef<HTMLSpanElement>(null)
   const prevBtnRef = useRef<HTMLButtonElement>(null)
@@ -67,8 +69,8 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(function
       <input
         ref={inputRef}
         type="search"
-        aria-label="Search PDF"
-        placeholder="Find…"
+        aria-label={t('findbar_search_aria')}
+        placeholder={t('findbar_placeholder')}
         className="h-[calc(100%-4px)] w-36 rounded-lg bg-neutral-200 px-2 text-sm text-neutral-900 outline-none ring-0 placeholder:text-neutral-400"
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={(e) => {
@@ -104,7 +106,7 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(function
       <button
         ref={prevBtnRef}
         type="button"
-        aria-label="Previous match"
+        aria-label={t('findbar_prev_aria')}
         className={`flex h-full w-8 items-center justify-center rounded-lg text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
         onClick={onPrev}
       >
@@ -113,7 +115,7 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(function
       <button
         ref={nextBtnRef}
         type="button"
-        aria-label="Next match"
+        aria-label={t('findbar_next_aria')}
         className={`flex h-full w-8 items-center justify-center rounded-lg text-neutral-700 disabled:cursor-not-allowed disabled:opacity-40 ${chromePress} ${chromeHover}`}
         onClick={onNext}
       >
@@ -121,7 +123,7 @@ export const PdfFindBar = forwardRef<PdfFindBarHandle, PdfFindBarProps>(function
       </button>
       <button
         type="button"
-        aria-label="Close find"
+        aria-label={t('findbar_close_aria')}
         className={`flex h-full w-8 items-center justify-center rounded-lg text-neutral-500 ${chromePress} ${chromeHover} [@media(hover:hover)_and_(pointer:fine)]:hover:text-neutral-900`}
         onClick={onClose}
       >

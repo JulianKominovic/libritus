@@ -1,8 +1,10 @@
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { forwardRef } from 'react'
+import { useLang } from '@renderer/i18n/lang-context'
 
 /** Hover / selected cue for promoted search-capture images (no renderEmbeddable). */
 export const SearchBrowseHint = forwardRef<HTMLDivElement>(function SearchBrowseHint(_props, ref) {
+  const { t } = useLang()
   return (
     <div
       ref={ref}
@@ -11,7 +13,7 @@ export const SearchBrowseHint = forwardRef<HTMLDivElement>(function SearchBrowse
       data-search-browse-hint
     >
       <DynamicIcon name="globe" className="size-3.5 shrink-0" />
-      Click to browse
+      {t('search_capture_browse_hint')}
     </div>
   )
 })

@@ -34,6 +34,7 @@ function HomePdfCard({
   categoryName: string
   pdf: Pdf
 }) {
+  const { t } = useLang()
   const highlightsNumber = pdf.canvasStats?.highlights
   const notesNumber = pdf.canvasStats?.notes
   const searchesNumber = pdf.canvasStats?.searches
@@ -80,7 +81,7 @@ function HomePdfCard({
                 {pdf.progress.percentage > 0 ? (
                   `${pdf.progress.percentage.toFixed(0)}%`
                 ) : (
-                  <i className="font-serif">New</i>
+                  <i className="font-serif">{t('home_pdf_new_badge')}</i>
                 )}
               </p>
             </div>

@@ -4,6 +4,7 @@ import {
   SEARCH_CAPTURE_PORTRAIT
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
 import { Keys } from '@renderer/lib/keymaps'
+import { useLang } from '@renderer/i18n/lang-context'
 import { RectangleHorizontal, RectangleVertical } from 'lucide-react'
 import { forwardRef, type Ref } from 'react'
 
@@ -19,6 +20,7 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
   { zoomPercentRef, onZoomIn, onZoomOut, onResizePortrait, onResizeLandscape },
   ref
 ) {
+  const { t } = useLang()
   return (
     <div
       ref={ref}
@@ -31,7 +33,7 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
     >
       <button
         type="button"
-        aria-label="Back"
+        aria-label={t('browser_back_aria')}
         className="rounded-md h-full px-3 text-xs font-medium text-neutral-800 hover:bg-neutral-200 -mr-2"
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => void browserGoBack()}
@@ -40,7 +42,7 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
       </button>
       <button
         type="button"
-        aria-label="Forward"
+        aria-label={t('browser_forward_aria')}
         className="rounded-md h-full px-3 text-xs font-medium text-neutral-800 hover:bg-neutral-200"
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => void browserGoForward()}
@@ -50,8 +52,8 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
       <div className="mx-0.5 flex items-center gap-0.5 border-l border-neutral-200 pl-1 h-full">
         <button
           type="button"
-          aria-label={`Zoom out (${Keys.CONTROL_OR_META}−)`}
-          title={`Zoom out (${Keys.CONTROL_OR_META}−)`}
+          aria-label={t('browser_zoom_out', { keys: Keys.CONTROL_OR_META })}
+          title={t('browser_zoom_out', { keys: Keys.CONTROL_OR_META })}
           className="flex items-center rounded-md h-full px-2 leading-none text-neutral-800 hover:bg-neutral-200"
           onPointerDown={(event) => event.preventDefault()}
           onClick={onZoomOut}
@@ -66,8 +68,8 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
         </span>
         <button
           type="button"
-          aria-label={`Zoom in (${Keys.CONTROL_OR_META}+)`}
-          title={`Zoom in (${Keys.CONTROL_OR_META}+)`}
+          aria-label={t('browser_zoom_in', { keys: Keys.CONTROL_OR_META })}
+          title={t('browser_zoom_in', { keys: Keys.CONTROL_OR_META })}
           className="flex items-center rounded-md h-full px-2 leading-none text-neutral-800 hover:bg-neutral-200"
           onPointerDown={(event) => event.preventDefault()}
           onClick={onZoomIn}
@@ -78,8 +80,11 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
       <div className="mx-0.5 flex items-center gap-0.5 border-l border-neutral-200 pl-1 h-full">
         <button
           type="button"
-          aria-label="Portrait size"
-          title={`Portrait (${SEARCH_CAPTURE_PORTRAIT.width}×${SEARCH_CAPTURE_PORTRAIT.height})`}
+          aria-label={t('browser_portrait_aria')}
+          title={t('browser_portrait_title', {
+            w: SEARCH_CAPTURE_PORTRAIT.width,
+            h: SEARCH_CAPTURE_PORTRAIT.height
+          })}
           className="flex items-center rounded-md h-full px-2 text-neutral-800 hover:bg-neutral-200"
           onPointerDown={(event) => event.preventDefault()}
           onClick={onResizePortrait}
@@ -88,8 +93,11 @@ export const BrowserChrome = forwardRef<HTMLDivElement, BrowserChromeProps>(func
         </button>
         <button
           type="button"
-          aria-label="Landscape size"
-          title={`Landscape (${SEARCH_CAPTURE_LANDSCAPE.width}×${SEARCH_CAPTURE_LANDSCAPE.height})`}
+          aria-label={t('browser_landscape_aria')}
+          title={t('browser_landscape_title', {
+            w: SEARCH_CAPTURE_LANDSCAPE.width,
+            h: SEARCH_CAPTURE_LANDSCAPE.height
+          })}
           className="flex items-center rounded-md h-full px-2 text-neutral-800 hover:bg-neutral-200"
           onPointerDown={(event) => event.preventDefault()}
           onClick={onResizeLandscape}

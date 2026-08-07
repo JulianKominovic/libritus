@@ -18,6 +18,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
+import { useLang } from '@renderer/i18n/lang-context'
 import { cn } from '@renderer/lib/utils'
 
 import { ToolbarButton } from './toolbar'
@@ -31,11 +32,12 @@ export function TableToolbarButton(props: DropdownMenuProps) {
   const { editor, tf } = useEditorPlugin(TablePlugin)
   const [open, setOpen] = React.useState(false)
   const mergeState = useTableMergeState()
+  const { t } = useLang()
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Table" isDropdown>
+        <ToolbarButton pressed={open} tooltip={t('editor_table')} isDropdown>
           <DynamicIcon name="table" />
         </ToolbarButton>
       </DropdownMenuTrigger>
@@ -45,7 +47,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
               <DynamicIcon name="grid-3x3" className="size-4" />
-              <span>Table</span>
+              <span>{t('editor_table')}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="m-0 p-0">
               <TablePicker />
@@ -58,7 +60,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
               disabled={!tableSelected}
             >
               <div className="size-4" />
-              <span>Cell</span>
+              <span>{t('table_cell')}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <DropdownMenuItem
@@ -70,7 +72,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="combine" />
-                Merge cells
+                {t('table_merge_cells')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="min-w-[180px]"
@@ -81,7 +83,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="ungroup" />
-                Split cell
+                {t('table_split_cell')}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -92,7 +94,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
               disabled={!tableSelected}
             >
               <div className="size-4" />
-              <span>Row</span>
+              <span>{t('table_row')}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <DropdownMenuItem
@@ -104,7 +106,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="arrow-up" />
-                Insert row before
+                {t('table_insert_row_before')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="min-w-[180px]"
@@ -115,7 +117,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="arrow-down" />
-                Insert row after
+                {t('table_insert_row_after')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="min-w-[180px]"
@@ -126,7 +128,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="x" />
-                Delete row
+                {t('table_delete_row')}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -137,7 +139,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
               disabled={!tableSelected}
             >
               <div className="size-4" />
-              <span>Column</span>
+              <span>{t('table_column')}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <DropdownMenuItem
@@ -149,7 +151,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="arrow-left" />
-                Insert column before
+                {t('table_insert_col_before')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="min-w-[180px]"
@@ -160,7 +162,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="arrow-right" />
-                Insert column after
+                {t('table_insert_col_after')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="min-w-[180px]"
@@ -171,7 +173,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
                 }}
               >
                 <DynamicIcon name="x" />
-                Delete column
+                {t('table_delete_col')}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -185,7 +187,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
             }}
           >
             <DynamicIcon name="trash-2" />
-            Delete table
+            {t('table_delete_table')}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

@@ -2,6 +2,7 @@ import {
   HIGHLIGHT_COLORS,
   normalizeHighlightColor
 } from '@renderer/lib/pdf-canvas/selectionToHighlights'
+import { useLang } from '@renderer/i18n/lang-context'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { forwardRef } from 'react'
 
@@ -21,6 +22,7 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
     { pending = false, activeColor, onRecolor, onAddNote, onSearch, onCopy, onRemove },
     ref
   ) {
+    const { t } = useLang()
     return (
       <div
         ref={ref}
@@ -36,7 +38,7 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
             <button
               key={id}
               type="button"
-              aria-label={`Highlight color ${id}`}
+              aria-label={t('highlight_color_aria', { id })}
               disabled={selected}
               className="size-6 group p-2 shrink-0 rounded-[50%] transition-transform duration-150 ease-out enabled:active:scale-[0.96] disabled:cursor-not-allowed hover:bg-neutral-100 disabled:bg-neutral-200! hover:saturate-200"
               style={{ backgroundColor: color }}
@@ -50,28 +52,28 @@ export const HighlightToolbar = forwardRef<HTMLDivElement, HighlightToolbarProps
           className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
           onClick={onAddNote}
         >
-          Add note
+          {t('highlight_add_note')}
         </button>
         <button
           type="button"
           className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
           onClick={onSearch}
         >
-          Buscar
+          {t('highlight_search')}
         </button>
         <button
           type="button"
           className="self-stretch rounded-full px-3 text-xs font-medium text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
           onClick={onCopy}
         >
-          Copiar
+          {t('highlight_copy')}
         </button>
         {!pending ? (
           <>
             <div className="mx-1 w-px shrink-0 self-stretch bg-neutral-200" aria-hidden />
             <button
               type="button"
-              aria-label="Remove"
+              aria-label={t('highlight_remove_aria')}
               className="flex self-stretch items-center justify-center rounded-full px-3 text-neutral-900 transition-transform duration-150 ease-out active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-neutral-100"
               onClick={onRemove}
             >

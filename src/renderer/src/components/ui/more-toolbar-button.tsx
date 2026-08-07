@@ -14,16 +14,19 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 
+import { useLang } from '@renderer/i18n/lang-context'
+
 import { ToolbarButton } from './toolbar'
 
 export function MoreToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef()
   const [open, setOpen] = React.useState(false)
+  const { t } = useLang()
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Insert">
+        <ToolbarButton pressed={open} tooltip={t('editor_insert')}>
           <DynamicIcon name="more-horizontal" />
         </ToolbarButton>
       </DropdownMenuTrigger>
@@ -41,7 +44,7 @@ export function MoreToolbarButton(props: DropdownMenuProps) {
             }}
           >
             <DynamicIcon name="keyboard" />
-            Keyboard input
+            {t('editor_keyboard_input')}
           </DropdownMenuItem>
 
           <DropdownMenuItem
@@ -53,7 +56,7 @@ export function MoreToolbarButton(props: DropdownMenuProps) {
             }}
           >
             <DynamicIcon name="superscript" />
-            Superscript
+            {t('editor_superscript')}
             {/* (⌘+,) */}
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -65,7 +68,7 @@ export function MoreToolbarButton(props: DropdownMenuProps) {
             }}
           >
             <DynamicIcon name="subscript" />
-            Subscript
+            {t('editor_subscript')}
             {/* (⌘+.) */}
           </DropdownMenuItem>
         </DropdownMenuGroup>

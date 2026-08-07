@@ -36,11 +36,11 @@ test('text select shows toolbar; color click creates locked pdfHighlight', async
 
     await dragSelectPdfPage(page)
 
-    // Pending: colors + Add note / Buscar / Copiar — no Remove / Unsaved yet.
+    // Pending: colors + Add note / Buscar / Copy — no Remove / Unsaved yet.
     const colorBtn = page.getByRole('button', { name: 'Highlight color fuchsia' })
     await expect(colorBtn).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(0)
 
     await colorBtn.click()
@@ -500,7 +500,7 @@ test('clearing selection hides pending highlight toolbar', async () => {
     await dragSelectPdfPage(page)
 
     await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible()
 
     await page.keyboard.press('Escape')
     await expect(page.getByRole('button', { name: 'Add note' })).toBeHidden({ timeout: 5_000 })
@@ -556,7 +556,7 @@ test('click outside pending toolbar dismisses without revive on mouseup', async 
 
     await dragSelectPdfPage(page)
 
-    await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible()
 
     // Outside click must clear selection so mouseup cannot revive pending toolbar.
     await clickScene(page, 400, 400)
@@ -571,11 +571,12 @@ test('Cmd/Ctrl+A clears PDF text selection without selecting all canvas elements
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
 
   // Unlocked shape so Excalidraw select-all would select it (locked highlights wouldn't).
+  // scrollY: 60 matches INITIAL_CAMERA offset so title drag-select clears the overlay navbar.
   await seedSession(appDataDir, pdfId, {
     version: 1,
     docId: pdfId,
     updatedAt: new Date().toISOString(),
-    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    camera: { scrollX: 100, scrollY: 60, zoom: 1 },
     elements: [
       {
         id: 'cmd-a-bait',
@@ -708,7 +709,7 @@ test('pending Add note commits default highlight + note without color click', as
   }
 })
 
-test('pending Copiar writes selection text and does not dirty session', async () => {
+test('pending Copy writes selection text and does not dirty session', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-hl-pending-copy-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
 
@@ -730,10 +731,10 @@ test('pending Copiar writes selection text and does not dirty session', async ()
 
     await dragSelectPdfPage(page)
 
-    await expect(page.getByRole('button', { name: 'Copiar' })).toBeVisible()
-    await page.getByRole('button', { name: 'Copiar' }).click()
+    await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible()
+    await page.getByRole('button', { name: 'Copy' }).click()
 
-    await expect(page.getByRole('button', { name: 'Copiar' })).toBeHidden({ timeout: 5_000 })
+    await expect(page.getByRole('button', { name: 'Copy' })).toBeHidden({ timeout: 5_000 })
     await expect(page.getByText('Unsaved')).toBeHidden()
 
     const copied = await page.evaluate(

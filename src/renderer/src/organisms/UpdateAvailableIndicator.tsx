@@ -1,5 +1,6 @@
 import { Button } from '@renderer/components/ui/button'
 import { Progress } from '@renderer/components/ui/progress'
+import { useLang } from '@renderer/i18n/lang-context'
 import {
   getUpdateStatus,
   onUpdateStatus,
@@ -15,6 +16,7 @@ const IDLE: UpdateStatus = { phase: 'idle' }
  * Auto-update chip above Settings. Hidden when idle / no packaged updater.
  */
 export function UpdateAvailableIndicator() {
+  const { t } = useLang()
   const [status, setStatus] = useState<UpdateStatus>(IDLE)
 
   useEffect(() => {
@@ -39,8 +41,10 @@ export function UpdateAvailableIndicator() {
         data-testid="update-available-indicator"
         className="mb-2 w-full space-y-1 rounded-md bg-morphing-50 px-2.5 py-2 ring-1 ring-morphing-200"
       >
-        <p className="text-[10px] font-medium uppercase tracking-wide text-morphing-500">Update</p>
-        <p className="text-xs text-morphing-700">Update failed</p>
+        <p className="text-[10px] font-medium uppercase tracking-wide text-morphing-500">
+          {t('update_header')}
+        </p>
+        <p className="text-xs text-morphing-700">{t('update_failed')}</p>
       </div>
     )
   }
@@ -53,13 +57,15 @@ export function UpdateAvailableIndicator() {
       data-testid="update-available-indicator"
       className="mb-2 w-full space-y-1.5 rounded-md bg-morphing-50 px-2.5 py-2 ring-1 ring-morphing-200"
     >
-      <p className="text-[10px] font-medium uppercase tracking-wide text-morphing-500">Update</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-morphing-500">
+        {t('update_header')}
+      </p>
       <p className="text-xs text-morphing-900">
         {status.phase === 'ready'
-          ? `v${status.version} ready`
+          ? t('update_ready', { version: status.version })
           : status.phase === 'downloading'
-            ? `Downloading v${status.version}…`
-            : `Update v${status.version}`}
+            ? t('update_downloading', { version: status.version })
+            : t('update_available', { version: status.version })}
       </p>
       {pct != null ? <Progress value={pct} className="h-1" /> : null}
       {status.phase === 'ready' ? (
@@ -71,7 +77,7 @@ export function UpdateAvailableIndicator() {
             void flushActiveSession().finally(() => quitAndInstall())
           }}
         >
-          Restart
+          {t('update_restart')}
         </Button>
       ) : null}
     </div>
