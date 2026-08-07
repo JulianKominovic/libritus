@@ -42,7 +42,7 @@ Guiding principles:
 | PDF text search (find bar + jump + hit overlay; same-line rect dedupe)                         | `PdfFindBar`, `pdfSearch`, `mergeSameLineRects`, `PdfLayer.setSearchHit`, `PdfCanvasApp`                                                              |
 | Outline + page thumbnails (sidebar)                                                            | `PdfSidebar`, `pdfOutline`, `ThumbPool`, `PdfCanvasApp`                                                                                               |
 | Annotation panel (highlights + notes + searches list)                                          | `PdfSidebar` Annotations tab, `annotationList`, `PdfCanvasApp`                                                                                        |
-| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **unmounted**)                               | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI                                                   |
+| PDF RAG (local MiniLM + OpenRouter BYOK; Chat tab **unmounted**; Settings AI UI parked)         | `PdfChatPanel`, `pdfRag`, `src/main/ai` (serial embed queue), `EmbeddingJobsIndicator`, Settings AI |
 | Annotation polish: highlight color palette + delete note (keeps highlight) + Copiar on toolbar | `HighlightToolbar`, `selectionToHighlights` (`HIGHLIGHT_COLORS` / `setHighlightGroupColor`); note delete via Excalidraw + host `pdfNoteArrow` cleanup |
 
 ### Pending / roadmap
@@ -101,7 +101,7 @@ src/renderer/src/
   stores/categories.ts        # library catalog (categories.json + {id}.pdf)
 ```
 
-Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md) (Chat hidden), [`web-search-capture`](docs/features/web-search-capture.md), [`annotation-polish`](docs/features/annotation-polish.md), [`adaptive-pdf-render-scale`](docs/features/adaptive-pdf-render-scale.md) (Phase 1).
+Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md) (Chat unmounted), [`web-search-capture`](docs/features/web-search-capture.md), [`annotation-polish`](docs/features/annotation-polish.md), [`adaptive-pdf-render-scale`](docs/features/adaptive-pdf-render-scale.md) (Phase 1).
 
 Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`page-space-annotations`](docs/features/page-space-annotations.md) (optional), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md), [`navigation-history`](docs/features/navigation-history.md).
 
@@ -133,36 +133,36 @@ Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md
 
 ~1 GB with a large PDF is plausible: page bitmaps + buffer + whole PDF in RAM + Excalidraw.
 
-Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still asks for N≫poolSize pages: both pools do `capacity = Math.max(poolSize, needed)`.
+Lowering only `DEFAULT_POOL_SIZE` (12→3) now **directly reduces peak RAM**: pools are **hard-capped** at `poolSize` (`capacity` never grows with `needed` — `PagePool` 12, `ThumbPool` 16) and `PdfLayer` trims the visible set to pool capacity nearest the camera center (one-viewport-height pad via `visibilityBuffer` + `trimVisibleToCap`).
 
 ### Where RAM goes
 
 | Source                   | What happens                                                                                                                                                  | Files                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | **Page bitmaps**         | Each slot renders at `renderScaleForWorld(worldScale)` (~`TARGET_WORLD_DENSITY` = 2 device px per world CSS px, clamped). Letter ≈ ~8 MB RGBA per page at 2×. | `PdfRenderer.ts`, `pageWorldScale.ts`, `PagePool.ts` |
-| **Visibility buffer**    | `PdfLayer` expands AABB with viewport size / zoom. Zoom-out explodes the visible set.                                                                         | `PdfLayer.tsx`, `PageLayout.queryVisible`            |
+| **Visibility buffer**    | One viewport-height pad (`visibilityBuffer`) + hard cap to pool capacity nearest center (`trimVisibleToCap`) — zoom-out no longer explodes the visible set.   | `PdfLayer.tsx`, `visibilityBuffer.ts`                |
 | **Whole PDF in process** | Open = ArrayBuffer → `openDocumentBuffer`.                                                                                                                    | `PdfDocument.ts`, `PdfCanvasApp`                     |
-| **Metadata pass**        | `getPage` for all pages for sizes — warms worker on huge docs.                                                                                                | `PdfDocument.open`                                   |
+| **Page sizes**           | Sizes come straight from `handle.pages` on open (EmbedPDF) — **no** `getPage`-all-pages metadata pass.                                                       | `PdfDocument.ts`                                    |
 | **Text selection**       | EmbedPDF SelectionLayer glyph overlays for visible pages (not DOM text spans).                                                                                | `PdfLayer.tsx`, `@embedpdf/plugin-selection`         |
 | **Excalidraw**           | Scene + internal textures.                                                                                                                                    | `PdfCanvasApp`                                       |
 
-### Levers (suggested priority)
+### Levers (status)
 
-1. Shrink `queryVisible` buffer (page-height based, not full viewport in all directions).
-2. Hard cap visible set (e.g. 3–5 nearest to camera center).
-3. Zoom-based LOD beyond Phase 1 adaptive density (see [`adaptive-pdf-render-scale.md`](docs/features/adaptive-pdf-render-scale.md)).
-4. Release resources on evict (`canvas.width = 0`, `page.cleanup()`).
-5. Text layer only in strict viewport (always hittable under selection-tool pass-through).
-6. Avoid loading entire PDF as ArrayBuffer (streaming / range / OPFS).
-7. Metadata pass without retaining page proxies.
-8. `poolSize` as soft cache only — after buffer + cap.
+1. [x] Shrink `queryVisible` buffer — one viewport-height pad (`visibilityBuffer`).
+2. [x] Hard cap visible set — `trimVisibleToCap` to pool capacity nearest camera center.
+3. [ ] Zoom-based LOD beyond Phase 1 adaptive density (see [`adaptive-pdf-render-scale.md`](docs/features/adaptive-pdf-render-scale.md)).
+4. [x] Release resources on evict — `slot.canvas.width = 0` on evict/dispose.
+5. [ ] Text layer only in strict viewport (always hittable under selection-tool pass-through).
+6. [ ] Avoid loading entire PDF as ArrayBuffer (streaming / range / OPFS).
+7. [x] Moot — page sizes come from `handle.pages` on open; no per-page `getPage` metadata pass.
+8. [ ] Moot since hard cap — pool size is a hard budget now, not a soft cache.
 
 ### What not to do as a “memory fix”
 
 - Put PDF pages into the Excalidraw element store (breaks virtualization).
 - Re-rasterize PDFium pages on every zoom tick.
 - Raise render density for sharpness without LOD or visible cap.
-- Assume lowering `DEFAULT_POOL_SIZE` alone is enough.
+- Rely on lowering `DEFAULT_POOL_SIZE` alone — it caps bitmaps, but the PDF buffer, attachments, and Excalidraw still dominate.
 - Build a second canvas engine “for performance” without measuring Excalidraw as the bottleneck.
 
 ---
@@ -223,7 +223,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) **barely helps** if the buffer still 
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec`, `pdf-links.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec` (disabled — AI Settings UI parked), `pdf-links.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

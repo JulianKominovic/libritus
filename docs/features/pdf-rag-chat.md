@@ -2,7 +2,7 @@
 
 Ask questions about the open PDF using local embeddings + OpenRouter for answers.
 
-**Status:** Implemented (open → serial embed queue in main, nav progress indicator, Settings AI key, `{pdfId}.rag.json`). **Chat tab is unmounted** from `PdfSidebar` until canvas Q&A lands; `PdfChatPanel` / RAG backend kept for that migration.
+**Status:** Implemented backend (open → serial embed queue in main, nav progress indicator, `{pdfId}.rag.json`). **Chat tab is unmounted** from `PdfSidebar` until canvas Q&A lands; **Settings AI key UI parked** (no in-app UI today); `PdfChatPanel` / RAG backend kept for that migration.
 
 **UX note:** Chat-in-`PdfSidebar` is **legacy / unmounted** (not a hidden tab). Product north ([`product-north.md`](product-north.md)): lasting research (including AI Q&A) belongs on the **canvas**. Do not deepen the sidebar transcript silo.
 
@@ -35,13 +35,15 @@ Out of scope:
 
 | Surface                          | Behavior                                                                                                         |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Settings → AI**                | OpenRouter key (save / test / clear via `safeStorage` in main). Chat model select. Copy: embeddings run locally. |
-| **Nav sidebar (above Settings)** | Active embed job + progress; queued PDF titles. Hidden when idle.                                                |
-| **PdfSidebar → Chat**            | **Hidden** (panel code retained). Indexing still runs on PDF open; Settings AI unchanged.                        |
-| **Without key**                  | Indexing still runs on PDF open; Send blocked with CTA to Settings.                                              |
+| **Settings → AI**                | **Parked** — `AiSettingsSection` commented out in `settings.tsx` (backend IPC + `src/main/ai` kept). **No in-app UI to set the OpenRouter key today.** |
+| **Nav sidebar (above Settings)** | Active embed job + progress; queued PDF titles. Hidden when idle (`EmbeddingJobsIndicator`).                     |
+| **PdfSidebar → Chat**            | **Unmounted** (panel code retained). Indexing still runs on PDF open.                                            |
+| **Without key**                  | Indexing still runs on PDF open; Send blocked with a Settings pointer — **dead end** until the AI Settings section returns. |
 | **Empty PDF text**               | “No extractable text”.                                                                                           |
 
 Motion: short fade/slide on messages (~150ms); send `active:scale-[0.96]`; `tabular-nums` on pages/progress.
+
+> **e2e note:** `e2e/rag-chat.spec.ts` is commented out until the AI Settings UI returns.
 
 ---
 
