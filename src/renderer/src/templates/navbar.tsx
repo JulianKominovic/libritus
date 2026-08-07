@@ -130,8 +130,8 @@ function Navbar() {
     <nav
       className={
         isMac
-          ? 'w-full h-[50px] flex items-center justify-between px-4 pl-22 window-nav'
-          : 'w-full h-[50px] flex items-center justify-between px-4 pr-36 window-nav'
+          ? 'w-full h-[50px] flex items-center justify-between px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50'
+          : 'w-full h-[50px] flex items-center justify-between px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50'
       }
     >
       <div className="flex items-center gap-2">

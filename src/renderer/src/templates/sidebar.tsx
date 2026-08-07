@@ -390,7 +390,7 @@ function Sidebar() {
       className="overflow-hidden h-full"
       style={{ minWidth: 0 }}
     >
-      <div className="px-4 w-[300px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">
+      <div className="px-4 pt-[50px] w-[300px] h-full grid grid-rows-[auto_1fr_auto] gap-2 content-between">
         <Link
           to="/"
           className={(isActive) =>

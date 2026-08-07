@@ -46,9 +46,3 @@ window.electron.ipcRenderer.invoke('get-app-data-dir').then((location) => {
     appDataDir: location
   })
 })
-
-window.electron.ipcRenderer.invoke('get-app-data-dir').then((location) => {
-  useSettings.setState({
-    appDataDir: location
-  })
-})
