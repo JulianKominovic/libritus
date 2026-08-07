@@ -1,9 +1,18 @@
+import { Button } from '@renderer/components/ui/button'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from '@renderer/components/ui/context-menu'
 import { Slider } from '@renderer/components/ui/slider'
 import { Switch } from '@renderer/components/ui/switch'
 import { useLang } from '@renderer/i18n/lang-context'
 import { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import { cn } from '@renderer/lib/utils'
 import { useSettings } from '@renderer/stores/settings'
+import { DynamicIcon } from 'lucide-react/dynamic'
+import { motion } from 'motion/react'
 import React from 'react'
 
 type SettingsField =
@@ -30,6 +39,16 @@ type SettingsField =
 const settingsFieldClassName =
   'flex w-full gap-3 rounded-xl border border-morphing-300 bg-morphing-100 p-3 select-none transition-colors duration-200'
 
+const EASE_OUT = [0.23, 1, 0.32, 1] as const
+
+function fadeInUp(order = 0) {
+  return {
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.3, delay: order * 0.06, ease: EASE_OUT }
+  }
+}
+
 // AiSettingsSection (OpenRouter key + chat model) parked with RAG —
 // restore from git when redoing AI; see also src/main/ai/index.ts.
 
@@ -55,8 +74,8 @@ function SettingsPage() {
         name: 'PDF Resolution',
         description: 'Control the sharpness and quality of the PDF rendering.',
         children: (
-          <p className="text-sm text-destructive">
-            Be careful, higher values means more memory usage, GPU and CPU usage.
+          <p className="text-sm text-muted-foreground">
+            Higher values mean more memory, GPU and CPU usage.
           </p>
         ),
         value: pdfResolution,
@@ -78,14 +97,23 @@ function SettingsPage() {
     ]
   }
 
+  const sectionCount = Object.keys(settingsFields).length
+
   return (
     <div className="w-full max-w-lg select-none">
-      <h1 className="mb-8 font-serif text-4xl font-bold tracking-tighter text-morphing-900">
+      <motion.h1
+        className="mb-8 font-serif text-4xl font-bold tracking-tighter text-morphing-900"
+        {...fadeInUp()}
+      >
         Settings
-      </h1>
+      </motion.h1>
       <div className="w-full space-y-10">
-        {Object.entries(settingsFields).map(([key, value]) => (
-          <div key={key + 'settings-section'} className="flex flex-col w-full gap-4">
+        {Object.entries(settingsFields).map(([key, value], sectionIndex) => (
+          <motion.div
+            key={key + 'settings-section'}
+            className="flex flex-col w-full gap-4"
+            {...fadeInUp(sectionIndex + 1)}
+          >
             <h2 className="font-serif text-2xl font-bold tracking-tighter text-morphing-900">
               {t(key as TranslationsKeys)}
             </h2>
@@ -94,7 +122,10 @@ function SettingsPage() {
                 return (
                   <label
                     key={field.name + 'settings-field'}
-                    className={cn(settingsFieldClassName, 'items-center justify-between')}
+                    className={cn(
+                      settingsFieldClassName,
+                      'items-center justify-between cursor-pointer hover:bg-morphing-200/60'
+                    )}
                   >
                     <div>
                       <p className="font-medium text-morphing-900">{field.name}</p>
@@ -107,11 +138,16 @@ function SettingsPage() {
               }
               if (field.type === 'range') {
                 return (
-                  <hgroup
+                  <div
                     key={field.name + 'settings-field'}
                     className={cn(settingsFieldClassName, 'flex-col items-start')}
                   >
-                    <p className="font-medium text-morphing-900">{field.name}</p>
+                    <div className="flex w-full items-baseline justify-between gap-3">
+                      <p className="font-medium text-morphing-900">{field.name}</p>
+                      <p className="text-sm tabular-nums text-muted-foreground">
+                        {Number(field.value.toFixed(1))}×
+                      </p>
+                    </div>
                     <p className="text-sm text-muted-foreground">{field.description}</p>
                     {field.children}
                     <Slider
@@ -121,35 +157,63 @@ function SettingsPage() {
                       value={[field.value]}
                       onValueChange={(value) => field.onChange(value[0])}
                     />
-                    <p className="text-sm tabular-nums text-muted-foreground">{field.value}</p>
-                  </hgroup>
+                  </div>
                 )
               }
             })}
-          </div>
+          </motion.div>
         ))}
 
         {/* <AiSettingsSection /> — parked with RAG (src/main/ai/index.ts) */}
 
-        <div className="flex flex-col w-full gap-4">
+        <motion.div
+          className="flex flex-col w-full gap-4"
+          {...fadeInUp(sectionCount + 1)}
+        >
           <h2 className="font-serif text-2xl font-bold tracking-tighter text-morphing-900">
-            About
+            {t('info')}
           </h2>
 
           <p className="text-sm text-muted-foreground">
-            All the data is stored locally in your PC{' '}
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-morphing-900"
-              onClick={() => {
-                window.electron.ipcRenderer.invoke('open-path', { path: appDataDir })
-              }}
-            >
-              {appDataDir}
-            </a>
+            All the data is stored locally on your computer.
           </p>
-        </div>
+          {appDataDir ? (
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-fit max-w-full font-normal"
+                  onClick={() => {
+                    window.electron.ipcRenderer.invoke('open-path', { path: appDataDir })
+                  }}
+                >
+                  <DynamicIcon name="folder-open" className="size-4 shrink-0" />
+                  <span className="truncate">{appDataDir}</span>
+                </Button>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onClick={() => {
+                    window.electron.ipcRenderer.invoke('open-path', { path: appDataDir })
+                  }}
+                >
+                  <DynamicIcon name="folder-open" />
+                  Open folder
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => {
+                    void navigator.clipboard.writeText(appDataDir)
+                  }}
+                >
+                  <DynamicIcon name="copy" />
+                  Copy path
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          ) : null}
+        </motion.div>
       </div>
     </div>
   )
