@@ -5,6 +5,7 @@ import {
 } from '@excalidraw/excalidraw'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type { AppState } from '@excalidraw/excalidraw/types'
 import {
   browserClose,
   browserDeactivate,
@@ -258,7 +259,7 @@ export function useSearchCaptureBrowser({
       // Image captures lock aspect ratio in Excalidraw — demote while browsing.
       // Keep activeEmbeddable null so the inset ring stays on the canvas (move/resize).
       let demotedFromImage = false
-      const browseAppState = {
+      const browseAppState: Pick<AppState, 'activeEmbeddable' | 'selectedElementIds'> = {
         selectedElementIds: { [el.id]: true },
         activeEmbeddable: null
       }

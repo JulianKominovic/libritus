@@ -89,3 +89,11 @@ Pure function: `elements` (+ essay file) → Markdown string. No need to mutate 
 1. Never destroy legacy data until import succeeds and is acknowledged by flags.
 2. Export v1 = Markdown/text, not annotated PDF.
 3. Session camera wins over legacy scroll offset.
+4. (final) Migration is a **data transform**: it maps legacy `categories.json` fields
+   into the canvas session (highlights + notes) and the essay store. It does **not**
+   depend on the lector-era Plate editor UI (`components/editor` + the dead
+   `components/ui` files), which was retired with the lector reader (see
+   [`README.md`](../../README.md) and [`roadmap.md`](../roadmap.md) v1) and is
+   recoverable from git history. Do not resurrect that stack for migration; if a
+   future pass needs legacy essay bodies, parse the stored `json`/`text` fields
+   directly against the current WYSIWYG note stack.
