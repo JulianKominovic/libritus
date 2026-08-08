@@ -93,7 +93,7 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
             </div>
           </Link>
         </ContextMenuTrigger>
-        <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
+        <PdfCardContextMenuContent animated pdf={pdf} categoryId={categoryId} />
       </ContextMenu>
       <input
         key={`pdf-name-${pdf.id}`}
