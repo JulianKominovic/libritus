@@ -1,4 +1,4 @@
-import { OpenRouter } from '@openrouter/sdk'
+import type { OpenRouter } from '@openrouter/sdk'
 import { BrowserWindow } from 'electron'
 import { readOpenRouterKey } from './secrets'
 
@@ -16,7 +16,10 @@ const APP_TITLE = 'Libritus'
 
 const activeAborts = new Map<string, AbortController>()
 
-function clientForKey(apiKey: string): OpenRouter {
+async function clientForKey(apiKey: string): Promise<OpenRouter> {
+  // Defer @openrouter/sdk (large, zod-bundled) until a chat actually runs —
+  // keeps it out of the eager main bundle. Chat is a parked feature.
+  const { OpenRouter } = await import('@openrouter/sdk')
   return new OpenRouter({
     apiKey,
     httpReferer: APP_REFERER,
@@ -30,7 +33,7 @@ export async function testOpenRouterConnection(): Promise<
   const key = await readOpenRouterKey()
   if (!key) return { ok: false, error: 'No API key configured' }
   try {
-    const client = clientForKey(key)
+    const client = await clientForKey(key)
     // Cheap authenticated call
     const page = await client.models.list()
     // Drain one page to confirm auth works
@@ -62,7 +65,7 @@ export async function streamChat(opts: {
   activeAborts.set(opts.requestId, ac)
 
   try {
-    const client = clientForKey(key)
+    const client = await clientForKey(key)
     const stream = await client.chat.send({
       chatRequest: {
         model: opts.model,

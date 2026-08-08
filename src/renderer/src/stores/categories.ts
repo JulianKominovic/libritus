@@ -1,5 +1,4 @@
 import { readFile, writeFile } from '@renderer/integrations/fs'
-import { getPdfMetadata } from '@renderer/lib/pdf'
 import type { IconName } from 'lucide-react/dynamic'
 import { cancelRagIndex } from '@renderer/lib/ai/ipc'
 import { create } from 'zustand'
@@ -173,6 +172,9 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
   uploadPdf: async (categoryId = 'default', data: File, overrides: Partial<Pdf> = {}) => {
     if (data.type !== 'application/pdf') throw new Error('Invalid file type')
     const id = crypto.randomUUID()
+    // Defer the PDFium engine (embedpdfEngine + quantize/chroma) until upload —
+    // keeps it out of the eager startup bundle. The engine is a lazy singleton.
+    const { getPdfMetadata } = await import('@renderer/lib/pdf')
     const pdfMetadata = await getPdfMetadata(data)
     const thumbnailSrc = await writeFile(
       `${id}.png`,

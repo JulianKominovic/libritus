@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { autoUpdater, type ProgressInfo, type UpdateInfo } from 'electron-updater'
+import type { ProgressInfo, UpdateInfo } from 'electron-updater'
 
 export type UpdateStatus =
   | { phase: 'idle' }
@@ -24,12 +24,21 @@ function setStatus(next: UpdateStatus): void {
   broadcastStatus()
 }
 
+let autoUpdater: import('electron-updater').AppUpdater | null = null
+
+/** Resolve electron-updater on demand — only packaged builds actually need it. */
+async function getAutoUpdater(): Promise<import('electron-updater').AppUpdater> {
+  autoUpdater ??= (await import('electron-updater')).autoUpdater
+  return autoUpdater
+}
+
 export function setupAutoUpdater(opts?: { beforeQuitAndInstall?: () => void }): void {
   ipcMain.handle('updater:get-status', () => status)
-  ipcMain.handle('updater:quit-and-install', () => {
+  ipcMain.handle('updater:quit-and-install', async () => {
     // Bypass close/before-quit flush preventDefault — caller must flush first.
     opts?.beforeQuitAndInstall?.()
-    autoUpdater.quitAndInstall()
+    const updater = await getAutoUpdater()
+    updater.quitAndInstall()
   })
 
   if (e2eHarness) {
@@ -41,26 +50,28 @@ export function setupAutoUpdater(opts?: { beforeQuitAndInstall?: () => void }): 
   // Packaged product only; e2e uses out/main (not packaged) + injects status.
   if (!app.isPackaged || e2eHarness) return
 
-  // ponytail: Mac needs Developer ID (+ ideally notarize) for trustworthy updates.
-  autoUpdater.on('update-available', (info: UpdateInfo) => {
-    setStatus({ phase: 'available', version: info.version })
-  })
+  void getAutoUpdater().then((updater) => {
+    // ponytail: Mac needs Developer ID (+ ideally notarize) for trustworthy updates.
+    updater.on('update-available', (info: UpdateInfo) => {
+      setStatus({ phase: 'available', version: info.version })
+    })
 
-  autoUpdater.on('download-progress', (p: ProgressInfo) => {
-    if (!lastVersion) return
-    setStatus({ phase: 'downloading', version: lastVersion, percent: p.percent })
-  })
+    updater.on('download-progress', (p: ProgressInfo) => {
+      if (!lastVersion) return
+      setStatus({ phase: 'downloading', version: lastVersion, percent: p.percent })
+    })
 
-  autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
-    setStatus({ phase: 'ready', version: info.version })
-  })
+    updater.on('update-downloaded', (info: UpdateInfo) => {
+      setStatus({ phase: 'ready', version: info.version })
+    })
 
-  autoUpdater.on('error', (err: Error) => {
-    console.error('auto-update error', err)
-    setStatus({ phase: 'error', message: err.message })
-  })
+    updater.on('error', (err: Error) => {
+      console.error('auto-update error', err)
+      setStatus({ phase: 'error', message: err.message })
+    })
 
-  autoUpdater.checkForUpdates().catch((err) => {
-    console.error('auto-update check failed', err)
+    updater.checkForUpdates().catch((err) => {
+      console.error('auto-update check failed', err)
+    })
   })
 }
