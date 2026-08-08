@@ -12,7 +12,13 @@ async function openCategory(page: Page, categoryId: string): Promise<void> {
     .waitFor({ state: 'visible', timeout: 30_000 })
 }
 
-/** One HTML5 drag gesture onto `dest`. Leaves button down when `dropTarget` is visible. */
+/**
+ * One HTML5 drag gesture onto `dest`, leaving the button down.
+ * Chromium's native drag (that react-dnd's HTML5 backend needs) is flaky to
+ * synthesize, so we give the drag a beat to settle before re-firing dragover
+ * on the exact target — the drop is otherwise lost on mouse.up. The
+ * drop-target highlight paints late or never, so it's waited on best-effort.
+ */
 async function startDragOntoCategory(page: Page, card: Locator, dest: Locator): Promise<void> {
   await page.mouse.up().catch(() => undefined)
   await card.scrollIntoViewIfNeeded()
@@ -30,7 +36,13 @@ async function startDragOntoCategory(page: Page, card: Locator, dest: Locator): 
   // Past Chromium's drag threshold, then onto the sidebar category.
   await page.mouse.move(fromX + 16, fromY + 16, { steps: 6 })
   await page.mouse.move(toX, toY, { steps: 30 })
-  await expect(page.locator('.sidebar-drop-target')).toHaveCount(1, { timeout: 1500 })
+  // Let Chromium's drag controller settle over the target, then re-fire
+  // dragover on the exact spot so mouse.up delivers a real drop.
+  await page
+    .locator('.sidebar-drop-target')
+    .waitFor({ state: 'visible', timeout: 1_500 })
+    .catch(() => undefined)
+  await page.mouse.move(toX, toY, { steps: 2 })
 }
 
 test('leaving a category mid-drag clears drop-target highlight', async () => {
@@ -46,20 +58,19 @@ test('leaving a category mid-drag clears drop-target highlight', async () => {
     const dest = page.getByRole('complementary').getByText('Dest', { exact: true })
     await expect(dest).toBeVisible()
 
-    // HTML5 DnD in Electron is flaky under load — retry until drop-target paints.
+    // Drag onto the category, then leave it — the highlight must clear.
     await expect(async () => {
       await startDragOntoCategory(page, card, dest)
-    }).toPass({ timeout: 20_000 })
-
-    const home = page.getByRole('complementary').getByRole('link', { name: 'Home' })
-    const homeBox = await home.boundingBox()
-    if (!homeBox) throw new Error('missing home box')
-    await page.mouse.move(homeBox.x + homeBox.width / 2, homeBox.y + homeBox.height / 2, {
-      steps: 16
-    })
-    await page.mouse.up()
-
-    await expect(page.locator('.sidebar-drop-target')).toHaveCount(0)
+      await expect(page.locator('.sidebar-drop-target')).toHaveCount(1, { timeout: 2_000 })
+      const home = page.getByRole('complementary').getByRole('link', { name: 'Home' })
+      const homeBox = await home.boundingBox()
+      if (!homeBox) throw new Error('missing home box')
+      await page.mouse.move(homeBox.x + homeBox.width / 2, homeBox.y + homeBox.height / 2, {
+        steps: 16
+      })
+      await page.mouse.up()
+      await expect(page.locator('.sidebar-drop-target')).toHaveCount(0)
+    }).toPass({ timeout: 30_000 })
   } finally {
     await close()
   }
@@ -80,9 +91,6 @@ test('dropping a PDF card onto a sidebar category moves it', async () => {
     // Hover can paint the drop-target without a real `drop` — retry until the move sticks.
     await expect(async () => {
       await startDragOntoCategory(page, card, dest)
-      const to = await dest.boundingBox()
-      if (!to) throw new Error('missing dest box')
-      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 2 })
       await page.mouse.up()
       await expect(page.getByRole('heading', { name: '0 pdfs' })).toBeVisible({ timeout: 2_000 })
     }).toPass({ timeout: 30_000 })
