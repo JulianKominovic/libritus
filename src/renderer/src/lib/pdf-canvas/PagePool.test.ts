@@ -119,6 +119,7 @@ describe('PagePool', () => {
     expect(doc.getPageCalls()).toBe(afterFirst)
 
     await pool.syncVisible([0, 1, 2, 3])
+    expect(pool.capacity).toBe(2)
     expect(pool.getSlots().length).toBeLessThanOrEqual(2)
     expect(pool.getSlots().length).toBe(2)
 
