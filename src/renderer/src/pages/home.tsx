@@ -87,7 +87,7 @@ function HomePdfCard({
             </div>
           </Link>
         </ContextMenuTrigger>
-        <PdfCardContextMenuContent pdf={pdf} categoryId={categoryId} />
+        <PdfCardContextMenuContent animated pdf={pdf} categoryId={categoryId} />
       </ContextMenu>
       <Link
         to={`/category/${categoryId}`}

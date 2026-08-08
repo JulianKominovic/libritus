@@ -179,7 +179,7 @@ function ContextMenu({
   const fade = reducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' as const }
   const backdropExit = reducedMotion
     ? { duration: 0 }
-    : { duration: 0.45, ease: 'easeInOut' as const }
+    : { duration: 0.3, ease: 'easeInOut' as const }
   const itemTransition = reducedMotion
     ? { duration: 0 }
     : { duration: 0.2, ease: 'easeOut' as const }
