@@ -1,6 +1,7 @@
 import type { PdfDocument } from './PdfDocument'
 import { isPdfJobCancelled } from './isPdfJobCancelled'
 import { FIXED_RENDER_SCALE, renderPageToCanvas, type AbortableRender } from './PdfRenderer'
+import { PoolCore } from './pool-core'
 
 export const DEFAULT_POOL_SIZE = 12
 /** Host concurrency — EmbedPDF worker abort is client-only; limit posts so cancel-before-send works. */
@@ -45,8 +46,7 @@ export function capPreferCenter(indices: number[], max: number): number[] {
  * Hard-capped at poolSize (never grows with needed). Host queue (MAX_CONCURRENT)
  * so off-screen cancel drops work before postMessage when possible.
  */
-export class PagePool {
-  private readonly slots = new Map<number, PageSlot>()
+export class PagePool extends PoolCore<PageSlot> {
   private readonly jobs = new Map<number, ActiveJob>()
   /** Queued but not yet posted to the worker. */
   private pending: number[] = []
@@ -55,41 +55,16 @@ export class PagePool {
   /** Invalidates stale completions after cancel / supersede. */
   private readonly runToken = new Map<number, number>()
   private readonly wanted = new Set<number>()
-  private readonly poolSize: number
   private readonly renderScale: number
-  private clock = 0
   private lastVisibleKey = ''
-  private destroyed = false
-  private listeners = new Set<() => void>()
   private drainResolvers: Array<() => void> = []
 
   constructor(
     private doc: PdfDocument,
     options: PagePoolOptions = {}
   ) {
-    this.poolSize = options.poolSize ?? DEFAULT_POOL_SIZE
+    super(options.poolSize ?? DEFAULT_POOL_SIZE)
     this.renderScale = options.renderScale ?? FIXED_RENDER_SCALE
-  }
-
-  get capacity(): number {
-    return this.poolSize
-  }
-
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
-
-  private notify(): void {
-    for (const listener of this.listeners) listener()
-  }
-
-  getSlots(): PageSlot[] {
-    return [...this.slots.values()]
-  }
-
-  getSlot(pageIndex: number): PageSlot | undefined {
-    return this.slots.get(pageIndex)
   }
 
   async syncVisible(visibleIndices: number[]): Promise<void> {
@@ -101,7 +76,7 @@ export class PagePool {
     if (visibleKey === this.lastVisibleKey) {
       for (const pageIndex of capped) {
         const slot = this.slots.get(pageIndex)
-        if (slot) slot.lastUsed = ++this.clock
+        if (slot) this.touch(slot)
       }
       return
     }
@@ -128,7 +103,7 @@ export class PagePool {
 
     for (const pageIndex of capped) {
       const slot = this.slots.get(pageIndex)
-      if (slot) slot.lastUsed = ++this.clock
+      if (slot) this.touch(slot)
     }
 
     this.evictUntil()
@@ -142,7 +117,7 @@ export class PagePool {
     for (const { pageIndex } of order) {
       const existing = this.slots.get(pageIndex)
       if (existing?.ready) {
-        existing.lastUsed = ++this.clock
+        this.touch(existing)
         continue
       }
       // Still visible + already rendering — do not cancel/restart.
@@ -150,7 +125,7 @@ export class PagePool {
       if (this.pending.includes(pageIndex)) continue
 
       if (!this.slots.has(pageIndex) && this.slots.size >= this.poolSize) {
-        this.evictOne(this.wanted)
+        this.evictLru(this.wanted)
       }
       this.ensureSlot(pageIndex)
       this.pending.push(pageIndex)
@@ -195,24 +170,8 @@ export class PagePool {
     this.resolveDrain()
   }
 
-  /** Hard cap: capacity is always poolSize. */
-  private evictUntil(): void {
-    while (this.slots.size > this.poolSize) {
-      this.evictOne(new Set())
-    }
-  }
-
-  private evictOne(keep: Set<number>): void {
-    let victim: PageSlot | null = null
-    for (const slot of this.slots.values()) {
-      if (keep.has(slot.pageIndex)) continue
-      if (!victim || slot.lastUsed < victim.lastUsed) {
-        victim = slot
-      }
-    }
-    if (!victim) return
-
-    const pageIndex = victim.pageIndex
+  /** Cancel/drop the job and pending entry for an evicted page. */
+  protected onEvict(pageIndex: number): void {
     const job = this.jobs.get(pageIndex)
     if (job) {
       this.invalidateRun(pageIndex)
@@ -224,9 +183,6 @@ export class PagePool {
       this.jobs.delete(pageIndex)
     }
     this.pending = this.pending.filter((i) => i !== pageIndex)
-    victim.canvas.width = 0
-    victim.canvas.height = 0
-    this.slots.delete(pageIndex)
   }
 
   private ensureSlot(pageIndex: number): PageSlot {
@@ -241,7 +197,7 @@ export class PagePool {
       }
       this.slots.set(pageIndex, slot)
     } else {
-      slot.lastUsed = ++this.clock
+      this.touch(slot)
     }
     return slot
   }
@@ -322,12 +278,7 @@ export class PagePool {
       }
     }
     this.jobs.clear()
-    for (const slot of this.slots.values()) {
-      slot.canvas.width = 0
-      slot.canvas.height = 0
-    }
-    this.slots.clear()
-    this.listeners.clear()
+    this.clearSlotsAndListeners()
     this.lastVisibleKey = ''
     this.resolveDrain()
   }
