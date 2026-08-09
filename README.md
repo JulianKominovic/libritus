@@ -1,28 +1,75 @@
-<p align="center"><img src="./app-icon.png" width="256" height="256"/></p>
-<h1 align="center">
-  Libritus
-</h1>
+<p align="center"><img src="./app-icon.png" width="128" height="128" /></p>
+<h1 align="center">Libritus</h1>
 <p align="center">
-Desktop research workspace: read PDFs on an infinite canvas, and keep the investigation — notes, diagrams, links, free annotations — on that canvas so you can follow your reasoning later. AI answers only when you ask; it does not auto-summarize or underline for you.
+  <strong>Desktop research workspace.</strong> Read PDFs on an infinite canvas — and keep the
+  investigation (notes, highlights, diagrams, web searches) on that canvas so you can follow your
+  reasoning later. AI answers only when you ask; it never auto-summarizes or underlines for you.
 </p>
 
-<img width="1840" height="1191" alt="Screenshot 2025-09-16 at 10 12 20 PM" src="https://github.com/user-attachments/assets/77b35121-e2fd-4d7d-8350-a3fca917dfb0" />
-<img width="1840" height="1191" alt="Screenshot 2025-09-16 at 8 34 31 PM" src="https://github.com/user-attachments/assets/1f412e7a-4547-44e4-84ee-d04097078e50" />
-<img width="1840" height="1191" alt="wikipedia-definitions" src="https://github.com/user-attachments/assets/34391e7e-14a2-49e1-ab86-6843d3ebc857" />
-<img width="1840" height="1191" alt="Screenshot 2025-09-16 at 8 36 31 PM" src="https://github.com/user-attachments/assets/44454453-d7f9-4093-8809-927c440066f0" />
+<p align="center">
+  <a href="#features">Features</a> · <a href="#research-canvas">Research canvas</a> · <a href="#download-macos">Download</a> · <a href="#development">Development</a> · <a href="#license">License</a>
+</p>
 
-![Screenshot 2025-09-16 at 8 42 44 PM](https://github.com/user-attachments/assets/f78e2349-2f89-4647-bba8-ec77fc49bb6e)
+<p align="center">
+  <img width="820" alt="Libritus product demo" src="assets/screenshots/hero-thumb.webp" />
+</p>
+
+> **Stop reading. Start thinking.** Vertical scroll is a cage. Work on an infinite whiteboard
+> instead: notes, diagrams, and web searches live on the same scene as the text. For students,
+> researchers, and curious readers who refuse to outsource thinking to AI.
+
+## Features
+
+### Infinite PDF canvas
+
+Pan and zoom virtualized pages on a whiteboard, rendered by PDFium. The document is the axis; the space around it is yours. Large PDFs stay fluid.
+
+<p><img width="820" alt="Infinite PDF canvas" src="assets/screenshots/feature-canvas-thumb.webp" /></p>
+
+### Highlights from selection
+
+Select text and lock a highlight onto the canvas. Color it, copy the text, or grow a note or web search from it.
+
+<p><img width="820" alt="Highlights from selection" src="assets/screenshots/feature-highlights-thumb.webp" /></p>
+
+### WYSIWYG notes
+
+Drop a rich note anywhere, or grow one from a highlight. It sits next to the passage that sparked it.
+
+<p><img width="820" alt="WYSIWYG notes" src="assets/screenshots/feature-notes-thumb.webp" /></p>
+
+### Web search capture
+
+Search from a highlight, place a browser, or paste or drop a link onto the canvas. Browse in-app, then pin a screenshot beside the text.
+
+<p><img width="820" alt="Web search capture" src="assets/screenshots/feature-search-capture-thumb.webp" /></p>
+
+### Freehand and diagrams
+
+Arrows, shapes, and sketches with Excalidraw tools, drawn on top of the PDF.
+
+<p><img width="820" alt="Freehand and diagrams" src="assets/screenshots/feature-diagrams-thumb.webp" /></p>
+
+### Outline, thumbnails, annotations
+
+Jump via outline, page thumbnails, or a list of your highlights, notes, captures, and canvas images. The sidebar finds your place; research stays on the canvas.
+
+<p><img width="820" alt="Outline, thumbnails, and annotations" src="assets/screenshots/feature-outline-thumb.webp" /></p>
+
+### Sessions that persist
+
+Camera and annotations autosave per PDF. Come back and continue where you stopped. Everything stays on your machine — fully offline.
+
+<p><img width="820" alt="Sessions that persist" src="assets/screenshots/feature-sessions-thumb.webp" /></p>
 
 ## Research canvas
 
 The PDF viewer is an **infinite canvas** (Excalidraw + EmbedPDF / PDFium): virtualized pages, free pan/zoom, and freeform research on top of the document. Product north, architecture, roadmap, and agent conventions:
 
 - [`docs/features/product-north.md`](docs/features/product-north.md) — research canvas premises (canvas owns research; AI subordinate)
-- [`AGENTS.md`](AGENTS.md) — operational ground truth for contributors and agents
-- [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md) — vision and optimal architecture
+- [`docs/architecture/infinite-pdf-canvas.md`](docs/architecture/infinite-pdf-canvas.md) — vision and architecture
 - [`docs/roadmap.md`](docs/roadmap.md) — v1 → v2 path, research-on-canvas debt, legacy migration
-- [`docs/features/persistence-and-sessions.md`](docs/features/persistence-and-sessions.md)
-- [`docs/features/pdf-navigation.md`](docs/features/pdf-navigation.md)
+- [`AGENTS.md`](AGENTS.md) — operational ground truth for contributors and agents
 
 The previous lector-based vertical reader has been removed; the canvas viewer is the only PDF path.
 
@@ -57,6 +104,10 @@ Packaged mac build:
 bun run build:mac
 ```
 
+## License
+
+[Attribution-NonCommercial-ShareAlike 4.0 International (CC-BY-NC-SA-4.0)](LICENSE). Non-commercial use only — a personal open-source project, shared openly.
+
 ## Mascot
 
-<img width="400" height="400" alt="Libritus mascot" src="https://github.com/user-attachments/assets/a30341eb-9b83-4227-adb6-95f07a50fc76" />
+<img width="200" height="200" alt="Libritus mascot" src="https://github.com/user-attachments/assets/a30341eb-9b83-4227-adb6-95f07a50fc76" />
