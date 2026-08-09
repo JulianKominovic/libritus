@@ -1,6 +1,7 @@
 import { readFile, writeFile } from '@renderer/integrations/fs'
 import type { IconName } from 'lucide-react/dynamic'
 import { cancelRagIndex } from '@renderer/lib/ai/ipc'
+import { parsePdfDate } from '@renderer/lib/pdfDates'
 import { create } from 'zustand'
 
 /** Legacy highlight geometry from categories.json (lector-era). */
@@ -119,7 +120,14 @@ export const usePdfs = create<PdfsStore>((set, get) => ({
     const categories = await readFile('categories.json')
     if (categories) {
       try {
-        const parsedFile = JSON.parse(new TextDecoder().decode(categories))
+        const parsedFile = JSON.parse(new TextDecoder().decode(categories)) as Category[]
+        // Persisted as ISO strings via JSON.stringify; restore Date types for UI formatting.
+        for (const category of parsedFile) {
+          for (const pdf of category.pdfs) {
+            pdf.creationDate = parsePdfDate(pdf.creationDate)
+            pdf.modificationDate = parsePdfDate(pdf.modificationDate)
+          }
+        }
         console.log('Loaded categories', parsedFile)
         set({ categories: parsedFile })
       } catch (err) {
