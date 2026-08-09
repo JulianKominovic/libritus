@@ -1,6 +1,6 @@
 {
   "name": "libritus",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Research workspace with an infinite PDF canvas.",
   "main": "./out/main/index.js",
   "author": "Julian Kominovic",
