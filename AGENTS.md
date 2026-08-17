@@ -184,6 +184,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) now **directly reduces peak RAM**: po
 13. **Never patch Excalidraw** — no `node_modules` edits, `patch-package`, postinstall hacks, or local forks for bugs. Mitigate in the host (events, wrappers, public props) or live with it / upstream.
 14. **Product north** — prefer canvas artifacts for lasting research; do not invent auto-summarize / auto-highlight / auto-keyword AI. Sidebar Chat is hidden/legacy (do not deepen that silo). Destination: PDF sidebar = nav only.
 15. **EmbedPDF**: engines + SelectionPlugin under Excalidraw are OK; do **not** mount Viewport / Scroller / RenderLayer.
+16. **Exclusive UI status** — one state (`'idle' | 'downloading' | 'error' | 'success'`), not parallel booleans (`loading` + `error` + `success`). Impossible combinations and stale flags are the bug.
 
 ---
 
@@ -223,7 +224,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) now **directly reduces peak RAM**: po
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `pdfClip`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec` (disabled — AI Settings UI parked), `pdf-links.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `pdfClip`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec` (disabled — AI Settings UI parked), `pdf-links.spec`, `url-to-pdf.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

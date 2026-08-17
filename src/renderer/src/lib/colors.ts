@@ -1,4 +1,5 @@
 import chroma from 'chroma-js'
+
 export type ColorPalette = {
   bg: {
     50: string
@@ -12,103 +13,61 @@ export type ColorPalette = {
     800: string
     900: string
   }
-  fg: {
-    50: string
-    100: string
-    200: string
-    300: string
-    400: string
-    500: string
-    600: string
-    700: string
-    800: string
-    900: string
-  }
 }
+
+/** OKLCH L matched to App.css gray ramp (#ebebeb … #2f2f2f). */
+const L = [0.9401, 0.8822, 0.8203, 0.7636, 0.7025, 0.6434, 0.5727, 0.4819, 0.3942, 0.3052]
+/** Fraction of seed chroma: calm surfaces, peak at 600, taper for text. */
+const C_MUL = [0.15, 0.22, 0.32, 0.42, 0.55, 0.7, 0.9, 0.82, 0.72, 0.58]
+
+function oklchInGamut(l: number, c: number, h: number) {
+  let chromaC = c
+  let color = chroma.oklch(l, chromaC, h)
+  while (chromaC > 0.001 && color.clipped()) {
+    chromaC *= 0.92
+    color = chroma.oklch(l, chromaC, h)
+  }
+  return color
+}
+
 export function createColorPalette(hexColor: string): ColorPalette {
-  const [h, s, l] = chroma(hexColor).hsl()
-  // Old algorithm to create the color scale
-  // const maxLightness = 1
-  // const minLightness = 0
-  // const balancedColor = chroma.hsl(h, s, Math.max(minLightness, Math.min(maxLightness, l)))
-  // const colorScale = chroma
-  //   .scale(['white', balancedColor, 'black'])
-  //   .domain([0, 0.6, 1])
-  //   .mode('oklab')
-  //   .classes(12)
-  //   .colors(12)
-  //   .slice(1, 11)
+  const [, seedC, seedH] = chroma(hexColor).oklch()
+  const C = Number.isFinite(seedC) ? seedC : 0
+  const H = Number.isFinite(seedH) ? seedH : 0
+  const colors = L.map((l, i) => oklchInGamut(l, C * C_MUL[i], H))
 
-  // This kinda enables dark mode but every palette is some variant of neon
-  // const scale =
-  //   l >= 0.5
-  //     ? [chroma.hsl(h, s, l), chroma.hsl(h, s, 0.05)]
-  //     : [chroma.hsl(h, s, 0.02), chroma.hsl(h, s, l), chroma.hsl(h, s, 1)]
+  // ponytail: these L stops pass AA for typical hues; loop is the ceiling for pathological seeds
+  if (chroma.contrast(colors[0], colors[9]) < 4.5) {
+    let l900 = L[9]
+    while (l900 > 0.15 && chroma.contrast(colors[0], oklchInGamut(l900, C * C_MUL[9], H)) < 4.5) {
+      l900 -= 0.02
+    }
+    colors[9] = oklchInGamut(l900, C * C_MUL[9], H)
+    let l50 = L[0]
+    while (l50 < 0.98 && chroma.contrast(oklchInGamut(l50, C * C_MUL[0], H), colors[9]) < 4.5) {
+      l50 += 0.01
+    }
+    colors[0] = oklchInGamut(l50, C * C_MUL[0], H)
+  }
 
-  // Making mods on the old algorithm
-  const colorScale = chroma
-    .scale(['white', chroma.hsl(h, s, l), 'black'])
-    .mode('oklab')
-    .classes(12)
-    .colors(undefined)
-    .slice(1, 11)
-
-  // New algorithm to create the color scale
-  // const colorScale = [
-  //   chroma.hsl(h, s, 0.85), // 50 - backgrounds
-  //   chroma.hsl(h, s, 0.75), // 100 - hover, accents
-  //   chroma.hsl(h, s, 0.7), // 200 - rings, some soft borders
-  //   chroma.hsl(h, s, 0.65), // 300 - border, outline
-  //   chroma.hsl(h, s, 0.6), // 400 - stronger borders, almost unused
-  //   chroma.hsl(h, s, 0.5), // 500 - muted foreground
-  //   chroma.hsl(h, s, 0.4), // 600 - primary color, call to actions, badges foreground
-  //   chroma.hsl(h, s, 0.3), // 700 - hover foregrounds, muted foregrounds with more contrast
-  //   chroma.hsl(h, s, 0.2), // 800 - foregrounds, text, icons
-  //   chroma.hsl(h, s, 0.1) // 900 - the default foreground color used in like 90% of the elements, text, icons, colored shadows (used with low opacity), tooltip bg, switch bg
-
-  //   //
-  //   //
-  //   //
-  //   //
-  //   //
-  //   //
-  //   // chroma.hsl(h, s, 0.9), // 50 - backgrounds
-  //   // chroma.hsl(h, s, 0.83), // 100 - hover, accents
-  //   // chroma.hsl(h, s, 0.77), // 200 - rings, some soft borders
-  //   // chroma.hsl(h, s, 0.7), // 300 - border, outline
-  //   // chroma.hsl(h, s, 0.6), // 400 - stronger borders, almost unused
-  //   // chroma.hsl(h, s, 0.5), // 500 - muted foreground
-  //   // chroma.hsl(h, s, 0.4), // 600 - primary color, call to actions, badges foreground
-  //   // chroma.hsl(h, s, 0.3), // 700 - hover foregrounds, muted foregrounds with more contrast
-  //   // chroma.hsl(h, s, 0.2), // 800 - foregrounds, text, icons
-  //   // chroma.hsl(h, s, 0.1) // 900 - the default foreground color used in like 90% of the elements, text, icons, colored shadows (used with low opacity), tooltip bg, switch bg
-  // ].map((color) => chroma(color).hex())
-  const palette = colorScale.map((color) => chroma(color).rgb().join(' '))
-  const text = colorScale.map((hex) => (chroma(hex).luminance() < 0.5 ? 'black' : 'white'))
+  const rgb = colors.map((c) =>
+    c
+      .rgb()
+      .map((n) => Math.round(n))
+      .join(' ')
+  )
   return {
     bg: {
-      50: palette[0],
-      100: palette[1],
-      200: palette[2],
-      300: palette[3],
-      400: palette[4],
-      500: palette[5],
-      600: palette[6],
-      700: palette[7],
-      800: palette[8],
-      900: palette[9]
-    },
-    fg: {
-      50: text[0],
-      100: text[1],
-      200: text[2],
-      300: text[3],
-      400: text[4],
-      500: text[5],
-      600: text[6],
-      700: text[7],
-      800: text[8],
-      900: text[9]
+      50: rgb[0],
+      100: rgb[1],
+      200: rgb[2],
+      300: rgb[3],
+      400: rgb[4],
+      500: rgb[5],
+      600: rgb[6],
+      700: rgb[7],
+      800: rgb[8],
+      900: rgb[9]
     }
   }
 }

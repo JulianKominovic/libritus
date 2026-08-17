@@ -4,9 +4,6 @@ export function downloadUrlAsPdf(url: string) {
   }) as Promise<{
     buffer: Uint8Array<ArrayBuffer>
     title: string | null
-    description: string | null
-    author: string | null
-    publishedTime: string | null
   } | null>
 }
 

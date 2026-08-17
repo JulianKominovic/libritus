@@ -13,6 +13,7 @@ import { useLayoutEffect } from 'react'
 import { useDrag } from 'react-dnd'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Link, Redirect, useParams } from 'wouter'
+import { UrlToPdfForm } from './UrlToPdfForm'
 
 const SLOW_DEBOUNCE_TIME = 350
 const FAST_DEBOUNCE_TIME = 50
@@ -214,30 +215,33 @@ function Category() {
           .map((pdf) => (
             <DraggablePdfCard key={`${pdf.id}card`} pdf={pdf} categoryId={categoryId} />
           ))}
-        <label
-          htmlFor={`pdf-upload-${categoryId}`}
-          className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-56 bg-morphing-100 hover:bg-morphing-200 transition-colors duration-200"
-        >
-          <DynamicIcon name="plus" className="size-10 text-morphing-600" />
-          <p className="text-morphing-800 text-lg font-medium">{t('category_upload_pdf')}</p>
-          <p className="text-sm text-morphing-800">{t('category_drop_hint')}</p>
-          <input
-            id={`pdf-upload-${categoryId}`}
-            type="file"
-            placeholder={t('category_upload_pdf')}
-            accept="application/pdf"
-            hidden
-            multiple
-            onChange={async (e) => {
-              for (const file of e.target.files || []) {
-                console.log('Uploading pdf', file)
-                if (file && file.type === 'application/pdf') {
-                  await uploadPdf(categoryId, file)
+        <div className="flex w-56 flex-col gap-2">
+          <label
+            htmlFor={`pdf-upload-${categoryId}`}
+            className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-56 bg-morphing-100 hover:bg-morphing-200 transition-colors duration-200"
+          >
+            <DynamicIcon name="plus" className="size-10 text-morphing-600" />
+            <p className="text-morphing-800 text-lg font-medium">{t('category_upload_pdf')}</p>
+            <p className="text-sm text-morphing-800">{t('category_drop_hint')}</p>
+            <input
+              id={`pdf-upload-${categoryId}`}
+              type="file"
+              placeholder={t('category_upload_pdf')}
+              accept="application/pdf"
+              hidden
+              multiple
+              onChange={async (e) => {
+                for (const file of e.target.files || []) {
+                  console.log('Uploading pdf', file)
+                  if (file && file.type === 'application/pdf') {
+                    await uploadPdf(categoryId, file)
+                  }
                 }
-              }
-            }}
-          />
-        </label>
+              }}
+            />
+          </label>
+          <UrlToPdfForm categoryId={categoryId} />
+        </div>
       </div>
     </DragAndDropZone>
   )

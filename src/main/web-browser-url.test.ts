@@ -3,6 +3,7 @@ import {
   chromeLikeUserAgent,
   isBlockedUrl,
   isHttpUrl,
+  isPdfContentType,
   isPdfHttpUrl,
   normalizeNavigateUrl
 } from './web-browser-url'
@@ -62,6 +63,20 @@ describe('isPdfHttpUrl', () => {
   test('rejects html', () => {
     expect(isPdfHttpUrl('https://example.com/paper')).toBe(false)
     expect(isPdfHttpUrl('file:///tmp/x.pdf')).toBe(false)
+  })
+})
+
+describe('isPdfContentType', () => {
+  test('accepts pdf mime types', () => {
+    expect(isPdfContentType('application/pdf')).toBe(true)
+    expect(isPdfContentType('application/pdf; charset=binary')).toBe(true)
+    expect(isPdfContentType('application/x-pdf')).toBe(true)
+  })
+
+  test('rejects other types', () => {
+    expect(isPdfContentType('text/html')).toBe(false)
+    expect(isPdfContentType(null)).toBe(false)
+    expect(isPdfContentType('')).toBe(false)
   })
 })
 

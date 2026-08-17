@@ -19,6 +19,12 @@ export function isPdfHttpUrl(url: string): boolean {
   }
 }
 
+/** True for PDF MIME types (charset / extra params ignored). */
+export function isPdfContentType(contentType: string | null): boolean {
+  const mime = contentType?.split(';')[0]?.trim().toLowerCase() ?? ''
+  return mime === 'application/pdf' || mime === 'application/x-pdf'
+}
+
 /** Google search URL for address-bar queries (spaces / not a host). */
 export function googleSearchUrl(query: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(query.trim() || 'search')}`

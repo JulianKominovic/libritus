@@ -50,6 +50,11 @@ export const en = {
   category_pdf_count: '{count} pdfs',
   category_upload_pdf: 'Upload a PDF',
   category_drop_hint: 'or drop it here',
+  category_url_placeholder: 'https://…',
+  category_download_url_aria: 'Download page as PDF',
+  category_download_url_downloading_aria: 'Downloading page as PDF',
+  category_download_url_success_aria: 'Page saved as PDF',
+  category_download_url_error_aria: 'Failed to save page as PDF',
 
   // Drop overlay
   drop_error_title: 'One or more files are not PDFs',

@@ -131,8 +131,8 @@ function Navbar() {
     <nav
       className={
         isMac
-          ? 'w-full h-12.5 flex items-center justify-between px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-morphing-100/80 to-transparent'
-          : 'w-full h-12.5 flex items-center justify-between px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-morphing-100/80 to-transparent'
+          ? 'w-full h-12.5 flex items-center justify-between px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-morphing-100 to-transparent'
+          : 'w-full h-12.5 flex items-center justify-between px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-morphing-100 to-transparent'
       }
     >
       <div className="flex items-center gap-2">

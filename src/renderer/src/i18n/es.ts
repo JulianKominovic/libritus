@@ -46,6 +46,11 @@ export const es: Record<TranslationsKeys, string> = {
   category_pdf_count: '{count} pdfs',
   category_upload_pdf: 'Subir un PDF',
   category_drop_hint: 'o suéltalo aquí',
+  category_url_placeholder: 'https://…',
+  category_download_url_aria: 'Descargar página como PDF',
+  category_download_url_downloading_aria: 'Descargando página como PDF',
+  category_download_url_success_aria: 'Página guardada como PDF',
+  category_download_url_error_aria: 'No se pudo guardar la página como PDF',
 
   // Drop overlay
   drop_error_title: 'Uno o más archivos no son PDFs',

@@ -64,8 +64,8 @@ function BrowserNav() {
     <nav
       className={
         isMac
-          ? 'w-full h-12.5 flex items-center gap-2 px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-neutral-100/80 to-transparent'
-          : 'w-full h-12.5 flex items-center gap-2 px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-neutral-100/80 to-transparent'
+          ? 'w-full h-12.5 flex items-center gap-2 px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-neutral-100 to-transparent'
+          : 'w-full h-12.5 flex items-center gap-2 px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-neutral-100 to-transparent'
       }
     >
       <Button
