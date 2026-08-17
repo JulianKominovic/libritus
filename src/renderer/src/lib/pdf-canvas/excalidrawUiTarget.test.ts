@@ -42,16 +42,6 @@ describe('isExcalidrawUiPointerTarget', () => {
     expect(isExcalidrawUiPointerTarget(toast)).toBe(true)
   })
 
-  test('browser chrome → true', () => {
-    const doc = makeDom()
-    const chrome = doc.createElement('div')
-    chrome.setAttribute('data-browser-chrome', '')
-    const zoom = doc.createElement('button')
-    chrome.appendChild(zoom)
-    doc.body.appendChild(chrome)
-    expect(isExcalidrawUiPointerTarget(zoom)).toBe(true)
-  })
-
   test('embeddable under body (not chrome) → false', () => {
     const doc = makeDom()
     const embed = doc.createElement('div')
@@ -73,7 +63,6 @@ describe('isExcalidrawUiPointerTarget', () => {
 
   test('selector covers the chrome classes we rely on', () => {
     expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('.layer-ui__wrapper')
-    expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('[data-browser-chrome]')
     expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('[data-pdf-sidebar]')
     expect(EXCALIDRAW_UI_POINTER_SELECTOR).toContain('.context-menu')
   })

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { useLang } from '@renderer/i18n/lang-context'
+import { browserShow } from '@renderer/integrations/webBrowser'
 import { flushActiveSession } from '@renderer/lib/pdf-canvas/active-session-flush'
 import { usePdfs } from '@renderer/stores/categories'
 import { useSettings } from '@renderer/stores/settings'
@@ -130,8 +131,8 @@ function Navbar() {
     <nav
       className={
         isMac
-          ? 'w-full h-[50px] flex items-center justify-between px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50 bg-gradient-to-b from-morphing-100 to-transparent'
-          : 'w-full h-[50px] flex items-center justify-between px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50 bg-gradient-to-b from-morphing-100 to-transparent'
+          ? 'w-full h-12.5 flex items-center justify-between px-4 pl-22 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-morphing-100 to-transparent'
+          : 'w-full h-12.5 flex items-center justify-between px-4 pr-36 window-nav fixed inset-x-0 top-0 z-50 bg-linear-to-b from-morphing-100 to-transparent'
       }
     >
       <div className="flex items-center gap-2">
@@ -196,21 +197,31 @@ function Navbar() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-0">
         {isPdf && (
-          <Button
-            variant="ghost"
-            className={
-              showPdfOutline
-                ? '!size-10 aspect-square !p-2 bg-morphing-100 text-morphing-700 hover:bg-morphing-200'
-                : '!size-10 aspect-square !p-2 text-morphing-600'
-            }
-            aria-label={t('navbar_toggle_pdf_sidebar_aria')}
-            aria-pressed={showPdfOutline}
-            onClick={() => setShowPdfOutline(!showPdfOutline)}
-          >
-            <DynamicIcon name={showPdfOutline ? 'panel-right' : 'panel-right-open'} />
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              className="!size-10 aspect-square !p-2 text-morphing-600"
+              aria-label={t('navbar_open_browser_aria')}
+              onClick={() => void browserShow()}
+            >
+              <DynamicIcon name="globe" className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              className={
+                showPdfOutline
+                  ? '!size-10 aspect-square !p-2 bg-morphing-100 text-morphing-700 hover:bg-morphing-200'
+                  : '!size-10 aspect-square !p-2 text-morphing-600'
+              }
+              aria-label={t('navbar_toggle_pdf_sidebar_aria')}
+              aria-pressed={showPdfOutline}
+              onClick={() => setShowPdfOutline(!showPdfOutline)}
+            >
+              <DynamicIcon name={showPdfOutline ? 'panel-right' : 'panel-right-open'} />
+            </Button>
+          </>
         )}
       </div>
     </nav>

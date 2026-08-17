@@ -3,7 +3,7 @@
  * Host scene hit-tests must ignore these or style-panel clicks activate embeds underneath.
  */
 export const EXCALIDRAW_UI_POINTER_SELECTOR =
-  '[data-browser-chrome], [data-pdf-sidebar], .layer-ui__wrapper, .context-menu, .excalidraw-toast-container'
+  '[data-pdf-sidebar], .layer-ui__wrapper, .context-menu, .excalidraw-toast-container'
 
 /** True when the event target is (or is inside) UI chrome, not the canvas/embeds. */
 export function isExcalidrawUiPointerTarget(target: EventTarget | null): boolean {

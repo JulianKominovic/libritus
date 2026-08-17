@@ -36,7 +36,13 @@ export default defineConfig({
       target: 'esnext',
       minify: 'esbuild',
       sourcemap: false,
-      ssr: false
+      ssr: false,
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          'browser-ui': resolve(__dirname, 'src/renderer/browser-ui.html')
+        }
+      }
     },
     plugins: [react(), tailwindcss(), ...(analyze ? [analyzer({ analyzerMode: 'static' })] : [])]
   }

@@ -27,6 +27,7 @@ import {
   SEARCH_CAPTURE_HEIGHT,
   SEARCH_CAPTURE_WIDTH
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
+import type { PdfLinkHit } from '@renderer/lib/pdf-canvas/pdfLinks'
 import { PASS_HIT_PAD_PX } from '@renderer/lib/pdf-canvas/pdfTextPassHitPad'
 import { findSceneElementAt, holdsPdfTextPassOff } from '@renderer/lib/pdf-canvas/sceneHit'
 import {
@@ -40,7 +41,7 @@ import { liveExcalidrawApi, setSelectionToolLocked } from './selectionTool'
 type UsePdfTextPassArgs = {
   apiRef: RefObject<ExcalidrawImperativeAPI | null>
   sessionRef: RefObject<{ documentId: string } | null>
-  pdfLayerRef: RefObject<{ findLinkAt(x: number, y: number): number | null } | null>
+  pdfLayerRef: RefObject<{ findLinkAt(x: number, y: number): PdfLinkHit | null } | null>
   containerRef: RefObject<HTMLDivElement | null>
   excalidrawHostRef: RefObject<HTMLDivElement | null>
   pointerButtonsDownRef: RefObject<boolean>
@@ -73,8 +74,8 @@ type UsePdfTextPassArgs = {
   }) => void
   goToAnnotation: (id: string) => void
   goToPage: (pageIndex0: number) => void
+  onHttpLink: (url: string) => void
   exitPlaceModes: () => void
-  isBrowsing: () => boolean
   endPointerGesture: () => void
 }
 
@@ -113,8 +114,8 @@ export function usePdfTextPass({
   openSearchBrowser,
   goToAnnotation,
   goToPage,
+  onHttpLink,
   exitPlaceModes,
-  isBrowsing,
   endPointerGesture
 }: UsePdfTextPassArgs) {
   const syncSearchBrowseHintRef = useRef(syncSearchBrowseHint)
@@ -177,9 +178,10 @@ export function usePdfTextPass({
         return
       }
 
-      const linkTarget = pdfLayerRef.current?.findLinkAt(sceneX, sceneY)
-      if (linkTarget != null) {
-        goToPage(linkTarget)
+      const link = pdfLayerRef.current?.findLinkAt(sceneX, sceneY)
+      if (link) {
+        if (link.kind === 'http') onHttpLink(link.url)
+        else goToPage(link.targetPageIndex)
         hideHighlightToolbar()
         return
       }
@@ -196,6 +198,7 @@ export function usePdfTextPass({
       exitPlaceModes,
       goToAnnotation,
       goToPage,
+      onHttpLink,
       hideHighlightToolbar,
       markUnsaved,
       openSearchBrowser,
@@ -227,7 +230,7 @@ export function usePdfTextPass({
         // NoteEmbed onKeyDown only runs if focus is inside the note. After Place
         // note / toolbar clicks, contenteditable can be mounted but unfocused —
         // still exit edit (do not touch browse: guest owns Escape via IPC).
-        if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active' && !isBrowsing()) {
+        if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active') {
           clearActiveEmbeddable()
           event.preventDefault()
           return
@@ -281,7 +284,6 @@ export function usePdfTextPass({
     clearEmbedSelection,
     exitPlaceModes,
     hideHighlightToolbar,
-    isBrowsing,
     pendingHighlightRef,
     placeBrowserModeRef,
     placeNoteModeRef
@@ -529,12 +531,6 @@ export function usePdfTextPass({
         setPdfTextPass(false)
         return
       }
-      // Image search captures browse without activeEmbeddable; keep host hittable
-      // so outside-click deactivate (listener on .excalidraw-host) still runs.
-      if (isBrowsing()) {
-        setPdfTextPass(false)
-        return
-      }
       // Selection / linear-point edit owns the pointer — keep Excalidraw PE so
       // arrow anchors, bend dots, and resize chrome stay hittable over PDF text
       // (hairline AABB + pad miss would otherwise arm pass).
@@ -582,8 +578,8 @@ export function usePdfTextPass({
       // Race: pass was on → pointer targeted PDF page, but this point is
       // inside a real (unpadded) scene element. Pad alone must not steal text
       // clicks in the halo — only forward on a true AABB hit.
-      // PDF internal link overlays win over scene elements underneath (same
-      // priority as handlePointerDown findLinkAt → goToPage).
+      // PDF link overlays win over scene elements underneath (same
+      // priority as handlePointerDown findLinkAt).
       if (
         wasPass &&
         target instanceof Element &&
@@ -832,7 +828,6 @@ export function usePdfTextPass({
     containerRef,
     endPointerGesture,
     hideHighlightToolbar,
-    isBrowsing,
     markUnsaved,
     openSearchBrowser,
     pdfTextPassRef,

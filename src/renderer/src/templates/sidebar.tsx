@@ -192,11 +192,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                   type: 'application/pdf',
                   lastModified: new Date().getTime()
                 }),
-                {
-                  author: pdf.author || 'Unknown',
-                  name: pdf.title || 'Unknown',
-                  creationDate: pdf.publishedTime ? new Date(pdf.publishedTime) : null
-                }
+                { name: pdf.title || 'Unknown' }
               )
             }
           }

@@ -5,19 +5,72 @@ import { APP_DATA_DIR } from '..'
 import { attachAiIpcListeners } from '../ai'
 import { atomicWriteFile } from '../atomicWrite'
 import { readBodyCapped } from '../fetchImageBody'
-import { setMainLocale, type MainLocale } from '../i18n'
+import { getMainLocale, setMainLocale, type MainLocale } from '../i18n'
 import { attachWebBrowserIpc } from '../web-browser'
-import { isHttpUrl } from '../web-browser-url'
-//@ts-expect-error - this is a raw file
-import PROSE_CSS_INJECTABLE from '../assets/prose-injectable.css?raw'
+import { isHttpUrl, isPdfContentType, isPdfHttpUrl } from '../web-browser-url'
 
 /** Chrome image drop — keep renderer CSP tight; fetch in main. */
 const MAX_FETCH_IMAGE_BYTES = 30 * 1024 * 1024
+const MAX_PDF_BYTES = MAX_FETCH_IMAGE_BYTES
+const PRINT_TIMEOUT_MS = 5 * 60 * 1000
 
 function isImageMime(contentType: string | null): boolean {
   if (!contentType) return false
   const mime = contentType.split(';')[0]?.trim().toLowerCase() ?? ''
   return mime.startsWith('image/')
+}
+
+function pdfTitleFromUrl(url: string): string {
+  try {
+    const name = decodeURIComponent(new URL(url).pathname.split('/').pop() || '')
+    return name.replace(/\.pdf$/i, '') || 'PDF'
+  } catch {
+    return 'PDF'
+  }
+}
+
+async function fetchPdfBuffer(url: string): Promise<Buffer | null> {
+  const res = await net.fetch(url)
+  if (!res.ok) return null
+  const buf = await readBodyCapped(res.body, MAX_PDF_BYTES, res.headers.get('content-length'))
+  if (!buf) return null
+  if (buf.subarray(0, 5).toString() !== '%PDF-') return null
+  return buf
+}
+
+async function headSaysPdf(url: string): Promise<boolean> {
+  try {
+    const res = await net.fetch(url, { method: 'HEAD' })
+    if (!res.ok) return false
+    return isPdfContentType(res.headers.get('content-type'))
+  } catch {
+    return false
+  }
+}
+
+async function printUrlAsPdf(url: string): Promise<{ buffer: Buffer; title: string | null } | null> {
+  const win = new BrowserWindow({ show: false, width: 1920, height: 1080 })
+  let timedOut = false
+  const timeout = setTimeout(() => {
+    timedOut = true
+    if (!win.isDestroyed()) win.destroy()
+  }, PRINT_TIMEOUT_MS)
+  try {
+    await win.loadURL(url)
+    if (timedOut || win.isDestroyed()) return null
+    const pdfBuffer = await win.webContents.printToPDF({
+      printBackground: true,
+      preferCSSPageSize: true
+    })
+    if (timedOut || win.isDestroyed()) return null
+    return { buffer: pdfBuffer, title: win.webContents.getTitle() || null }
+  } catch (err) {
+    console.error(err)
+    return null
+  } finally {
+    clearTimeout(timeout)
+    if (!win.isDestroyed()) win.destroy()
+  }
 }
 
 const attachIPCListeners = (): void => {
@@ -27,6 +80,7 @@ const attachIPCListeners = (): void => {
   ipcMain.on('app:set-locale', (_event, locale: MainLocale) => {
     setMainLocale(locale)
   })
+  ipcMain.handle('app:get-locale', () => getMainLocale())
 
   ipcMain.handle('fetch-image-url', async (_, { url }: { url: string }) => {
     if (typeof url !== 'string' || !isHttpUrl(url)) return null
@@ -52,52 +106,18 @@ const attachIPCListeners = (): void => {
   })
 
   ipcMain.handle('download-url-as-pdf', async (_, { url }) => {
-    // Load the URL in a new window
-    const win = new BrowserWindow({ show: false, width: 1920, height: 1080 })
-    const timeout = setTimeout(() => win.close(), 30_000)
+    if (typeof url !== 'string' || !isHttpUrl(url)) return null
     try {
-      await win.loadURL(url)
-      const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML')
-      // Defer jsdom/readability until article download — keeps cold start lean.
-      const [{ JSDOM }, { Readability }] = await Promise.all([
-        import('jsdom'),
-        import('@mozilla/readability')
-      ])
-      const dom = new JSDOM(html)
-      const document = dom.window.document
-      const article = new Readability(document).parse()
-      if (!article) throw new Error('No article found')
-
-      const { title, excerpt, byline, content, publishedTime } = article
-
-      await win.loadURL(
-        `data:text/html;charset=utf-8,${encodeURIComponent(`
-        <html>
-          <head>
-            <title>${title}</title>
-            <meta name="description" content="${excerpt}">
-            <meta name="author" content="${byline}">
-            <meta name="publishedTime" content="${publishedTime}">
-            <style>${PROSE_CSS_INJECTABLE}</style>
-          </head>
-          <body class="prose" style="margin-inline: auto;">${content}</body>
-        </html>`)}`
-      )
-      const pdfBuffer = await win.webContents.printToPDF({
-        printBackground: true,
-        displayHeaderFooter: false,
-        pageSize: 'A4',
-        generateDocumentOutline: true,
-        margins: { marginType: 'none' },
-        scale: 1.5
-      })
-      return { buffer: pdfBuffer, title, description: excerpt, author: byline, publishedTime }
+      const shouldFetch = isPdfHttpUrl(url) || (await headSaysPdf(url))
+      if (shouldFetch) {
+        const buffer = await fetchPdfBuffer(url)
+        if (!buffer) return null
+        return { buffer, title: pdfTitleFromUrl(url) }
+      }
+      return await printUrlAsPdf(url)
     } catch (err) {
       console.error(err)
       return null
-    } finally {
-      win.close()
-      clearTimeout(timeout)
     }
   })
   ipcMain.handle('open-path', (_, { path }) => {
