@@ -80,4 +80,10 @@ describe('stripElbowArrows', () => {
     const { changed } = stripElbowArrows(els)
     expect(changed).toBe(false)
   })
+
+  test('bumps versionNonce so the dirty-gate cache sees the geometry change', () => {
+    const els = [arrow({ elbowed: true, versionNonce: 7 })]
+    const { elements } = stripElbowArrows(els)
+    expect((elements[0] as { versionNonce: number }).versionNonce).toBe(8)
+  })
 })

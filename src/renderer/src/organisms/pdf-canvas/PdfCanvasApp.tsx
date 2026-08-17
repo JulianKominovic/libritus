@@ -988,6 +988,10 @@ function PdfCanvasAppInner({
             return
           }
 
+          // Chip follows element-only moves (keyboard nudges) that change no
+          // hover/selection — syncSearchBrowseHint dedupes those away.
+          if (activeSearchImageIdRef.current) positionSearchBrowseHint()
+
           // Full maintenance (elbow ban / relock / repair / plate merge) — one pass
           // per frame; pointerup flushes it immediately via endPointerGesture.
           scheduleHostSceneMaintenance()

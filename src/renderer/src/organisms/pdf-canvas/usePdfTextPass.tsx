@@ -881,6 +881,8 @@ export function usePdfTextPass({
     let hoveredEmbedId: string | null = null
     /** Same viewport point → same hit result; skip scene scans + DOM writes. */
     let lastHintPointKey = ''
+    /** Last processed point sat over a note/embed → keep stopping propagation. */
+    let lastHintWasOverEmbed = false
 
     const hintRoot = () => containerRef.current ?? host
 
@@ -910,6 +912,7 @@ export function usePdfTextPass({
     const onPointerMoveCapture = (event: PointerEvent) => {
       if (event.buttons !== 0) {
         lastHintPointKey = ''
+        lastHintWasOverEmbed = false
         clearActivateHintHover()
         hoveredSearchImageIdRef.current = null
         syncSearchBrowseHintRef.current()
@@ -919,13 +922,19 @@ export function usePdfTextPass({
       // Style panel / toolbars sit over the scene — don't steal their hover.
       if (isExcalidrawUiPointerTarget(event.target)) {
         lastHintPointKey = ''
+        lastHintWasOverEmbed = false
         clearActivateHintHover()
         hoveredSearchImageIdRef.current = null
         syncSearchBrowseHintRef.current()
         return
       }
       const pointKey = `${event.clientX},${event.clientY}`
-      if (pointKey === lastHintPointKey) return
+      if (pointKey === lastHintPointKey) {
+        // Repeated move at identical coords: keep the hover-suppression up or
+        // Excalidraw's unguarded activeEmbeddable hover setState leaks through.
+        if (lastHintWasOverEmbed) event.stopPropagation()
+        return
+      }
       lastHintPointKey = pointKey
       const api = apiRef.current
       if (!api) return
@@ -948,6 +957,7 @@ export function usePdfTextPass({
       // remounts renderEmbeddable and would wipe data-activate-hint-hover.
       // pointerdown/up still reach the canvas so edge-drag / center-activate work.
       if (note && !note.locked) {
+        lastHintWasOverEmbed = true
         hoveredSearchImageIdRef.current = null
         setActivateHintHover(note.id)
         syncSearchBrowseHintRef.current()
@@ -955,12 +965,14 @@ export function usePdfTextPass({
         return
       }
       if (embedCapture) {
+        lastHintWasOverEmbed = true
         hoveredSearchImageIdRef.current = null
         setActivateHintHover(embedCapture.id)
         syncSearchBrowseHintRef.current()
         event.stopPropagation()
         return
       }
+      lastHintWasOverEmbed = false
       // Reading-mode PNG: no embed DOM — host chip on hover (do not stopPropagation).
       if (imageCapture) {
         setActivateHintHover(null)
@@ -975,6 +987,7 @@ export function usePdfTextPass({
 
     const onPointerLeave = () => {
       lastHintPointKey = ''
+      lastHintWasOverEmbed = false
       clearActivateHintHover()
       hoveredSearchImageIdRef.current = null
       syncSearchBrowseHintRef.current()

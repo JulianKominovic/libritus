@@ -27,18 +27,6 @@ function stabilizeElement(el: unknown): unknown {
   return rest
 }
 
-/** Stable signature of elements + camera for dirty detection. */
-export function persistSignature(elements: readonly unknown[], camera: PersistCamera): string {
-  return JSON.stringify({
-    elements: elements.map(stabilizeElement),
-    camera: {
-      scrollX: roundCam(camera.scrollX),
-      scrollY: roundCam(camera.scrollY),
-      zoom: roundCam(camera.zoom)
-    }
-  })
-}
-
 /** Elements-only stable signature (cheap split from the camera part). */
 export function persistElementsSignature(elements: readonly unknown[]): string {
   return JSON.stringify(elements.map(stabilizeElement))
