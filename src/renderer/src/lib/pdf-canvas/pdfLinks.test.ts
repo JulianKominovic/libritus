@@ -31,6 +31,7 @@ describe('mapLinkAnnotation', () => {
       2
     )
     expect(hit).toEqual({
+      kind: 'internal',
       pageIndex: 0,
       targetPageIndex: 1,
       localX: 100,
@@ -44,7 +45,7 @@ describe('mapLinkAnnotation', () => {
     })
   })
 
-  test('Goto action → target page; URI / RemoteGoto / empty → null', () => {
+  test('Goto action → target page; RemoteGoto / empty / mailto → null', () => {
     expect(
       mapLinkAnnotation(
         {
@@ -61,8 +62,8 @@ describe('mapLinkAnnotation', () => {
         },
         page,
         1
-      )?.targetPageIndex
-    ).toBe(3)
+      )
+    ).toMatchObject({ kind: 'internal', targetPageIndex: 3 })
 
     expect(
       mapLinkAnnotation(
@@ -72,7 +73,7 @@ describe('mapLinkAnnotation', () => {
           rect: { origin: { x: 0, y: 0 }, size: { width: 10, height: 10 } },
           target: {
             type: 'action',
-            action: { type: PdfActionType.URI, uri: 'https://example.com' }
+            action: { type: PdfActionType.URI, uri: 'mailto:a@b.test' }
           }
         },
         page,
@@ -106,6 +107,68 @@ describe('mapLinkAnnotation', () => {
           pageIndex: 0,
           rect: { origin: { x: 0, y: 0 }, size: { width: 10, height: 10 } },
           target: undefined
+        },
+        page,
+        1
+      )
+    ).toBeNull()
+  })
+
+  test('URI http(s) → http hit; javascript / file → null', () => {
+    expect(
+      mapLinkAnnotation(
+        {
+          type: PdfAnnotationSubtype.LINK,
+          pageIndex: 0,
+          rect: { origin: { x: 5, y: 6 }, size: { width: 10, height: 8 } },
+          target: {
+            type: 'action',
+            action: { type: PdfActionType.URI, uri: 'https://example.com/path' }
+          }
+        },
+        page,
+        1
+      )
+    ).toEqual({
+      kind: 'http',
+      url: 'https://example.com/path',
+      pageIndex: 0,
+      localX: 5,
+      localY: 6,
+      localWidth: 10,
+      localHeight: 8,
+      x: 15,
+      y: 26,
+      width: 10,
+      height: 8
+    })
+
+    expect(
+      mapLinkAnnotation(
+        {
+          type: PdfAnnotationSubtype.LINK,
+          pageIndex: 0,
+          rect: { origin: { x: 0, y: 0 }, size: { width: 10, height: 10 } },
+          target: {
+            type: 'action',
+            action: { type: PdfActionType.URI, uri: 'javascript:alert(1)' }
+          }
+        },
+        page,
+        1
+      )
+    ).toBeNull()
+
+    expect(
+      mapLinkAnnotation(
+        {
+          type: PdfAnnotationSubtype.LINK,
+          pageIndex: 0,
+          rect: { origin: { x: 0, y: 0 }, size: { width: 10, height: 10 } },
+          target: {
+            type: 'action',
+            action: { type: PdfActionType.URI, uri: 'file:///tmp/x' }
+          }
         },
         page,
         1
@@ -151,6 +214,7 @@ describe('mapLinkAnnotation', () => {
 describe('findPdfLinkAt', () => {
   const links = [
     {
+      kind: 'internal' as const,
       pageIndex: 0,
       targetPageIndex: 2,
       x: 100,
@@ -165,14 +229,14 @@ describe('findPdfLinkAt', () => {
   ]
 
   test('hit / miss', () => {
-    expect(findPdfLinkAt(links, 110, 210)).toBe(2)
+    expect(findPdfLinkAt(links, 110, 210)).toMatchObject({ kind: 'internal', targetPageIndex: 2 })
     expect(findPdfLinkAt(links, 99, 210)).toBeNull()
     expect(findPdfLinkAt(links, 110, 221)).toBeNull()
   })
 })
 
 describe('loadPageLinks', () => {
-  test('filters LINK with dest; ignores other annots; engine errors throw', async () => {
+  test('keeps dest + http URI; ignores other annots; engine errors throw', async () => {
     const doc = {
       handle: { id: 'x', pageCount: 2, pages: [{ index: 0, size: { width: 612, height: 792 } }] },
       engine: {
@@ -207,10 +271,9 @@ describe('loadPageLinks', () => {
     } as unknown as PdfDocument
 
     const hits = await loadPageLinks(doc, 0, page, 1)
-    expect(hits).toHaveLength(1)
-    expect(hits[0]?.targetPageIndex).toBe(1)
-    expect(hits[0]?.x).toBe(20)
-    expect(hits[0]?.y).toBe(40)
+    expect(hits).toHaveLength(2)
+    expect(hits[0]).toMatchObject({ kind: 'internal', targetPageIndex: 1, x: 20, y: 40 })
+    expect(hits[1]).toMatchObject({ kind: 'http', url: 'https://x.test' })
 
     const boom = {
       handle: { id: 'x', pageCount: 1, pages: [] },

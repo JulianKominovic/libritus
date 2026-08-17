@@ -9,6 +9,7 @@ import type {
   NormalizedZoomValue
 } from '@excalidraw/excalidraw/types'
 import { readFile } from '@renderer/integrations/fs'
+import { browserShow } from '@renderer/integrations/webBrowser'
 import { setActiveSessionFlush } from '@renderer/lib/pdf-canvas/active-session-flush'
 import {
   annotationsSignature,
@@ -1052,6 +1053,7 @@ function PdfCanvasAppInner({
     openSearchBrowser,
     goToAnnotation,
     goToPage,
+    onHttpLink: (url) => void browserShow({ url }),
     exitPlaceModes,
     endPointerGesture
   })
@@ -1071,6 +1073,7 @@ function PdfCanvasAppInner({
           doc={session.doc}
           documentId={session.documentId}
           onInternalLink={goToPage}
+          onHttpLink={(url) => void browserShow({ url })}
         />
       ) : null}
 

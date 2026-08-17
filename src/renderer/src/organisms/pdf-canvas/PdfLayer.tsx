@@ -24,8 +24,8 @@ export type PdfLayerHandle = {
   applyCamera: (camera: CameraState) => void
   /** Ephemeral search hit in page space; painted under the world camera transform. */
   setSearchHit: (hit: SearchMatch | null) => void
-  /** Scene-space hit-test against cached internal link rects. */
-  findLinkAt: (sceneX: number, sceneY: number) => number | null
+  /** Scene-space hit-test against cached link rects. */
+  findLinkAt: (sceneX: number, sceneY: number) => PdfLinkHit | null
 }
 
 type PdfLayerProps = {
@@ -34,6 +34,7 @@ type PdfLayerProps = {
   doc: PdfDocument
   documentId: string
   onInternalLink: (pageIndex: number) => void
+  onHttpLink: (url: string) => void
 }
 
 function visibleEqual(a: number[], b: number[]): boolean {
@@ -51,7 +52,8 @@ function PageSlotView({
   scale,
   cameraRef,
   links,
-  onInternalLink
+  onInternalLink,
+  onHttpLink
 }: {
   page: PageRect
   slot?: PageSlot
@@ -60,6 +62,7 @@ function PageSlotView({
   cameraRef: RefObject<CameraState | null>
   links: PdfLinkHit[]
   onInternalLink: (pageIndex: number) => void
+  onHttpLink: (url: string) => void
 }) {
   const { t } = useLang()
   const canvasHostRef = useRef<HTMLDivElement>(null)
@@ -114,28 +117,38 @@ function PageSlotView({
           <div className="pointer-events-none h-full w-full animate-pulse bg-neutral-100" />
         )}
         <SelectionLayer documentId={documentId} pageIndex={page.pageIndex} scale={scale} />
-        {links.map((link, i) => (
-          <button
-            key={`${link.targetPageIndex}-${i}`}
-            type="button"
-            data-pdf-link
-            data-target-page={link.targetPageIndex}
-            aria-label={t('layer_link_go_to_page_aria', { page: link.targetPageIndex + 1 })}
-            className="absolute cursor-pointer border-0 bg-transparent p-0"
-            style={{
-              left: link.localX,
-              top: link.localY,
-              width: link.localWidth,
-              height: link.localHeight,
-              zIndex: 2
-            }}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onInternalLink(link.targetPageIndex)
-            }}
-          />
-        ))}
+        {links.map((link, i) => {
+          const isHttp = link.kind === 'http'
+          return (
+            <button
+              key={isHttp ? `http-${link.url}-${i}` : `page-${link.targetPageIndex}-${i}`}
+              type="button"
+              data-pdf-link
+              {...(isHttp
+                ? { 'data-pdf-http-url': link.url }
+                : { 'data-target-page': String(link.targetPageIndex) })}
+              aria-label={
+                isHttp
+                  ? t('layer_link_open_url_aria', { url: link.url })
+                  : t('layer_link_go_to_page_aria', { page: link.targetPageIndex + 1 })
+              }
+              className="absolute cursor-pointer border-0 bg-transparent p-0"
+              style={{
+                left: link.localX,
+                top: link.localY,
+                width: link.localWidth,
+                height: link.localHeight,
+                zIndex: 2
+              }}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (isHttp) onHttpLink(link.url)
+                else onInternalLink(link.targetPageIndex)
+              }}
+            />
+          )
+        })}
       </PagePointerProvider>
     </div>
   )
@@ -150,7 +163,7 @@ function PageSlotView({
  * React — only CSS transform + culling when the visible page set changes.
  */
 export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLayer(
-  { layout, pool, doc, documentId, onInternalLink },
+  { layout, pool, doc, documentId, onInternalLink, onHttpLink },
   ref
 ) {
   const [visible, setVisible] = useState<number[]>([])
@@ -268,7 +281,7 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLa
     if (cam) applyCamera(cam)
   }, [layout, pool, doc, documentId, applyCamera])
 
-  // Fetch internal LINK annots for newly visible pages (skip already cached).
+  // Fetch LINK annots for newly visible pages (skip already cached).
   useEffect(() => {
     const gen = ++linkGenRef.current
     const currentLayout = layoutRef.current
@@ -331,6 +344,7 @@ export const PdfLayer = forwardRef<PdfLayerHandle, PdfLayerProps>(function PdfLa
               cameraRef={lastCameraRef}
               links={linksByPage[pageIndex] ?? []}
               onInternalLink={onInternalLink}
+              onHttpLink={onHttpLink}
             />
           )
         })}

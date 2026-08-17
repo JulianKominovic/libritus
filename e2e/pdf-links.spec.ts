@@ -6,6 +6,13 @@ import { closePdfSidebar } from './helpers/canvas'
 import { launchApp } from './helpers/launch'
 import { openPdf, seedLibrary } from './helpers/seed'
 
+async function guestUrl(page: import('playwright').Page): Promise<string> {
+  const result = await page.evaluate(() =>
+    (window as any).electron.ipcRenderer.invoke('browser:getUrl')
+  )
+  return typeof result?.url === 'string' ? result.url : ''
+}
+
 test('internal PDF link click jumps to target page', async () => {
   const appDataDir = await mkdtemp(path.join(tmpdir(), 'libritus-e2e-pdf-links-'))
   const { categoryId, pdfId } = await seedLibrary({
@@ -47,6 +54,48 @@ test('internal PDF link click jumps to target page', async () => {
     await link.click()
 
     await expect(current).toHaveValue('2', { timeout: 10_000 })
+  } finally {
+    await close()
+  }
+})
+
+test('http PDF link click opens in-app browser', async () => {
+  const appDataDir = await mkdtemp(path.join(tmpdir(), 'libritus-e2e-pdf-http-links-'))
+  const { categoryId, pdfId } = await seedLibrary({
+    appDataDir,
+    pdfFixture: path.join(process.cwd(), 'e2e/fixtures/sample-http-links.pdf'),
+    pages: 1
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await page.locator('[data-pdf-page="0"]').waitFor({ state: 'visible', timeout: 60_000 })
+    const link = page.locator('[data-pdf-link][data-pdf-http-url="https://example.com/"]')
+    await expect(link).toBeVisible({ timeout: 15_000 })
+
+    await expect
+      .poll(
+        async () => {
+          const box = await link.boundingBox()
+          if (!box) return false
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+          return page.evaluate(() =>
+            document.querySelector('[data-pdf-canvas-root]')?.classList.contains('pdf-text-pass')
+          )
+        },
+        { timeout: 10_000 }
+      )
+      .toBe(true)
+
+    await link.click()
+
+    await expect.poll(() => guestUrl(page), { timeout: 15_000 }).toMatch(/example\.com/)
   } finally {
     await close()
   }

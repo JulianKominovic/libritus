@@ -144,6 +144,7 @@ export const es: Record<TranslationsKeys, string> = {
 
   // PDF layer links
   layer_link_go_to_page_aria: 'Ir a la página {page}',
+  layer_link_open_url_aria: 'Abrir {url}',
 
   // Error boundary
   error_boundary_message:

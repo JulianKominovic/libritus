@@ -111,7 +111,7 @@ function BrowserActions() {
   const [target, setTarget] = useState<TargetState | null>(null)
   const [capturing, setCapturing] = useState(false)
   const [updating, setUpdating] = useState(false)
-  const [savingPdf, setSavingPdf] = useState(false)
+  // const [savingPdf, setSavingPdf] = useState(false)
 
   const hasTarget = Boolean(target?.captureId)
   const thumb = target?.thumbnailDataUrl
@@ -201,7 +201,7 @@ function BrowserActions() {
       >
         {t('browser_capture')}
       </Button>
-      <Button
+      {/* <Button
         variant="ghost"
         className="h-10 min-h-10 rounded-full px-3 text-neutral-600 active:scale-[0.96]"
         disabled={savingPdf}
@@ -215,7 +215,7 @@ function BrowserActions() {
         }}
       >
         {t('browser_save_pdf')}
-      </Button>
+      </Button> */}
     </div>
   )
 }

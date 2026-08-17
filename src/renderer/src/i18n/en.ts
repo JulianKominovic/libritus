@@ -148,6 +148,7 @@ export const en = {
 
   // PDF layer links
   layer_link_go_to_page_aria: 'Go to page {page}',
+  layer_link_open_url_aria: 'Open {url}',
 
   // Error boundary
   error_boundary_message:
