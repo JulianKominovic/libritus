@@ -67,7 +67,13 @@ import {
   type SessionSnapshot
 } from '@renderer/lib/pdf-canvas/session'
 import { shouldApplyOpenResult } from '@renderer/lib/pdf-canvas/sessionOpen'
-import { persistSignature } from '@renderer/lib/pdf-canvas/sessionPersist'
+import {
+  combinePersistSignatures,
+  elementsVersionKey,
+  persistCameraSignature,
+  persistElementsSignature,
+  persistPlateSignature
+} from '@renderer/lib/pdf-canvas/sessionPersist'
 import {
   clearSessionPersistFreeze,
   isSessionPersistFrozen
@@ -198,6 +204,8 @@ function PdfCanvasAppInner({
   const textSelectGestureRef = useRef(false)
   /** Primary-button (or any) pointer down — cheap onChange path while dragging embeds. */
   const pointerButtonsDownRef = useRef(false)
+  /** Cheap scene version key — schedules arrow sync only when elements actually moved. */
+  const sceneKeyRef = useRef('')
   const pdfTextPassRef = useRef(false)
   const readyRef = useRef(false)
   const restoringRef = useRef(false)
@@ -252,6 +260,7 @@ function PdfCanvasAppInner({
     sceneElementsForPersist,
     stripPdfNoteLinksAfterValidate,
     queueStripPdfNoteLinks,
+    resetSignatureCaches,
     currentPersistSignature,
     markUnsaved,
     flushSave
@@ -371,12 +380,23 @@ function PdfCanvasAppInner({
   }, [hideSearchBrowseHint])
 
   /** Show chip for hovered or single-selected promoted search image. */
+  const lastHintSelectionKeyRef = useRef('')
+  const lastHintFullKeyRef = useRef('')
   const syncSearchBrowseHint = useCallback(() => {
     const api = apiRef.current
     if (!api) {
+      lastHintSelectionKeyRef.current = ''
+      lastHintFullKeyRef.current = ''
       hideSearchBrowseHint()
       return
     }
+
+    const selected = api.getAppState().selectedElementIds ?? {}
+    const selectedIds = Object.keys(selected).filter((id) => selected[id])
+    const selectionKey = `${hoveredSearchImageIdRef.current ?? ''}|${selectedIds.join(',')}`
+    // Hover spam / repeated onChanges: unchanged hover+selection → skip the scene scan.
+    if (selectionKey === lastHintSelectionKeyRef.current) return
+    lastHintSelectionKeyRef.current = selectionKey
 
     const pickImageId = (id: string | null | undefined): string | null => {
       if (!id) return null
@@ -385,11 +405,14 @@ function PdfCanvasAppInner({
       return el.id
     }
 
-    const selected = api.getAppState().selectedElementIds ?? {}
-    const selectedIds = Object.keys(selected).filter((id) => selected[id])
     const id =
       pickImageId(hoveredSearchImageIdRef.current) ??
       (selectedIds.length === 1 ? pickImageId(selectedIds[0]) : null)
+
+    // Element identity can change under an unchanged selection (embed → image).
+    const fullKey = `${selectionKey}|${id ?? ''}`
+    if (fullKey === lastHintFullKeyRef.current) return
+    lastHintFullKeyRef.current = fullKey
 
     if (!id) {
       hideSearchBrowseHint()
@@ -499,6 +522,8 @@ function PdfCanvasAppInner({
     dirtyRef.current = false
     lastSavedSigRef.current = ''
     pendingSigRef.current = ''
+    resetSignatureCaches()
+    sceneKeyRef.current = ''
     persistedAttachmentIdsRef.current = new Set()
     noteIdsRef.current = new Set()
     pendingPlateByNoteIdRef.current = new Map()
@@ -694,7 +719,12 @@ function PdfCanvasAppInner({
         dirtyRef.current = false
         pendingSigRef.current = ''
         lastSavedSigRef.current =
-          currentPersistSignature() ?? persistSignature(elements, { scrollX, scrollY, zoom })
+          currentPersistSignature() ??
+          (combinePersistSignatures(
+            persistElementsSignature(elements),
+            persistPlateSignature(new Map()),
+            persistCameraSignature({ scrollX, scrollY, zoom })
+          ) ?? '')
         syncSaveChip('saved')
       } catch (err) {
         console.error(err)
@@ -720,6 +750,7 @@ function PdfCanvasAppInner({
     engine,
     pdfId,
     pushCamera,
+    resetSignatureCaches,
     stripPdfNoteLinksAfterValidate,
     syncAnnotations,
     syncSaveChip
@@ -867,17 +898,18 @@ function PdfCanvasAppInner({
     return () => document.removeEventListener('click', onClick, true)
   }, [flushSave, setLocation])
 
-  const { scheduleHostArrowSync, runHostSceneMaintenance, endPointerGesture } = usePdfHostScene({
-    apiRef,
-    restoringRef,
-    pointerButtonsDownRef,
-    noteIdsRef,
-    pendingPlateByNoteIdRef,
-    queueStripPdfNoteLinks,
-    syncAnnotations,
-    syncSearchBrowseHint,
-    markUnsaved
-  })
+  const { scheduleHostArrowSync, scheduleHostSceneMaintenance, endPointerGesture } =
+    usePdfHostScene({
+      apiRef,
+      restoringRef,
+      pointerButtonsDownRef,
+      noteIdsRef,
+      pendingPlateByNoteIdRef,
+      queueStripPdfNoteLinks,
+      syncAnnotations,
+      syncSearchBrowseHint,
+      markUnsaved
+    })
 
   const handleExcalidrawChange = useCallback(
     (
@@ -887,8 +919,14 @@ function PdfCanvasAppInner({
       },
       files: BinaryFiles
     ) => {
-      if (files && Object.keys(files).length > 0) {
-        void persistNewBinaryFiles(files, persistedAttachmentIdsRef.current)
+      // Cheap empty check (no Object.keys alloc); persistNewBinaryFiles dedupes by id set.
+      if (files != null) {
+        for (const id in files) {
+          if (Object.prototype.hasOwnProperty.call(files, id)) {
+            void persistNewBinaryFiles(files, persistedAttachmentIdsRef.current)
+            break
+          }
+        }
       }
 
       if (!restoringRef.current) {
@@ -926,8 +964,15 @@ function PdfCanvasAppInner({
           }
 
           // Host arrows: rAF-coalesced (one updateScene per frame while dragging embeds).
-          // IncludingDeleted so soft-deleted arrows revive after Ctrl+Z.
-          scheduleHostArrowSync()
+          // IncludingDeleted so soft-deleted arrows revive after Ctrl+Z. Schedule only
+          // when elements actually moved (versionNonce key) — hover spam passes the
+          // same key and must not pay the full sync scan every frame.
+          const scene = api.getSceneElementsIncludingDeleted()
+          const sceneKey = elementsVersionKey(scene)
+          if (sceneKey !== sceneKeyRef.current) {
+            sceneKeyRef.current = sceneKey
+            scheduleHostArrowSync()
+          }
 
           // Excalidraw setStates activeEmbeddable "hover" on every pointermove over the
           // note center third (no equality guard) → onChange spam. Skip the rest
@@ -943,7 +988,9 @@ function PdfCanvasAppInner({
             return
           }
 
-          runHostSceneMaintenance()
+          // Full maintenance (elbow ban / relock / repair / plate merge) — one pass
+          // per frame; pointerup flushes it immediately via endPointerGesture.
+          scheduleHostSceneMaintenance()
         }
       }
       markUnsaved()
@@ -952,8 +999,8 @@ function PdfCanvasAppInner({
       hideHighlightToolbar,
       markUnsaved,
       positionSearchBrowseHint,
-      runHostSceneMaintenance,
       scheduleHostArrowSync,
+      scheduleHostSceneMaintenance,
       syncBrowserTarget,
       syncSearchBrowseHint
     ]

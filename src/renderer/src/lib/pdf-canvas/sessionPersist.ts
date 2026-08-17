@@ -39,6 +39,52 @@ export function persistSignature(elements: readonly unknown[], camera: PersistCa
   })
 }
 
+/** Elements-only stable signature (cheap split from the camera part). */
+export function persistElementsSignature(elements: readonly unknown[]): string {
+  return JSON.stringify(elements.map(stabilizeElement))
+}
+
+/** Camera-only stable signature (cheap — no scene traversal). */
+export function persistCameraSignature(camera: PersistCamera): string {
+  return JSON.stringify({
+    scrollX: roundCam(camera.scrollX),
+    scrollY: roundCam(camera.scrollY),
+    zoom: roundCam(camera.zoom)
+  })
+}
+
+/** Stable signature of pending Plate edits (small map — one entry per edited note). */
+export function persistPlateSignature(plate: ReadonlyMap<string, unknown>): string {
+  const entries = [...plate.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return JSON.stringify(entries)
+}
+
+/**
+ * Combine the split parts into the canonical dirty-gate signature.
+ * Content/plate/camera describe the persistible state; the concatenated form
+ * keeps `shouldMarkDirty` as a plain string comparison.
+ */
+export function combinePersistSignatures(
+  content: string | null,
+  plate: string,
+  camera: string
+): string | null {
+  if (content == null) return null
+  return `${content}\u0001${plate}\u0001${camera}`
+}
+
+/**
+ * Cheap scene-change detector: O(n) id:versionNonce list.
+ * Recompute the full elements signature only when this key moves.
+ */
+export function elementsVersionKey(
+  elements: readonly { id: string; versionNonce: number }[]
+): string {
+  let key = ''
+  for (const el of elements) key += `${el.id}:${el.versionNonce};`
+  return key
+}
+
 /**
  * Decide whether a new persist signature should mark the session dirty,
  * clear dirty (undo back to last saved), or no-op (same as pending).
