@@ -1,3 +1,4 @@
+import { is } from '@electron-toolkit/utils'
 import { randomUUID } from 'crypto'
 import {
   app,
@@ -10,45 +11,72 @@ import {
   shell,
   WebContentsView,
   type ContextMenuParams,
+  type Input,
   type MenuItemConstructorOptions,
+  type NativeImage,
   type Session,
   type WebContents
 } from 'electron'
-import fs from 'fs/promises'
+import fs from 'fs'
+import fsPromises from 'fs/promises'
 import path from 'path'
-import { APP_DATA_DIR } from '.'
+import { pathToFileURL } from 'url'
+import { APP_DATA_DIR, isAppQuitting } from '.'
+import { readBodyCapped } from './fetchImageBody'
 import { tMenu } from './i18n'
-import { chromeLikeUserAgent, isBlockedUrl, isHttpUrl } from './web-browser-url'
-
-export type BrowserBounds = { x: number; y: number; width: number; height: number }
+import {
+  chromeLikeUserAgent,
+  isBlockedUrl,
+  isHttpUrl,
+  isPdfHttpUrl,
+  normalizeNavigateUrl
+} from './web-browser-url'
 
 const GUEST_PARTITION = 'persist:web-browser'
+const DEFAULT_URL = 'https://www.google.com'
+const NAV_H = 50
+const ACTIONS_BOTTOM_INSET = 16
+const ACTIONS_SHADOW_PAD = 12
+const DEFAULT_ACTIONS_W = 280
+const DEFAULT_ACTIONS_H = 52
+const MAX_PDF_BYTES = 30 * 1024 * 1024
+const GUEST_ZOOM_MIN = 0.25
+const GUEST_ZOOM_MAX = 5
+const GUEST_ZOOM_STEP = 1.2
 
-type OpenPayload = {
-  url: string
-  bounds: BrowserBounds
-  /** Absolute Chromium zoomFactor (renderer applies userZoom × canvasZoom). */
-  zoomFactor?: number
+type ShowPayload = {
+  url?: string
+}
+
+type CaptureTargetPayload = {
+  captureId: string | null
+  thumbnailDataUrl?: string | null
+  title?: string | null
 }
 
 /** App window that hosts the PDF canvas. */
 let host: BrowserWindow | null = null
-/** Guest browser surface — child of host contentView (not a separate BrowserWindow). */
+let browserWin: BrowserWindow | null = null
 let guest: WebContentsView | null = null
+let actions: WebContentsView | null = null
+let actionsSize = { width: DEFAULT_ACTIONS_W, height: DEFAULT_ACTIONS_H }
 let loadedUrl = ''
-/** Deactivate/hide before this timestamp is ignored (open race). */
-let ignoreDeactivateUntil = 0
-/** Keep in sync with renderer OPEN_GRACE_MS (integrations/webBrowser.ts). */
-const OPEN_GRACE_MS = 800
-/** Page zoom inside the guest overlay (more layout in the mobile-sized frame). */
-const GUEST_ZOOM_FACTOR = 0.8
-/**
- * Effective = user × canvasZoom needs headroom beyond user chrome range (0.25–5)
- * so lock-to-card still works when the Excalidraw camera is zoomed in/out.
- */
-const EFFECTIVE_ZOOM_MIN = 0.05
-const EFFECTIVE_ZOOM_MAX = 50
+/** Canvas search-capture id for Update capture; null → Update button hidden. */
+let sourceCaptureId: string | null = null
+let sourceCaptureThumb: string | null = null
+let sourceCaptureTitle: string | null = null
 let guestSessionConfigured = false
+let downloadHandlerAttached = false
+/** True while `new BrowserWindow` runs — `browserWin` is not assigned yet. */
+let attachingBrowserWindow = false
+
+export function isWebBrowserWindow(w: BrowserWindow): boolean {
+  return browserWin != null && !browserWin.isDestroyed() && w.id === browserWin.id
+}
+
+export function isAttachingWebBrowserWindow(): boolean {
+  return attachingBrowserWindow
+}
 
 /**
  * Must run before `app.ready`. Chromium blocks 3P cookies by default
@@ -65,15 +93,12 @@ function guestSession(): Session {
   const ses = session.fromPartition(GUEST_PARTITION)
   if (!guestSessionConfigured) {
     guestSessionConfigured = true
-    // Keep Chromium version in sync; only hide the Electron token.
     ses.setUserAgent(chromeLikeUserAgent(ses.getUserAgent()))
-    // Sites request this for third-party cookie access (Storage Access API).
     ses.setPermissionRequestHandler((_wc, permission, callback) => {
       if (permission === 'storage-access' || permission === 'top-level-storage-access') {
         callback(true)
         return
       }
-      // Guest is a browser surface; deny device / capture APIs only.
       const deny = new Set([
         'media',
         'display-capture',
@@ -85,19 +110,54 @@ function guestSession(): Session {
       ])
       callback(!deny.has(permission))
     })
+    attachPdfDownloadInterceptor(ses)
   }
   return ses
 }
 
+function attachPdfDownloadInterceptor(ses: Session): void {
+  if (downloadHandlerAttached) return
+  downloadHandlerAttached = true
+  ses.on('will-download', (_event, item) => {
+    const mime = (item.getMimeType() || '').toLowerCase()
+    const name = (item.getFilename() || '').toLowerCase()
+    if (!mime.includes('pdf') && !name.endsWith('.pdf')) return
+    const total = item.getTotalBytes()
+    if (total > MAX_PDF_BYTES) {
+      item.cancel()
+      return
+    }
+    const fileId = randomUUID()
+    const dest = path.join(APP_DATA_DIR, 'attachments', `${fileId}.pdf`)
+    fs.mkdirSync(path.dirname(dest), { recursive: true })
+    item.setSavePath(dest)
+    item.on('updated', () => {
+      if (item.getReceivedBytes() > MAX_PDF_BYTES) item.cancel()
+    })
+    item.once('done', (_e, state) => {
+      if (state !== 'completed') return
+      sendToHost('browser:pdf-saved', {
+        pdfFileId: fileId,
+        url: item.getURL(),
+        title: item.getFilename() || 'PDF'
+      })
+    })
+  })
+}
+
 function resolveHost(): BrowserWindow | null {
-  if (host && !host.isDestroyed()) return host
+  if (host && !host.isDestroyed() && !isWebBrowserWindow(host)) return host
   for (const w of BrowserWindow.getAllWindows()) {
-    if (!w.isDestroyed()) {
+    if (!w.isDestroyed() && !isWebBrowserWindow(w)) {
       host = w
       return w
     }
   }
   return null
+}
+
+function sendToHost(channel: string, payload: unknown): void {
+  resolveHost()?.webContents.send(channel, payload)
 }
 
 function guestAlive(): boolean {
@@ -111,77 +171,179 @@ function guestContents(): WebContents | null {
   return wc
 }
 
-/** Attach guest to host contentView (reorder to top if already a child). */
-function attachGuest(parent: BrowserWindow): void {
-  if (!guestAlive() || !guest) return
-  parent.contentView.addChildView(guest)
+function browserUiUrl(): string {
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    return `${process.env['ELECTRON_RENDERER_URL']}/browser-ui.html`
+  }
+  return pathToFileURL(path.join(__dirname, '../renderer/browser-ui.html')).href
 }
 
-/**
- * Tear down guest completely. Only for browser:close / quit — never mid-load.
- * Deactivate must hide only (see browser:deactivate).
- */
-function disposeGuest(): void {
-  const parent = resolveHost()
-  if (parent && !parent.isDestroyed() && guest) {
+function chromeAlive(): boolean {
+  return browserWin != null && !browserWin.isDestroyed() && !browserWin.webContents.isDestroyed()
+}
+
+function actionsAlive(): boolean {
+  return actions != null && !actions.webContents.isDestroyed()
+}
+
+function sendToChrome(channel: string, payload?: unknown): void {
+  const targets: WebContents[] = []
+  if (chromeAlive() && browserWin) targets.push(browserWin.webContents)
+  if (actionsAlive() && actions) targets.push(actions.webContents)
+  for (const wc of targets) {
+    if (payload === undefined) wc.send(channel)
+    else wc.send(channel, payload)
+  }
+}
+
+function layoutBrowserChrome(): void {
+  if (!browserWin || browserWin.isDestroyed()) return
+  const [w, h] = browserWin.getContentSize()
+  if (guestAlive() && guest) {
+    guest.setBounds({
+      x: 0,
+      y: NAV_H,
+      width: Math.max(1, w),
+      height: Math.max(1, h - NAV_H)
+    })
+  }
+  if (actionsAlive() && actions) {
+    const aw = Math.max(1, Math.min(w, actionsSize.width + ACTIONS_SHADOW_PAD * 2))
+    const ah = Math.max(1, Math.min(h - NAV_H, actionsSize.height + ACTIONS_SHADOW_PAD * 2))
+    actions.setBounds({
+      x: Math.max(0, Math.round((w - aw) / 2)),
+      y: Math.max(NAV_H, h - ah - ACTIONS_BOTTOM_INSET),
+      width: aw,
+      height: ah
+    })
+  }
+}
+
+function pushTargetState(): void {
+  sendToChrome(
+    'browser-ui:target',
+    sourceCaptureId
+      ? {
+          captureId: sourceCaptureId,
+          thumbnailDataUrl: sourceCaptureThumb,
+          title: sourceCaptureTitle
+        }
+      : null
+  )
+}
+
+function setCaptureTarget(payload: CaptureTargetPayload | null): void {
+  if (!payload || !payload.captureId) {
+    sourceCaptureId = null
+    sourceCaptureThumb = null
+    sourceCaptureTitle = null
+  } else {
+    sourceCaptureId = payload.captureId
+    sourceCaptureThumb =
+      typeof payload.thumbnailDataUrl === 'string' && payload.thumbnailDataUrl.startsWith('data:')
+        ? payload.thumbnailDataUrl
+        : null
+    sourceCaptureTitle = typeof payload.title === 'string' ? payload.title : null
+  }
+  pushTargetState()
+}
+
+function resetGuestZoom(wc: WebContents): void {
+  try {
+    wc.setZoomFactor(1)
+    // Habilitar este zoom visual genera bugs visuales. NO HABILITARLO.
+    // wc.setVisualZoomLevelLimits(GUEST_ZOOM_MIN, GUEST_ZOOM_MAX)
+  } catch {
+    /* destroyed */
+  }
+}
+
+function stepGuestZoom(wc: WebContents, deltaLevel: number): void {
+  try {
+    const next = Math.min(
+      GUEST_ZOOM_MAX,
+      Math.max(GUEST_ZOOM_MIN, wc.getZoomFactor() * Math.pow(GUEST_ZOOM_STEP, deltaLevel))
+    )
+    wc.setZoomFactor(next)
+  } catch {
+    /* destroyed */
+  }
+}
+
+function pushNavState(): void {
+  const wc = guestContents()
+  if (!wc || !chromeAlive()) return
+  let url = ''
+  try {
+    url = wc.getURL()
+  } catch {
+    url = ''
+  }
+  const hist = wc.navigationHistory
+  sendToChrome('browser-ui:nav', {
+    url: isHttpUrl(url) ? url : '',
+    canGoBack: hist.canGoBack(),
+    canGoForward: hist.canGoForward()
+  })
+  if (browserWin && !browserWin.isDestroyed()) {
     try {
-      parent.contentView.removeChildView(guest)
+      const title = wc.getTitle()
+      if (title) browserWin.setTitle(title)
     } catch {
-      // not attached
+      /* destroyed */
     }
   }
-  if (guest) {
-    const wc = guest.webContents
-    if (wc && !wc.isDestroyed()) {
-      wc.close()
+}
+
+function hideBrowserWindow(): void {
+  const wc = guestContents()
+  if (wc && !wc.isDestroyed()) wc.setAudioMuted(true)
+  if (browserWin && !browserWin.isDestroyed() && browserWin.isVisible()) {
+    browserWin.hide()
+  }
+}
+
+function disposeBrowserWindow(): void {
+  // Keep sourceCaptureId / thumb / title — setCaptureTarget owns those; recreate
+  // must not wipe Update target (openSearchBrowser sets target before show).
+  loadedUrl = ''
+  actionsSize = { width: DEFAULT_ACTIONS_W, height: DEFAULT_ACTIONS_H }
+  if (guest && !guest.webContents.isDestroyed()) {
+    try {
+      guest.webContents.close()
+    } catch {
+      /* ignore */
     }
   }
   guest = null
-  loadedUrl = ''
-}
-
-function hideGuest(): void {
-  if (!guestAlive() || !guest) return
-  guest.setVisible(false)
-}
-
-function applyBounds(bounds: BrowserBounds): void {
-  if (!guestAlive() || !guest) return
-  // Renderer sends window-client coords (Excalidraw viewport = contentView space).
-  guest.setBounds({
-    x: Math.round(bounds.x),
-    y: Math.round(bounds.y),
-    width: Math.max(1, Math.round(bounds.width)),
-    height: Math.max(1, Math.round(bounds.height))
-  })
-}
-
-function getGuestZoomFactor(): number {
-  const wc = guestContents()
-  if (!wc) return GUEST_ZOOM_FACTOR
-  try {
-    return wc.getZoomFactor()
-  } catch {
-    return GUEST_ZOOM_FACTOR
+  if (actions && !actions.webContents.isDestroyed()) {
+    try {
+      actions.webContents.close()
+    } catch {
+      /* ignore */
+    }
   }
+  actions = null
+  if (browserWin && !browserWin.isDestroyed()) {
+    browserWin.removeAllListeners('close')
+    browserWin.destroy()
+  }
+  browserWin = null
 }
 
-function setGuestZoomFactor(factor: number): number {
-  const wc = guestContents()
-  if (!wc) return GUEST_ZOOM_FACTOR
-  const clamped = Math.min(EFFECTIVE_ZOOM_MAX, Math.max(EFFECTIVE_ZOOM_MIN, factor))
-  wc.setZoomFactor(clamped)
-  return getGuestZoomFactor()
-}
-
-function notifyZoomStep(delta: number): void {
-  resolveHost()?.webContents.send('browser:zoom-step', { delta })
+async function persistBytes(bytes: Buffer, ext: 'png' | 'pdf'): Promise<string | null> {
+  if (!bytes.byteLength) return null
+  const fileId = randomUUID()
+  const dir = path.join(APP_DATA_DIR, 'attachments')
+  await fsPromises.mkdir(dir, { recursive: true })
+  await fsPromises.writeFile(path.join(dir, `${fileId}.${ext}`), bytes)
+  return fileId
 }
 
 /** Save guest image via http(s) or data: — blob: is copy-only (copyImageAt). */
 async function saveGuestImage(wc: WebContents, srcURL: string): Promise<void> {
-  const win = resolveHost()
-  if (!win || wc.isDestroyed()) return
+  const win = browserWin
+  if (!win || win.isDestroyed() || wc.isDestroyed()) return
 
   let name = 'image.png'
   try {
@@ -202,19 +364,18 @@ async function saveGuestImage(wc: WebContents, srcURL: string): Promise<void> {
   if (srcURL.startsWith('data:')) {
     const m = /^data:[^;]+;base64,(.+)$/i.exec(srcURL)
     if (!m) return
-    await fs.writeFile(filePath, Buffer.from(m[1], 'base64'))
+    await fsPromises.writeFile(filePath, Buffer.from(m[1], 'base64'))
     return
   }
 
   if (!isHttpUrl(srcURL)) return
-  // Guest partition cookies — not default session / net.fetch.
   const res = await wc.session.fetch(srcURL)
   if (!res.ok) throw new Error(`save image failed: ${res.status}`)
-  await fs.writeFile(filePath, Buffer.from(await res.arrayBuffer()))
+  await fsPromises.writeFile(filePath, Buffer.from(await res.arrayBuffer()))
 }
 
 function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void {
-  const win = resolveHost()
+  const win = browserWin
   if (!win || win.isDestroyed()) return
 
   const alive = (): boolean => !wc.isDestroyed()
@@ -293,7 +454,6 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
   }
 
   if (params.isEditable) {
-    // Explicit wc.* — Menu roles use focused WebContents and miss the guest WCV.
     items.push(
       { type: 'separator' },
       {
@@ -346,28 +506,7 @@ function popupGuestContextMenu(wc: WebContents, params: ContextMenuParams): void
   Menu.buildFromTemplate(items).popup({ window: win })
 }
 
-function ensureGuest(parent: BrowserWindow): WebContentsView {
-  host = parent
-  if (guestAlive() && guest) {
-    attachGuest(parent)
-    return guest
-  }
-
-  guest = new WebContentsView({
-    webPreferences: {
-      session: guestSession(),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-      // HTML5 FS (YouTube etc.) stays inside WCV bounds — do not resize/fullscreen the host.
-      disableHtmlFullscreenWindowResize: true
-    }
-  })
-  guest.setBorderRadius(12)
-
-  const wc = guest.webContents
-  wc.setZoomFactor(GUEST_ZOOM_FACTOR)
-
+function wireGuest(wc: WebContents): void {
   wc.setWindowOpenHandler(({ url }) => {
     if (isHttpUrl(url)) void guestContents()?.loadURL(url)
     return { action: 'deny' }
@@ -379,35 +518,25 @@ function ensureGuest(parent: BrowserWindow): WebContentsView {
 
   wc.on('did-navigate', (_e, url) => {
     if (isHttpUrl(url)) loadedUrl = url
+    pushNavState()
   })
+  wc.on('did-navigate-in-page', () => pushNavState())
+  wc.on('did-finish-load', () => {
+    resetGuestZoom(wc)
+    pushNavState()
+  })
+  wc.on('page-title-updated', () => pushNavState())
 
   wc.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
     if (!isMainFrame) return
-    // -3 ERR_ABORTED is normal for redirects; -2 may be a superseded navigation.
     if (code === -3) return
     console.warn('browser did-fail-load', { code, desc, url })
   })
 
   wc.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown') return
-    if (input.key === 'Escape') {
-      resolveHost()?.webContents.send('browser:escape')
-      return
-    }
-    if (!(input.meta || input.control)) return
-    if (input.key === '+' || input.key === '=' || input.key === 'Add') {
-      event.preventDefault()
-      // Renderer owns user zoom; host steps userZoom then applies user×canvas.
-      notifyZoomStep(1)
-      return
-    }
-    if (input.key === '-' || input.key === '_' || input.key === 'Subtract') {
-      event.preventDefault()
-      notifyZoomStep(-1)
-    }
+    handleBrowserShortcut(event, input)
   })
 
-  // Electron has no default Chromium context menu — wire one for the guest.
   wc.on('context-menu', (_e, params) => {
     popupGuestContextMenu(wc, params)
   })
@@ -416,10 +545,176 @@ function ensureGuest(parent: BrowserWindow): WebContentsView {
     guest = null
     loadedUrl = ''
   })
+}
 
-  attachGuest(parent)
-  guest.setVisible(false)
-  return guest
+function isAllowedChromeUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const expected = new URL(browserUiUrl())
+    if (u.protocol !== expected.protocol) return false
+    if (u.protocol === 'file:') {
+      return (
+        path.normalize(decodeURIComponent(u.pathname)) ===
+        path.normalize(decodeURIComponent(expected.pathname))
+      )
+    }
+    return u.origin === expected.origin && u.pathname === expected.pathname
+  } catch {
+    return false
+  }
+}
+
+function handleBrowserShortcut(event: { preventDefault: () => void }, input: Input): void {
+  if (input.type !== 'keyDown') return
+  const mod = input.meta || input.control
+  if (mod && input.key.toLowerCase() === 'l') {
+    event.preventDefault()
+    if (chromeAlive() && browserWin) {
+      browserWin.webContents.focus()
+      sendToChrome('browser-ui:focus-url')
+    }
+    return
+  }
+  if (!mod) return
+  const guestWc = guestContents()
+  if (!guestWc) return
+  const key = input.key
+  // Chromium zoom: Cmd/Ctrl + / - / 0 (and numpad equivalents). Always the guest.
+  if (key === '=' || key === '+' || key === 'Add') {
+    event.preventDefault()
+    stepGuestZoom(guestWc, 1)
+    return
+  }
+  if (key === '-' || key === '_' || key === 'Subtract') {
+    event.preventDefault()
+    stepGuestZoom(guestWc, -1)
+    return
+  }
+  if (key === '0' || key === 'Digit0' || key === 'Numpad0') {
+    event.preventDefault()
+    resetGuestZoom(guestWc)
+  }
+}
+
+/** Chrome shares the app preload — never let it navigate to a remote origin. */
+function lockChromeContents(wc: WebContents): void {
+  wc.setWindowOpenHandler(() => ({ action: 'deny' }))
+  const block = (event: { preventDefault: () => void }, url: string) => {
+    if (!isAllowedChromeUrl(url)) event.preventDefault()
+  }
+  wc.on('will-navigate', block)
+  wc.on('will-redirect', block)
+  wc.on('will-attach-webview', (event) => event.preventDefault())
+}
+
+function ensureBrowserWindow(): BrowserWindow {
+  if (browserWin && !browserWin.isDestroyed() && guestAlive() && actionsAlive()) {
+    return browserWin
+  }
+
+  disposeBrowserWindow()
+
+  attachingBrowserWindow = true
+  try {
+    browserWin = new BrowserWindow({
+      width: 1100,
+      height: 800,
+      minWidth: 640,
+      minHeight: 480,
+      show: false,
+      title: 'Libritus',
+      titleBarStyle: 'hidden',
+      autoHideMenuBar: true,
+      backgroundColor: '#ebebeb',
+      ...(process.platform === 'darwin'
+        ? { trafficLightPosition: { x: 16, y: 17 } }
+        : {
+            titleBarOverlay: {
+              color: '#ebebeb',
+              symbolColor: '#2f2f2f',
+              height: 32
+            }
+          }),
+      webPreferences: {
+        preload: path.join(__dirname, '../preload/index.js'),
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    })
+  } finally {
+    attachingBrowserWindow = false
+  }
+
+  lockChromeContents(browserWin.webContents)
+  browserWin.webContents.on('did-finish-load', () => {
+    pushTargetState()
+    pushNavState()
+  })
+  browserWin.webContents.on('before-input-event', (event, input) => {
+    handleBrowserShortcut(event, input)
+  })
+  void browserWin.webContents.loadURL(browserUiUrl())
+
+  browserWin.on('close', (e) => {
+    if (isAppQuitting()) return
+    e.preventDefault()
+    hideBrowserWindow()
+  })
+
+  browserWin.on('resize', () => layoutBrowserChrome())
+  browserWin.on('show', () => {
+    const wc = guestContents()
+    if (wc && !wc.isDestroyed()) wc.setAudioMuted(false)
+    layoutBrowserChrome()
+  })
+
+  guest = new WebContentsView({
+    webPreferences: {
+      session: guestSession(),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      disableHtmlFullscreenWindowResize: true,
+      zoomFactor: 1.0
+    }
+  })
+  wireGuest(guest.webContents)
+  resetGuestZoom(guest.webContents)
+
+  actions = new WebContentsView({
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
+  actions.setBackgroundColor('#00000000')
+  lockChromeContents(actions.webContents)
+  actions.webContents.on('did-finish-load', () => {
+    pushTargetState()
+  })
+  actions.webContents.on('before-input-event', (event, input) => {
+    handleBrowserShortcut(event, input)
+  })
+  void actions.webContents.loadURL(`${browserUiUrl()}?panel=actions`)
+
+  browserWin.contentView.addChildView(guest)
+  browserWin.contentView.addChildView(actions)
+  layoutBrowserChrome()
+  return browserWin
+}
+
+function guestIsBlank(): boolean {
+  const wc = guestContents()
+  if (!wc) return true
+  try {
+    const url = wc.getURL()
+    return !url || url === 'about:blank' || url === ''
+  } catch {
+    return true
+  }
 }
 
 function navigate(url: string): void {
@@ -428,72 +723,205 @@ function navigate(url: string): void {
 
   try {
     const current = wc.getURL()
-    // Both must match: after deactivate, loadedUrl is cleared while about:blank is
-    // in-flight — current can still be the old http(s) URL; OR would skip reload
-    // and leave the guest blank when blank wins.
     if (current === url && loadedUrl === url) return
   } catch {
     // ignore
   }
 
   loadedUrl = url
-  // Prefer event-based completion; loadURL's promise rejects on every redirect.
   void wc.loadURL(url).catch(() => {
     /* did-fail-load / did-navigate handle outcomes */
   })
 }
 
-async function persistCapturePng(png: Buffer): Promise<string | null> {
-  if (!png.byteLength) return null
-  const fileId = randomUUID()
-  const dir = path.join(APP_DATA_DIR, 'attachments')
-  await fs.mkdir(dir, { recursive: true })
-  await fs.writeFile(path.join(dir, `${fileId}.png`), png)
-  return fileId
+async function capturePagePayload(captureId: string | null): Promise<{
+  fileId: string | null
+  url: string
+  width: number
+  height: number
+  captureId: string | null
+}> {
+  const wc = guestContents()
+  if (!wc) {
+    return { fileId: null, url: '', width: 0, height: 0, captureId }
+  }
+  let url = ''
+  try {
+    url = wc.getURL()
+  } catch {
+    url = ''
+  }
+  const image = await wc.capturePage()
+  const size = image.getSize()
+  const png = image.toPNG({ scaleFactor: 2 })
+  const fileId = await persistBytes(png, 'png')
+  const payload = {
+    fileId,
+    url: isHttpUrl(url) ? url : '',
+    width: size.width,
+    height: size.height,
+    captureId
+  }
+  sendToHost('browser:captured', payload)
+  return payload
+}
+
+/** Always adds a new card on the canvas. */
+async function captureNow(): Promise<{
+  fileId: string | null
+  url: string
+  width: number
+  height: number
+  captureId: string | null
+}> {
+  return capturePagePayload(null)
+}
+
+/** Replaces the selected search-capture card; no-op without a target. */
+async function updateNow(): Promise<{
+  fileId: string | null
+  url: string
+  width: number
+  height: number
+  captureId: string | null
+  ok: boolean
+}> {
+  if (!sourceCaptureId) {
+    return { fileId: null, url: '', width: 0, height: 0, captureId: null, ok: false }
+  }
+  const payload = await capturePagePayload(sourceCaptureId)
+  return { ...payload, ok: Boolean(payload.fileId) }
+}
+
+async function fetchPdfBytes(wc: WebContents, url: string): Promise<Buffer | null> {
+  try {
+    const res = await wc.session.fetch(url)
+    if (!res.ok) return null
+    const buf = await readBodyCapped(res.body, MAX_PDF_BYTES, res.headers.get('content-length'))
+    if (!buf) return null
+    if (buf.subarray(0, 5).toString() === '%PDF-') return buf
+    return null
+  } catch {
+    return null
+  }
+}
+
+async function savePdfNow(): Promise<{ ok: boolean }> {
+  const wc = guestContents()
+  if (!wc) return { ok: false }
+  let url = ''
+  let title = 'PDF'
+  try {
+    url = wc.getURL()
+    title = wc.getTitle() || title
+  } catch {
+    /* ignore */
+  }
+
+  let previewImage: NativeImage | null = null
+  try {
+    previewImage = await wc.capturePage()
+  } catch (err) {
+    console.warn('browser savePdf preview capture failed', err)
+  }
+
+  let pdf: Buffer | null = null
+  if (isPdfHttpUrl(url)) {
+    pdf = await fetchPdfBytes(wc, url)
+  }
+  if (!pdf) {
+    try {
+      pdf = Buffer.from(
+        await wc.printToPDF({
+          printBackground: true,
+          preferCSSPageSize: true
+        })
+      )
+    } catch (err) {
+      console.warn('browser printToPDF failed', err)
+      return { ok: false }
+    }
+  }
+  if (!pdf.byteLength || pdf.byteLength > MAX_PDF_BYTES) return { ok: false }
+
+  const pdfFileId = await persistBytes(pdf, 'pdf')
+  if (!pdfFileId) return { ok: false }
+
+  let previewFileId: string | null = null
+  let previewWidth = 0
+  let previewHeight = 0
+  if (previewImage && !previewImage.isEmpty()) {
+    const size = previewImage.getSize()
+    previewFileId = await persistBytes(previewImage.toPNG({ scaleFactor: 2 }), 'png')
+    previewWidth = size.width
+    previewHeight = size.height
+  }
+
+  sendToHost('browser:pdf-saved', {
+    pdfFileId,
+    previewFileId,
+    previewWidth,
+    previewHeight,
+    url: isHttpUrl(url) ? url : '',
+    title
+  })
+  return { ok: true }
 }
 
 export function attachWebBrowserIpc(): void {
-  ipcMain.handle('browser:open', async (_e, payload: OpenPayload) => {
-    if (!isHttpUrl(payload.url)) throw new Error('Only http(s) URLs are allowed')
-    const win = resolveHost() ?? BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ?? null
-    if (!win) throw new Error('No browser window')
+  ipcMain.handle('browser:show', (_e, payload: ShowPayload = {}) => {
+    const win = ensureBrowserWindow()
 
-    const view = ensureGuest(win)
-    const initialZoom =
-      typeof payload.zoomFactor === 'number' && Number.isFinite(payload.zoomFactor)
-        ? payload.zoomFactor
-        : GUEST_ZOOM_FACTOR
-    // Silent — renderer owns chrome % (user zoom); this is effective = user × canvas.
-    const zoomFactor = setGuestZoomFactor(initialZoom)
-    ignoreDeactivateUntil = Date.now() + OPEN_GRACE_MS
-    applyBounds(payload.bounds)
-    // ponytail: hide-not-detach — never removeChildView mid-load (historical ERR_FAILED).
-    view.setVisible(true)
-    // Re-apply after visible — Chromium sometimes drops the pre-show zoomFactor.
-    setGuestZoomFactor(zoomFactor)
-    // Deactivate mutes + blanks; unmute so the next page can play audio again.
-    view.webContents.setAudioMuted(false)
-    navigate(payload.url)
-    return { ok: true as const, zoomFactor }
-  })
+    const nextUrl =
+      typeof payload.url === 'string' && isHttpUrl(payload.url)
+        ? payload.url
+        : guestIsBlank()
+          ? DEFAULT_URL
+          : null
+    if (nextUrl) navigate(nextUrl)
 
-  ipcMain.handle('browser:setBounds', (_e, bounds: BrowserBounds) => {
-    if (!guestAlive()) return { ok: false as const }
-    applyBounds(bounds)
+    win.show()
+    win.focus()
+    const wc = guestContents()
+    if (wc && !wc.isDestroyed()) {
+      wc.setAudioMuted(false)
+      resetGuestZoom(wc)
+    }
+    layoutBrowserChrome()
+    pushTargetState()
     return { ok: true as const }
   })
 
-  // Absolute effective zoom (user × canvas). Silent — do not spam chrome on pan/zoom sync.
-  ipcMain.handle('browser:setZoom', (_e, zoomFactor: number) => {
-    if (!guestContents()) return { zoomFactor: GUEST_ZOOM_FACTOR }
-    if (typeof zoomFactor !== 'number' || !Number.isFinite(zoomFactor)) {
-      return { zoomFactor: getGuestZoomFactor() }
-    }
-    return { zoomFactor: setGuestZoomFactor(zoomFactor) }
+  ipcMain.handle('browser:setCaptureTarget', (_e, payload: CaptureTargetPayload | null) => {
+    setCaptureTarget(payload)
+    return { ok: true as const }
   })
 
-  ipcMain.handle('browser:getZoom', () => {
-    return { zoomFactor: getGuestZoomFactor() }
+  ipcMain.handle('browser:hide', () => {
+    hideBrowserWindow()
+    return { ok: true as const }
+  })
+
+  ipcMain.handle('browser:close', () => {
+    setCaptureTarget(null)
+    disposeBrowserWindow()
+    return { ok: true as const }
+  })
+
+  ipcMain.handle('browser:isVisible', () => {
+    return {
+      visible: Boolean(browserWin && !browserWin.isDestroyed() && browserWin.isVisible())
+    }
+  })
+
+  ipcMain.handle('browser:getCaptureTarget', () => {
+    return sourceCaptureId
+      ? {
+          captureId: sourceCaptureId,
+          thumbnailDataUrl: sourceCaptureThumb,
+          title: sourceCaptureTitle
+        }
+      : { captureId: null }
   })
 
   ipcMain.handle('browser:goBack', () => {
@@ -510,6 +938,14 @@ export function attachWebBrowserIpc(): void {
     return { ok: true as const }
   })
 
+  ipcMain.handle('browser:navigate', (_e, raw: unknown) => {
+    const url = typeof raw === 'string' ? normalizeNavigateUrl(raw) : null
+    if (!url) return { ok: false as const }
+    if (!guestAlive()) ensureBrowserWindow()
+    navigate(url)
+    return { ok: true as const, url }
+  })
+
   ipcMain.handle('browser:openExternal', async () => {
     const url = guestContents()?.getURL() ?? ''
     if (!isHttpUrl(url)) return { ok: false as const }
@@ -517,7 +953,6 @@ export function attachWebBrowserIpc(): void {
     return { ok: true as const, url }
   })
 
-  // E2E / debug: live guest URL (including about:blank after deactivate).
   ipcMain.handle('browser:getUrl', () => {
     const wc = guestContents()
     if (!wc) return { url: '' as const }
@@ -528,53 +963,24 @@ export function attachWebBrowserIpc(): void {
     }
   })
 
-  ipcMain.handle('browser:deactivate', async () => {
-    if (Date.now() < ignoreDeactivateUntil) {
-      return { fileId: null as string | null, url: '', deferred: true as const }
+  ipcMain.handle('browser:captureNow', () => captureNow())
+
+  ipcMain.handle('browser:updateNow', () => updateNow())
+
+  ipcMain.handle('browser:savePdfNow', () => savePdfNow())
+
+  ipcMain.handle('browser:setActionsSize', (e, payload: { width?: unknown; height?: unknown }) => {
+    if (!actionsAlive() || !actions || e.sender !== actions.webContents) {
+      return { ok: false as const }
     }
-
-    const wc = guestContents()
-    if (!wc || !guestAlive()) {
-      hideGuest()
-      return { fileId: null as string | null, url: '' }
+    const width = typeof payload?.width === 'number' ? payload.width : NaN
+    const height = typeof payload?.height === 'number' ? payload.height : NaN
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return { ok: false as const }
+    actionsSize = {
+      width: Math.min(800, Math.max(1, Math.round(width))),
+      height: Math.min(200, Math.max(1, Math.round(height)))
     }
-
-    let fileId: string | null = null
-    let url = ''
-    try {
-      url = wc.getURL()
-    } catch {
-      url = ''
-    }
-
-    // Capture before hide.
-    try {
-      const png = (await wc.capturePage()).toPNG({ scaleFactor: 2 })
-      fileId = await persistCapturePng(png)
-    } catch (err) {
-      console.error('browser:deactivate capture failed', err)
-    }
-
-    // Persist cookie jar to disk before blanking (login / consent survives next open).
-    try {
-      await wc.session.cookies.flushStore()
-    } catch (err) {
-      console.warn('browser:deactivate cookie flush failed', err)
-    }
-
-    // Stop media (YouTube etc.) without detach — hide-not-detach stays (historical ERR_FAILED).
-    wc.setAudioMuted(true)
-    loadedUrl = ''
-    void wc.loadURL('about:blank').catch(() => {
-      /* did-fail-load / destroyed — ignore */
-    })
-
-    hideGuest()
-    return { fileId, url: isHttpUrl(url) ? url : '' }
-  })
-
-  ipcMain.handle('browser:close', () => {
-    disposeGuest()
+    layoutBrowserChrome()
     return { ok: true as const }
   })
 }

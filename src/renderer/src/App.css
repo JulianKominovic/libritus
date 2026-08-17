@@ -167,6 +167,14 @@
   #root {
     @apply h-full overflow-hidden;
   }
+  html.browser-actions,
+  html.browser-actions body,
+  html.browser-actions #root {
+    @apply bg-transparent overflow-hidden;
+  }
+  html.browser-actions #root {
+    @apply flex items-center justify-center;
+  }
   input[type='color']::-webkit-color-swatch {
     border: none;
     padding: 0;
@@ -186,7 +194,9 @@
     user-select: none;
   }
   .window-nav button,
-  .window-nav a {
+  .window-nav a,
+  .window-nav input,
+  .window-nav img {
     -webkit-app-region: no-drag;
   }
   [data-slot='sheet-content'],

@@ -28,6 +28,7 @@ export const en = {
   sidebar_delete_category_confirm: 'Yes! Delete it',
   sidebar_pdf_count: '{count} pdfs',
   navbar_toggle_pdf_sidebar_aria: 'Toggle PDF sidebar',
+  navbar_open_browser_aria: 'Open web browser',
 
   // Home
   home_welcome: 'Welcome to Libritus',
@@ -138,12 +139,11 @@ export const en = {
   // Search capture browser chrome
   browser_back_aria: 'Back',
   browser_forward_aria: 'Forward',
-  browser_zoom_out: 'Zoom out ({keys}−)',
-  browser_zoom_in: 'Zoom in ({keys}+)',
-  browser_portrait_aria: 'Portrait size',
-  browser_portrait_title: 'Portrait ({w}×{h})',
-  browser_landscape_aria: 'Landscape size',
-  browser_landscape_title: 'Landscape ({w}×{h})',
+  browser_url_placeholder: 'Search or enter URL',
+  browser_capture: 'Capture',
+  browser_replace_capture: 'Replace Capture',
+  browser_updating_capture: 'Updating this capture',
+  browser_save_pdf: 'Save as PDF',
   browser_save_filter_images: 'Images',
 
   // PDF layer links

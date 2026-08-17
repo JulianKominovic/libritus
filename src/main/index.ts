@@ -5,7 +5,11 @@ import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import attachIPCListeners from './listeners'
 import { setupAutoUpdater } from './updater'
-import { prepareWebBrowserCookies } from './web-browser'
+import {
+  isAttachingWebBrowserWindow,
+  isWebBrowserWindow,
+  prepareWebBrowserCookies
+} from './web-browser'
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const APP_ID = IS_DEV ? 'dev.jkominovic.libritus-dev' : 'dev.jkominovic.libritus'
@@ -40,11 +44,20 @@ function finishQuitOrClose(): void {
   }
 }
 
+export function isAppQuitting(): boolean {
+  return allowQuit
+}
+
 function askRendererToFlushBeforeQuit(): void {
   if (flushingForQuit || allowQuit) return
   flushingForQuit = true
 
-  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  const focused = BrowserWindow.getFocusedWindow()
+  const win =
+    focused && !isWebBrowserWindow(focused)
+      ? focused
+      : (BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && !isWebBrowserWindow(w)) ??
+        null)
   if (!win) {
     finishQuitOrClose()
     return
@@ -133,6 +146,7 @@ app.whenReady().then(async () => {
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
+    if (isAttachingWebBrowserWindow() || isWebBrowserWindow(window)) return
     optimizer.watchWindowShortcuts(window)
   })
 
@@ -167,7 +181,10 @@ app.whenReady().then(async () => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) {
+    const appWindows = BrowserWindow.getAllWindows().filter(
+      (w) => !w.isDestroyed() && !isWebBrowserWindow(w)
+    )
+    if (appWindows.length === 0) {
       allowQuit = false
       quitRequested = false
       flushingForQuit = false
@@ -187,7 +204,10 @@ app.on('before-quit', (e) => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  const appWindows = BrowserWindow.getAllWindows().filter(
+    (w) => !w.isDestroyed() && !isWebBrowserWindow(w)
+  )
+  if (appWindows.length === 0 && process.platform !== 'darwin') {
     app.quit()
   }
 })

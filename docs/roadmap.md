@@ -49,7 +49,7 @@ Aligned with [`product-north.md`](features/product-north.md). **Do not** ship au
 | Remove / keep-hidden sidebar AI Chat | Drop Chat from `PdfSidebar` permanently when canvas Q&A ships; do not deepen the silo                                                                                                    |
 | AI Q&A → canvas cards                | Explicit ask → session artifacts (e.g. `pdfQa`); citations + deletable like other elements                                                                                               |
 | Nav-only PDF sidebar                 | Destination: Outline + Pages only; decide Annotations / other research chrome then                                                                                                       |
-| Canvas research artifacts            | Vocabulary, translations, YouTube / web embeds, cross-PDF links — first-class canvas types over time (search captures: done — [`web-search-capture.md`](features/web-search-capture.md)) |
+| Canvas research artifacts            | Vocabulary, translations, YouTube / web embeds, cross-PDF links — first-class canvas types over time (search captures: done — [`web-search-capture.md`](features/web-search-capture.md); PDF clip annotation / library cites: [`pdf-clips.md`](features/pdf-clips.md)) |
 
 ---
 

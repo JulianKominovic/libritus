@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { chromeLikeUserAgent, isBlockedUrl, isHttpUrl } from './web-browser-url'
+import {
+  chromeLikeUserAgent,
+  isBlockedUrl,
+  isHttpUrl,
+  isPdfHttpUrl,
+  normalizeNavigateUrl
+} from './web-browser-url'
 
 describe('isHttpUrl', () => {
   test('allows http and https', () => {
@@ -44,5 +50,40 @@ describe('chromeLikeUserAgent', () => {
     const raw =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
     expect(chromeLikeUserAgent(raw)).toBe(raw)
+  })
+})
+
+describe('isPdfHttpUrl', () => {
+  test('detects .pdf paths', () => {
+    expect(isPdfHttpUrl('https://example.com/paper.pdf')).toBe(true)
+    expect(isPdfHttpUrl('https://example.com/paper.pdf?dl=1')).toBe(true)
+  })
+
+  test('rejects html', () => {
+    expect(isPdfHttpUrl('https://example.com/paper')).toBe(false)
+    expect(isPdfHttpUrl('file:///tmp/x.pdf')).toBe(false)
+  })
+})
+
+describe('normalizeNavigateUrl', () => {
+  test('passes through http(s)', () => {
+    expect(normalizeNavigateUrl('https://example.com/a')).toBe('https://example.com/a')
+  })
+
+  test('adds https for bare hosts', () => {
+    expect(normalizeNavigateUrl('example.com')).toBe('https://example.com')
+    expect(normalizeNavigateUrl('localhost:3000')).toBe('https://localhost:3000')
+  })
+
+  test('rejects privileged schemes', () => {
+    expect(normalizeNavigateUrl('javascript:alert(1)')).toBe(null)
+    expect(normalizeNavigateUrl('file:///tmp')).toBe(null)
+    expect(normalizeNavigateUrl('')).toBe(null)
+  })
+
+  test('queries with spaces go to Google search', () => {
+    expect(normalizeNavigateUrl('hello world')).toBe(
+      'https://www.google.com/search?q=hello%20world'
+    )
   })
 })

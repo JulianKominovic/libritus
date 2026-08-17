@@ -365,8 +365,17 @@ test('promoted search image: browse chip on select, hide on deselect/browse', as
     await clickScene(page, capX + 4, capY + 60)
     await expect(chip).toBeVisible({ timeout: 5_000 })
     await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expect(page.locator('[data-browser-chrome]')).toBeVisible({ timeout: 15_000 })
-    await expect(chip).toBeHidden()
+    await expect
+      .poll(
+        async () => {
+          const result = await page.evaluate(() =>
+            (window as any).electron.ipcRenderer.invoke('browser:isVisible')
+          )
+          return result?.visible === true
+        },
+        { timeout: 15_000 }
+      )
+      .toBe(true)
   } finally {
     await close()
   }

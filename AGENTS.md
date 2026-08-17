@@ -35,7 +35,7 @@ Guiding principles:
 | Click highlight → “Add note” / “Buscar” / “Remove” chips (+ note/search arrows)                | `PdfCanvasApp`, `pdfNotes`, `pdfSearchCapture`                                                                                                        |
 | Remove highlight cascades linked notes + search captures + arrows                              | `idsDeletedWithHighlight`, `PdfCanvasApp`                                                                                                             |
 | WYSIWYG notes (Plate + `pdfNote` embeddable)                                                   | `NoteEmbed`, `pdfNotes`, `pdfNoteModel`                                                                                                               |
-| Web search capture (Buscar / Place browser → guest WebContentsView → PNG as native image)      | `SearchCaptureEmbed`, `pdfSearchCapture`, `src/main/web-browser.ts`                                                                                   |
+| Web search capture (Buscar / Place browser / navbar → singleton browser window → PNG or PDF clip) | `SearchCaptureEmbed`, `pdfSearchCapture`, `pdfClip`, `src/main/web-browser.ts` |
 | Freehand / shapes / undo                                                                       | Excalidraw built-in                                                                                                                                   |
 | Page navigation (prev/next, input, current page)                                               | `PageNavigator`, `PageLayout`, `PdfCanvasApp`                                                                                                         |
 | Internal PDF links (Goto / destination → `goToPage`)                                           | `pdfLinks`, `PdfLayer` hit overlays, `PdfCanvasApp`                                                                                                   |
@@ -54,7 +54,7 @@ Guiding principles:
 | **v1.1**  | Migrate legacy highlights/comments/essays from `categories.json`   | Data transform only — lector Plate editor stack retired in dead-code sweep; migration parses stored fields against current WYSIWYG notes (see [`legacy-migration-and-export.md`](docs/features/legacy-migration-and-export.md)) |
 | **v1.1**  | Essays HUD / reading shortcuts / navigation history                | See feature specs                                                                      |
 | **Scale** | Visible-set cap, LOD beyond Phase 1, evict release, streaming/OPFS | Stay on Excalidraw — see roadmap                                                       |
-| **Later** | Canvas Q&A cards; nav-only PDF sidebar; retire Chat silo           | See [`product-north.md`](docs/features/product-north.md), roadmap                      |
+| **Later** | Canvas Q&A cards; nav-only PDF sidebar; retire Chat silo; PDF clips annotation / library cites | See [`product-north.md`](docs/features/product-north.md), [`pdf-clips.md`](docs/features/pdf-clips.md), roadmap |
 
 See [`docs/roadmap.md`](docs/roadmap.md).
 
@@ -66,7 +66,7 @@ Electron + React. **Excalidraw = camera + annotation tools.** PDF = virtualized 
 
 ```
 src/main/                     # Electron main + IPC (read/write appData)
-  web-browser.ts              # guest WebContentsView (search capture)
+  web-browser.ts              # singleton BrowserWindow guest (search capture + save PDF)
   web-browser-url.ts          # http(s) allowlist for guest nav
 src/renderer/src/
   pages/pdf.tsx               # Route: mounts PdfCanvasApp
@@ -74,8 +74,7 @@ src/renderer/src/
     PdfCanvasApp.tsx          # open, session, autosave, text select (selection tool), notes, search capture, Excalidraw
     NoteEmbed.tsx             # Plate inside Excalidraw renderEmbeddable
     SearchCaptureEmbed.tsx    # placeholder chrome for pdf-search-capture embeddable
-    BrowserChrome.tsx         # back/forward/zoom/orientation over guest
-    useSearchCaptureBrowser.ts # open/bounds/deactivate + promote PNG → image
+    useSearchCaptureBrowser.ts # show/hide window + Capturar (add) / Actualizar / Guardar como PDF → canvas
     PdfLayer.tsx              # sync pools ↔ camera; CSS transform
     PageNavigator.tsx         # current / total, prev/next, jump
     PdfSidebar.tsx            # outline + virtualized page thumbs + annotations list
@@ -95,6 +94,7 @@ src/renderer/src/
     selectionToHighlights.ts  # EmbedPDF formatted selection → Excalidraw highlights
     pdfNotes.ts / pdfNoteModel.ts  # WYSIWYG notes (embeddable + plateValue)
     pdfSearchCapture.ts       # search capture model + arrow sync + promote-to-image
+    pdfClip.ts                # compact PDF preview cards (browser save; cite-other-PDFs later)
     session.ts                # SessionSnapshot + read/write helpers
     types.ts
   integrations/webBrowser.ts  # renderer IPC for guest browser
@@ -103,7 +103,7 @@ src/renderer/src/
 
 Feature docs (done): [`wysiwyg-notes`](docs/features/wysiwyg-notes.md), [`pdf-navigation`](docs/features/pdf-navigation.md), [`persistence-and-sessions`](docs/features/persistence-and-sessions.md), [`pdf-search`](docs/features/pdf-search.md), [`outline-and-thumbnails`](docs/features/pdf-outline-and-thumbnails.md), [`annotation-panel`](docs/features/annotation-panel.md), [`pdf-rag-chat`](docs/features/pdf-rag-chat.md) (Chat unmounted), [`web-search-capture`](docs/features/web-search-capture.md), [`annotation-polish`](docs/features/annotation-polish.md), [`adaptive-pdf-render-scale`](docs/features/adaptive-pdf-render-scale.md) (Phase 1).
 
-Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`page-space-annotations`](docs/features/page-space-annotations.md) (optional), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md), [`navigation-history`](docs/features/navigation-history.md).
+Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md), [`essays-hud`](docs/features/essays-hud.md), [`page-space-annotations`](docs/features/page-space-annotations.md) (optional), [`legacy-migration-and-export`](docs/features/legacy-migration-and-export.md), [`navigation-history`](docs/features/navigation-history.md), [`pdf-clips`](docs/features/pdf-clips.md) (preview shipped; annotation/cites planned).
 
 ### Flow
 
@@ -114,7 +114,7 @@ Feature docs (planned): [`reading-shortcuts`](docs/features/reading-shortcuts.md
 5. Zoom: same texture; only `translate * zoom` + `scale(zoom)`.
 6. Highlights: Excalidraw rects with `customData.pdfHighlight`, `locked: true` — **scene space** (from EmbedPDF `getFormattedSelection()`).
 7. Notes: Excalidraw **embeddables** with `customData.pdfNote` + `plateValue` (solid fill); Plate via `renderEmbeddable` / `NoteEmbed` (see wysiwyg-notes doc).
-8. Search captures: placeholder embeddable → guest `WebContentsView` on activate → PNG in `attachments/` → native Excalidraw `image` (see web-search-capture doc).
+8. Search captures: placeholder embeddable → singleton browser window → Capturar (new card) or Actualizar (selected card) PNG in `attachments/` → native Excalidraw `image` (see web-search-capture doc). Save as PDF → `pdfClip` preview card.
 
 ### Conscious gaps (improve on Excalidraw)
 
@@ -223,7 +223,7 @@ Lowering only `DEFAULT_POOL_SIZE` (12→3) now **directly reduces peak RAM**: po
 
 - **Unit:** `*.test.ts` next to pure logic; run with `bun test` (`bun:test`). Prefer this over selfchecks.
 - **E2E:** `e2e/**/*.spec.ts` with Playwright `_electron` against a production build. Isolate data via `LIBRITUS_APP_DATA_DIR`. Run `bun run test:e2e` (builds first).
-- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec` (disabled — AI Settings UI parked), `pdf-links.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
+- **Canvas coverage (canonical):** unit — `pdfNotes`, `pdfHighlightModel` / `sceneHit` hit-tests, `pdfSearchCapture`, `pdfClip`, `session` parse, `sessionPersist` dirty gate, `sessionOpen` apply gate, `PageLayout`, `mergeSameLineRects`, `selectionToHighlights` (`formattedSelectionToHighlightSkeletons`), `PagePool` (incl. gen abort), `ThumbPool`, `visibilityBuffer`, `pdfSearch`, `pdfOutline`, `pdfLinks`, `annotationList`, `pdfRag`, `ragIndexQueue`, `pageWorldScale` / `renderScaleForWorld`. E2E — `session.spec`, `notes.spec`, `web-search-capture.spec`, `highlights.spec` (EmbedPDF drag-select + toolbar; no `.textLayer`), `autosave.spec`, `canvas-stats.spec`, `open-race.spec`, `quit-flush.spec`, `pdf-canvas.spec`, `search.spec`, `outline-thumbs.spec`, `annotation-panel.spec`, `rag-chat.spec` (disabled — AI Settings UI parked), `pdf-links.spec`. Helpers: `e2e/helpers/seed.ts`, `e2e/helpers/canvas.ts` (`dragSelectPdfPage`, `expectSaved` / `expectUnsaved`).
 - Do not add Vitest/Jest. Do not add new `*.selfcheck.ts` files.
 
 ## Scripts

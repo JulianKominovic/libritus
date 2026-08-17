@@ -49,14 +49,30 @@ function isSearchArrow(el: Record<string, unknown>): boolean {
   return (el.customData as { pdfSearchArrow?: boolean } | undefined)?.pdfSearchArrow === true
 }
 
-async function expectBrowserChromeVisible(page: import('playwright').Page): Promise<void> {
-  const chrome = page.locator('[data-browser-chrome]')
-  await expect(chrome).toBeVisible({ timeout: 15_000 })
-  await expect(chrome.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
+function isPdfClip(el: Record<string, unknown>): boolean {
+  return (el.customData as { pdfClip?: boolean } | undefined)?.pdfClip === true
 }
 
-async function expectBrowserChromeHidden(page: import('playwright').Page): Promise<void> {
-  await expect(page.locator('[data-browser-chrome]')).toBeHidden({ timeout: 15_000 })
+async function browserVisible(page: import('playwright').Page): Promise<boolean> {
+  const result = await page.evaluate(() =>
+    (window as any).electron.ipcRenderer.invoke('browser:isVisible')
+  )
+  return result?.visible === true
+}
+
+async function expectBrowserVisible(page: import('playwright').Page): Promise<void> {
+  await expect.poll(() => browserVisible(page), { timeout: 15_000 }).toBe(true)
+}
+
+async function expectBrowserHidden(page: import('playwright').Page): Promise<void> {
+  await expect.poll(() => browserVisible(page), { timeout: 15_000 }).toBe(false)
+}
+
+async function browserCaptureTargetId(page: import('playwright').Page): Promise<string | null> {
+  const result = await page.evaluate(() =>
+    (window as any).electron.ipcRenderer.invoke('browser:getCaptureTarget')
+  )
+  return typeof result?.captureId === 'string' ? result.captureId : null
 }
 
 async function guestUrl(page: import('playwright').Page): Promise<string> {
@@ -66,14 +82,16 @@ async function guestUrl(page: import('playwright').Page): Promise<string> {
   return typeof result?.url === 'string' ? result.url : ''
 }
 
-/**
- * Outside-click for deactivate. Must land on the Excalidraw canvas inside
- * `.excalidraw-host` — not PDF tools (`top-12` centered toolbar) and not
- * Excalidraw `@next` `.compact-shape-actions` (covers top-left when selected).
- * Seeded captures in these tests sit near (80,40)+(300×300).
- */
-async function clickOutsideCapture(page: import('playwright').Page): Promise<void> {
-  await clickScene(page, 200, 400)
+async function captureFromBrowser(page: import('playwright').Page): Promise<void> {
+  await page.evaluate(() => (window as any).electron.ipcRenderer.invoke('browser:captureNow'))
+}
+
+async function updateCaptureFromBrowser(page: import('playwright').Page): Promise<void> {
+  await page.evaluate(() => (window as any).electron.ipcRenderer.invoke('browser:updateNow'))
+}
+
+async function savePdfFromBrowser(page: import('playwright').Page): Promise<void> {
+  await page.evaluate(() => (window as any).electron.ipcRenderer.invoke('browser:savePdfNow'))
 }
 
 test('Place browser creates unanchored search capture without arrow', async () => {
@@ -100,7 +118,7 @@ test('Place browser creates unanchored search capture without arrow', async () =
     await clickScene(page, 450, 400)
     await expectUnsaved(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
 
     await leaveToHome(page)
 
@@ -166,7 +184,7 @@ test('Paste http(s) URL creates unanchored search capture', async () => {
 
     await expectUnsaved(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
 
     await leaveToHome(page)
 
@@ -271,7 +289,7 @@ test('Drop http(s) URL creates unanchored search capture', async () => {
 
     await expectUnsaved(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
 
     await leaveToHome(page)
 
@@ -365,7 +383,7 @@ test('Drop text/plain-only http(s) URL creates search capture', async () => {
 
     await expectUnsaved(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
 
     await leaveToHome(page)
 
@@ -409,7 +427,7 @@ test('Search from highlight creates search capture + host-managed arrow', async 
       .click({ timeout: 10_000 })
     await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 10_000 })
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 10_000 })
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
 
     await leaveToHome(page)
 
@@ -626,7 +644,7 @@ test('deleting search capture cascades arrow', async () => {
   }
 })
 
-test('deleting search capture while browsing disposes guest', async () => {
+test('deleting search capture while browser is open keeps the window', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-search-del-browse-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
   const capX = 80
@@ -663,14 +681,14 @@ test('deleting search capture while browsing disposes guest', async () => {
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
 
     await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
     await page.waitForTimeout(900)
 
     // Edge select keeps guest; Backspace must dispose without an outside click.
     await clickScene(page, capX + 4, capY + 60)
     await page.keyboard.press('Backspace')
 
-    await expectBrowserChromeHidden(page)
+    await expectBrowserVisible(page)
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(0, { timeout: 10_000 })
   } finally {
     await close()
@@ -759,7 +777,7 @@ test('undo delete search capture restores arrow', async () => {
   }
 })
 
-test('center-click activates browse; outside click captures PNG as native image', async () => {
+test('center-click opens browser; Update capture pins PNG as native image', async () => {
   const appDataDir = await tmpAppData('libritus-e2e-search-activate-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
   const capX = 80
@@ -795,14 +813,13 @@ test('center-click activates browse; outside click captures PNG as native image'
 
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
 
-    // Middle third of the card (host-owned activate for embeddable).
     await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
+    await expect.poll(() => guestUrl(page), { timeout: 15_000 }).toMatch(/^https?:\/\//)
 
-    // Let guest load a bit, then wait out open grace and click outside.
-    await page.waitForTimeout(1200)
-    await clickOutsideCapture(page)
-    await expectBrowserChromeHidden(page)
+    await page.waitForTimeout(800)
+    await updateCaptureFromBrowser(page)
+    await expectBrowserVisible(page)
     await expectUnsaved(page)
 
     await leaveToHome(page)
@@ -821,6 +838,7 @@ test('center-click activates browse; outside click captures PNG as native image'
 
     const cap = liveElements(snap).find(isSearchCapture)!
     expect(cap.type).toBe('image')
+    expect(cap.id).toBe('cap-activate')
     const fileId = (cap.customData as { fileId: string }).fileId
     expect(fileId).toBeTruthy()
     await access(path.join(appDataDir, 'attachments', `${fileId}.png`))
@@ -829,8 +847,8 @@ test('center-click activates browse; outside click captures PNG as native image'
   }
 })
 
-test('open grace ignores outside click for 800ms', async () => {
-  const appDataDir = await tmpAppData('libritus-e2e-search-grace-')
+test('deselecting a web embed hides Replace capture', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-search-deselect-target-')
   const { categoryId, pdfId } = await seedLibrary({ appDataDir })
   const capX = 80
   const capY = 40
@@ -844,61 +862,12 @@ test('open grace ignores outside click for 800ms', async () => {
     camera: { scrollX: 0, scrollY: 0, zoom: 1 },
     elements: [
       seedSearchCaptureElement({
-        id: 'cap-grace',
+        id: 'cap-deselect',
         x: capX,
         y: capY,
         width: capW,
         height: capH,
-        query: 'grace',
-        url: 'https://example.com'
-      })
-    ]
-  })
-
-  const { page, close } = await launchApp({ appDataDir })
-  try {
-    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
-      timeout: 30_000
-    })
-    await openPdf(page, categoryId, pdfId)
-    await closePdfSidebar(page)
-
-    await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expectBrowserChromeVisible(page)
-
-    // Immediate outside click must not close (renderer + main grace).
-    await clickOutsideCapture(page)
-    await expectBrowserChromeVisible(page)
-
-    await page.waitForTimeout(900)
-    await clickOutsideCapture(page)
-    await expectBrowserChromeHidden(page)
-  } finally {
-    await close()
-  }
-})
-
-test('while browsing, edge resize keeps guest and free aspect', async () => {
-  const appDataDir = await tmpAppData('libritus-e2e-search-resize-')
-  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
-  const capX = 80
-  const capY = 40
-  const capW = 300
-  const capH = 300
-
-  await seedSession(appDataDir, pdfId, {
-    version: 1,
-    docId: pdfId,
-    updatedAt: new Date().toISOString(),
-    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
-    elements: [
-      seedSearchCaptureElement({
-        id: 'cap-resize',
-        x: capX,
-        y: capY,
-        width: capW,
-        height: capH,
-        query: 'resize',
+        query: 'example',
         url: 'https://example.com'
       })
     ]
@@ -914,48 +883,76 @@ test('while browsing, edge resize keeps guest and free aspect', async () => {
 
     await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
 
-    // Select via right-edge hit (outside center-third — does not activate).
-    await clickScene(page, capX + capW - 10, capY + capH / 2)
     await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expectBrowserChromeVisible(page)
-    await page.waitForTimeout(1200)
+    await expectBrowserVisible(page)
+    await expect.poll(() => browserCaptureTargetId(page), { timeout: 10_000 }).toBe('cap-deselect')
 
-    // Guest WCV aligns to chrome left/width (chrome sits just above the card).
-    const chromeBox = await page.locator('[data-browser-chrome]').boundingBox()
-    if (!chromeBox) throw new Error('no chrome box')
-    const edgeX = chromeBox.x + chromeBox.width + 6
-    const midY = chromeBox.y + chromeBox.height + capH / 2
-    await page.mouse.move(edgeX, midY)
-    await page.mouse.down()
-    await page.mouse.move(edgeX + 100, midY, { steps: 12 })
-    await page.mouse.up()
-    await expectBrowserChromeVisible(page)
+    // Below the card; not compact shape actions (20,20) or PDF tools toolbar.
+    await clickScene(page, 200, 400)
+    await expect.poll(() => browserCaptureTargetId(page), { timeout: 10_000 }).toBeNull()
+    await expectBrowserVisible(page)
+  } finally {
+    await close()
+  }
+})
 
-    await clickOutsideCapture(page)
-    await expectBrowserChromeHidden(page)
+test('Capturar always adds a new card even when one is selected', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-search-capture-add-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const capX = 80
+  const capY = 40
+  const capW = 300
+  const capH = 300
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedSearchCaptureElement({
+        id: 'cap-existing',
+        x: capX,
+        y: capY,
+        width: capW,
+        height: capH,
+        query: 'existing',
+        url: 'https://example.com'
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await expect(page.locator('[data-pdf-search-capture]')).toHaveCount(1, { timeout: 15_000 })
+
+    await clickScene(page, capX + capW / 2, capY + capH / 2)
+    await expectBrowserVisible(page)
+    await expect.poll(() => guestUrl(page), { timeout: 15_000 }).toMatch(/^https?:\/\//)
+
+    await page.waitForTimeout(800)
+    await captureFromBrowser(page)
     await expectUnsaved(page)
 
     await leaveToHome(page)
 
     const snap = await waitForSession(
       () => readSessionFile(appDataDir, pdfId),
-      (s) => {
-        const cap = liveElements(s).find(isSearchCapture)
-        return (
-          !!cap &&
-          cap.type === 'image' &&
-          typeof (cap.customData as { fileId?: string })?.fileId === 'string' &&
-          typeof cap.width === 'number' &&
-          (cap.width as number) > capW + 40
-        )
-      }
+      (s) => liveElements(s).filter(isSearchCapture).length >= 2
     )
 
-    const cap = liveElements(snap).find(isSearchCapture)!
-    expect(cap.type).toBe('image')
-    expect(cap.width as number).toBeGreaterThan(capW + 40)
-    // Free axis: height must not grow with the diagonal aspect lock (~same as seed).
-    expect(Math.abs((cap.height as number) - capH)).toBeLessThan(20)
+    const captures = liveElements(snap).filter(isSearchCapture)
+    expect(captures).toHaveLength(2)
+    expect(captures.some((c) => c.id === 'cap-existing')).toBe(true)
+    const added = captures.find((c) => c.id !== 'cap-existing')!
+    expect(added.type).toBe('image')
+    expect(typeof (added.customData as { fileId?: string }).fileId).toBe('string')
   } finally {
     await close()
   }
@@ -1053,16 +1050,11 @@ test('center-click re-activates browse on native image capture', async () => {
     await closePdfSidebar(page)
 
     await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
     await expect.poll(() => guestUrl(page), { timeout: 15_000 }).toMatch(/^https?:\/\//)
 
-    await page.waitForTimeout(1200)
-    await clickOutsideCapture(page)
-    await expectBrowserChromeHidden(page)
-
-    // Re-activate ASAP (same URL) — must not stick on about:blank from deactivate.
     await clickScene(page, capX + capW / 2, capY + capH / 2)
-    await expectBrowserChromeVisible(page)
+    await expectBrowserVisible(page)
     await expect
       .poll(() => guestUrl(page), { timeout: 15_000 })
       .toMatch(/^https?:\/\/(?:www\.)?example\.com/i)
@@ -1152,7 +1144,96 @@ test('Excalidraw style panel click does not activate search capture underneath',
 
     // Regression: host scene hit-test must ignore .layer-ui__wrapper.
     await page.waitForTimeout(600)
-    await expectBrowserChromeHidden(page)
+    await expectBrowserHidden(page)
+  } finally {
+    await close()
+  }
+})
+
+test('navbar globe opens a singleton browser window', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-navbar-browser-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: []
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await page.getByRole('button', { name: 'Open web browser' }).click()
+    await expectBrowserVisible(page)
+    await expect.poll(() => guestUrl(page), { timeout: 15_000 }).toMatch(/^https?:\/\//)
+
+    await page.getByRole('button', { name: 'Open web browser' }).click()
+    await expectBrowserVisible(page)
+  } finally {
+    await close()
+  }
+})
+
+test('Save as PDF places a pdfClip preview on the canvas', async () => {
+  const appDataDir = await tmpAppData('libritus-e2e-save-pdf-')
+  const { categoryId, pdfId } = await seedLibrary({ appDataDir })
+  const capX = 80
+  const capY = 40
+  const capW = 300
+  const capH = 300
+
+  await seedSession(appDataDir, pdfId, {
+    version: 1,
+    docId: pdfId,
+    updatedAt: new Date().toISOString(),
+    camera: { scrollX: 0, scrollY: 0, zoom: 1 },
+    elements: [
+      seedSearchCaptureElement({
+        id: 'cap-pdf',
+        x: capX,
+        y: capY,
+        width: capW,
+        height: capH,
+        query: 'pdf',
+        url: 'https://example.com'
+      })
+    ]
+  })
+
+  const { page, close } = await launchApp({ appDataDir })
+  try {
+    await expect(page.getByRole('heading', { name: 'Welcome to Libritus' })).toBeVisible({
+      timeout: 30_000
+    })
+    await openPdf(page, categoryId, pdfId)
+    await closePdfSidebar(page)
+
+    await clickScene(page, capX + capW / 2, capY + capH / 2)
+    await expectBrowserVisible(page)
+    await expect.poll(() => guestUrl(page), { timeout: 20_000 }).toMatch(/^https?:\/\//)
+    await page.waitForTimeout(800)
+    await savePdfFromBrowser(page)
+    await expect(page.getByText('Unsaved')).toBeVisible({ timeout: 30_000 })
+
+    await leaveToHome(page)
+
+    const snap = await waitForSession(
+      () => readSessionFile(appDataDir, pdfId),
+      (s) => liveElements(s).some(isPdfClip)
+    )
+    const clip = liveElements(snap).find(isPdfClip)!
+    expect(clip.type).toBe('image')
+    const data = clip.customData as { fileId?: string; previewFileId?: string }
+    expect(data.fileId).toBeTruthy()
+    expect(data.previewFileId).toBeTruthy()
+    await access(path.join(appDataDir, 'attachments', `${data.fileId}.pdf`))
+    await access(path.join(appDataDir, 'attachments', `${data.previewFileId}.png`))
   } finally {
     await close()
   }

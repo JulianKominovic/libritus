@@ -7,6 +7,7 @@ import {
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
 import { normalizePdfSearchCapture } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
+import { normalizePdfClip } from '@renderer/lib/pdf-canvas/pdfClip'
 import {
   SESSION_VERSION,
   writeSession,
@@ -94,6 +95,7 @@ export function usePdfPersistence({
           .map((el) => {
             let normalized = normalizePdfNote(el)
             normalized = normalizePdfSearchCapture(normalized)
+            normalized = normalizePdfClip(normalized)
             return normalized
           })
       : null

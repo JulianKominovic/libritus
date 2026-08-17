@@ -778,3 +778,30 @@ Con el sidebar abierto sobre el AABB de una página PDF, no se podía scrollear 
 - Marcar el aside con `data-pdf-sidebar`.
 - Incluir `[data-pdf-sidebar]` en `EXCALIDRAW_UI_POINTER_SELECTOR` → pass off al hover (mismo patrón que browser chrome / layer-ui).
 - En el `onWheel` del canvas: early-return si `isExcalidrawUiPointerTarget(event.target)` antes de chequear pass / `[data-pdf-page]`.
+
+### Dedicated browser chrome: app preload + unlocked navigation
+
+#### Descripción más detallada
+
+La ventana OS del guest usa 3 `WebContentsView` (nav, guest, actions). Nav/actions cargan `browser-ui.html` con el **preload de la app** (IPC completo). Solo el guest tenía `will-navigate` / `setWindowOpenHandler`. Un drop de URL sobre la barra de 44px podía navegar ese contents a un origen remoto **con** `window.electron`.
+
+Además `pointer-events: none` en el HTML del overlay **no** agujerea un `WebContentsView`: el rectángulo entero come clicks del guest.
+
+#### Corrección
+
+- Tras el load inicial de `browser-ui.html`, `will-navigate` / `will-redirect` / `setWindowOpenHandler` niegan todo lo que no sea ese HTML.
+- Overlay del tamaño de los pills (un WCV es un hit-rect sólido).
+- Guest sigue sin preload. No overlay WCV sobre el canvas host.
+- `optimizer.watchWindowShortcuts` no aplica a la ventana del browser (`isAttachingWebBrowserWindow` durante el ctor).
+
+### Browser Update target wiped on first `browser:show`
+
+#### Descripción más detallada
+
+`openSearchBrowser` hacía `setCaptureTarget(id)` y luego `browser:show`. En el primer open, `ensureBrowserWindow` → `disposeBrowserWindow` reseteaba `sourceCaptureId = null` → **Actualizar** era no-op (e2e: Unsaved nunca aparecía). Capturar (siempre `captureId: null`) seguía bien.
+
+#### Corrección
+
+- `disposeBrowserWindow` no toca el target; solo `setCaptureTarget(null)` / `browser:close` / leave dispose.
+- Tras recreate, `pushTargetState` reenvía el target preservado al nav chrome.
+- Selección vacía **con el canvas enfocado** (click vacío / Escape / delete) sí limpia el target → se oculta Reemplazar captura. Vacío mientras el host no tiene foco (guest robó el foco) o durante el pin de `openSearchBrowser` se conserva. Al volver el foco al host, `syncBrowserTarget` reevalúa.

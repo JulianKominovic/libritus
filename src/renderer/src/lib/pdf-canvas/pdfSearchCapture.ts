@@ -95,49 +95,13 @@ export function isActiveSearchCapturePointerHit(
 
 export const SEARCH_CAPTURE_WIDTH = 430
 export const SEARCH_CAPTURE_HEIGHT = 930
-/** Portrait preset (chrome resize). */
-export const SEARCH_CAPTURE_PORTRAIT = { width: 430, height: 932 } as const
-/** Landscape preset (chrome resize). */
-export const SEARCH_CAPTURE_LANDSCAPE = { width: 1200, height: 800 } as const
 /** Solid fill for Excalidraw hit-test (transparent = stroke-only). */
 export const SEARCH_CAPTURE_FILL = '#e9ecef'
 export const SEARCH_CAPTURE_STROKE = 'transparent'
 export const SEARCH_CAPTURE_EMBED_LINK = 'libritus://pdf-search-capture'
 /** Excalidraw ROUNDNESS.ADAPTIVE_RADIUS — 16px corner clip. */
 export const SEARCH_CAPTURE_ROUNDNESS = { type: 3 as const, value: 16 }
-/** Default BrowserChrome user zoom (independent of Excalidraw camera). */
-export const SEARCH_CAPTURE_DEFAULT_USER_ZOOM = 0.8
-/** Chromium-style step: zoomFactor ≈ 1.2^level (user space only). */
-export const GUEST_USER_ZOOM_STEP = 1.2
-export const GUEST_USER_ZOOM_MIN = 0.25
-export const GUEST_USER_ZOOM_MAX = 5
 const SEARCH_GAP = 48
-
-function clampGuestUserZoom(userZoom: number): number {
-  if (!Number.isFinite(userZoom)) return SEARCH_CAPTURE_DEFAULT_USER_ZOOM
-  return Math.min(GUEST_USER_ZOOM_MAX, Math.max(GUEST_USER_ZOOM_MIN, userZoom))
-}
-
-/**
- * Chromium zoomFactor that keeps page content locked to the capture card
- * while the Excalidraw camera zooms (bounds scale with canvasZoom).
- */
-export function guestEffectiveZoom(userZoom: number, canvasZoom: number): number {
-  const z = canvasZoom > 0 && Number.isFinite(canvasZoom) ? canvasZoom : 1
-  return userZoom * z
-}
-
-/** Back-compute chrome % from effective (tests / diagnostics). */
-export function guestUserZoomFromEffective(effectiveZoom: number, canvasZoom: number): number {
-  const z = canvasZoom > 0 && Number.isFinite(canvasZoom) ? canvasZoom : 1
-  return effectiveZoom / z
-}
-
-/** Step chrome user zoom by ±1 Chromium level; clamp in user space. */
-export function stepGuestUserZoom(userZoom: number, deltaLevel: number): number {
-  const stepped = userZoom * Math.pow(GUEST_USER_ZOOM_STEP, deltaLevel)
-  return clampGuestUserZoom(stepped)
-}
 
 /** Host-managed highlight→search-capture connector (no Excalidraw bindings). */
 export type PdfSearchArrowData = {
@@ -304,7 +268,7 @@ export function syncPdfSearchArrows(elements: readonly OrderedExcalidrawElement[
  */
 export function applySearchCaptureScreenshot(
   el: OrderedExcalidrawElement,
-  patch: { fileId: string; url: string; capturedAt: string }
+  patch: { fileId: string; url: string; capturedAt: string; width?: number; height?: number }
 ): OrderedExcalidrawElement {
   const customData: PdfSearchCaptureData = {
     pdfSearchCapture: true,
@@ -318,6 +282,11 @@ export function applySearchCaptureScreenshot(
       : {})
   }
 
+  const width = patch.width ?? el.width
+  const height = patch.height ?? el.height
+  const x = el.x + (el.width - width) / 2
+  const y = el.y + (el.height - height) / 2
+
   return newElementWith(el, {
     type: 'image',
     fileId: patch.fileId,
@@ -329,6 +298,10 @@ export function applySearchCaptureScreenshot(
     strokeColor: 'transparent',
     strokeWidth: 0,
     roundness: SEARCH_CAPTURE_ROUNDNESS,
+    width,
+    height,
+    x,
+    y,
     customData
   } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
 }

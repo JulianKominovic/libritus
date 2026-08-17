@@ -73,8 +73,6 @@ const {
   getSearchCaptureQuery,
   getSearchCaptureUrl,
   googleSearchUrl,
-  guestEffectiveZoom,
-  guestUserZoomFromEffective,
   isActiveSearchCapturePointerHit,
   isPdfSearchArrow,
   isPdfSearchCapture,
@@ -85,7 +83,6 @@ const {
   droppedHttpUrlForSearchCapture,
   resolveSearchCaptureOpenUrl,
   searchCaptureIdsForHighlight,
-  stepGuestUserZoom,
   syncPdfSearchArrows
 } = await import('./pdfSearchCapture')
 
@@ -132,48 +129,6 @@ describe('googleSearchUrl', () => {
 
   test('empty falls back to search', () => {
     expect(googleSearchUrl('  ')).toBe('https://www.google.com/search?q=search')
-  })
-})
-
-describe('guestEffectiveZoom / guestUserZoomFromEffective', () => {
-  test('scales user zoom by canvas zoom', () => {
-    expect(guestEffectiveZoom(0.8, 2)).toBe(1.6)
-  })
-
-  test('back-computes user zoom from effective', () => {
-    expect(guestUserZoomFromEffective(1.6, 2)).toBe(0.8)
-  })
-
-  test('round-trips at canvas zoom 1', () => {
-    const effective = guestEffectiveZoom(0.8, 1)
-    expect(effective).toBe(0.8)
-    expect(guestUserZoomFromEffective(effective, 1)).toBe(0.8)
-  })
-
-  test('canvasZoom 0 / negative falls back to 1', () => {
-    expect(guestEffectiveZoom(0.8, 0)).toBe(0.8)
-    expect(guestEffectiveZoom(0.8, -2)).toBe(0.8)
-    expect(guestUserZoomFromEffective(1.6, 0)).toBe(1.6)
-    expect(guestUserZoomFromEffective(1.6, -2)).toBe(1.6)
-  })
-})
-
-describe('stepGuestUserZoom', () => {
-  test('steps by Chromium 1.2 factor', () => {
-    expect(stepGuestUserZoom(0.8, 1)).toBeCloseTo(0.96)
-    expect(stepGuestUserZoom(0.96, -1)).toBeCloseTo(0.8)
-  })
-
-  test('clamps in user space (does not rewrite via effective)', () => {
-    expect(stepGuestUserZoom(5, 1)).toBe(5)
-    expect(stepGuestUserZoom(0.25, -1)).toBe(0.25)
-  })
-
-  test('user step stays independent of canvas zoom product', () => {
-    // Canvas zoom 10 → effective would be huge; user chrome still steps 0.8 → 0.96.
-    const user = stepGuestUserZoom(0.8, 1)
-    expect(user).toBeCloseTo(0.96)
-    expect(guestEffectiveZoom(user, 10)).toBeCloseTo(9.6)
   })
 })
 
@@ -561,6 +516,28 @@ describe('applySearchCaptureScreenshot', () => {
     expect(next.roundness?.value).toBe(16)
     expect(next.customData?.sourceHighlightId).toBe('hl-1')
     expect(next.customData?.fileId).toBe('att-1')
+  })
+
+  test('optional width/height recenters the card', () => {
+    const el = createSearchCapture({
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 800,
+      query: 'q',
+      url: 'https://example.com'
+    })
+    const next = applySearchCaptureScreenshot(el, {
+      fileId: 'att-size',
+      url: 'https://example.com',
+      capturedAt: '2026-01-01T00:00:00.000Z',
+      width: 200,
+      height: 100
+    })
+    expect(next.width).toBe(200)
+    expect(next.height).toBe(100)
+    expect(next.x).toBe(100)
+    expect(next.y).toBe(350)
   })
 })
 

@@ -74,7 +74,6 @@ type UsePdfTextPassArgs = {
   goToAnnotation: (id: string) => void
   goToPage: (pageIndex0: number) => void
   exitPlaceModes: () => void
-  isBrowsing: () => boolean
   endPointerGesture: () => void
 }
 
@@ -114,7 +113,6 @@ export function usePdfTextPass({
   goToAnnotation,
   goToPage,
   exitPlaceModes,
-  isBrowsing,
   endPointerGesture
 }: UsePdfTextPassArgs) {
   const syncSearchBrowseHintRef = useRef(syncSearchBrowseHint)
@@ -227,7 +225,7 @@ export function usePdfTextPass({
         // NoteEmbed onKeyDown only runs if focus is inside the note. After Place
         // note / toolbar clicks, contenteditable can be mounted but unfocused —
         // still exit edit (do not touch browse: guest owns Escape via IPC).
-        if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active' && !isBrowsing()) {
+        if (apiRef.current?.getAppState().activeEmbeddable?.state === 'active') {
           clearActiveEmbeddable()
           event.preventDefault()
           return
@@ -281,7 +279,6 @@ export function usePdfTextPass({
     clearEmbedSelection,
     exitPlaceModes,
     hideHighlightToolbar,
-    isBrowsing,
     pendingHighlightRef,
     placeBrowserModeRef,
     placeNoteModeRef
@@ -526,12 +523,6 @@ export function usePdfTextPass({
         return
       }
       if (appState.activeEmbeddable?.state === 'active') {
-        setPdfTextPass(false)
-        return
-      }
-      // Image search captures browse without activeEmbeddable; keep host hittable
-      // so outside-click deactivate (listener on .excalidraw-host) still runs.
-      if (isBrowsing()) {
         setPdfTextPass(false)
         return
       }
@@ -832,7 +823,6 @@ export function usePdfTextPass({
     containerRef,
     endPointerGesture,
     hideHighlightToolbar,
-    isBrowsing,
     markUnsaved,
     openSearchBrowser,
     pdfTextPassRef,

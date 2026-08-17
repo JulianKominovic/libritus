@@ -22,10 +22,6 @@ type UsePdfHostSceneArgs = {
   pendingPlateByNoteIdRef: RefObject<Map<string, Value>>
   queueStripPdfNoteLinks: () => void
   syncAnnotations: (elements: readonly ExcalidrawElement[]) => void
-  deactivateSearchBrowser: () => Promise<void>
-  isBrowsing: () => boolean
-  syncActiveBrowserBounds: () => void
-  hideSearchBrowseHint: () => void
   syncSearchBrowseHint: () => void
   markUnsaved: () => void
 }
@@ -43,10 +39,6 @@ export function usePdfHostScene({
   pendingPlateByNoteIdRef,
   queueStripPdfNoteLinks,
   syncAnnotations,
-  deactivateSearchBrowser,
-  isBrowsing,
-  syncActiveBrowserBounds,
-  hideSearchBrowseHint,
   syncSearchBrowseHint,
   markUnsaved
 }: UsePdfHostSceneArgs) {
@@ -141,16 +133,7 @@ export function usePdfHostScene({
     const editingNote =
       active?.state === 'active' && active.element != null && isPdfNote(active.element)
 
-    if (editingNote && isBrowsing()) {
-      void deactivateSearchBrowser()
-    }
-
-    if (isBrowsing()) {
-      syncActiveBrowserBounds()
-      hideSearchBrowseHint()
-    } else {
-      syncSearchBrowseHint()
-    }
+    syncSearchBrowseHint()
 
     if (!editingNote) {
       const pending = pendingPlateByNoteIdRef.current
@@ -171,14 +154,10 @@ export function usePdfHostScene({
     }
   }, [
     apiRef,
-    deactivateSearchBrowser,
-    hideSearchBrowseHint,
-    isBrowsing,
     noteIdsRef,
     pendingPlateByNoteIdRef,
     queueStripPdfNoteLinks,
     restoringRef,
-    syncActiveBrowserBounds,
     syncAnnotations,
     syncSearchBrowseHint
   ])

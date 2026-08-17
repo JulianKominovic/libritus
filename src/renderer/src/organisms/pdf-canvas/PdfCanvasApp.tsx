@@ -45,8 +45,11 @@ import { EmbedPDF } from '@embedpdf/core/react'
 import type { PdfEngine } from '@embedpdf/engines'
 import { useDocumentManagerCapability } from '@embedpdf/plugin-document-manager/react'
 import { useSelectionCapability } from '@embedpdf/plugin-selection/react'
+import { useLang } from '@renderer/i18n/lang-context'
+import type { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import { getPdfEngine } from '@renderer/lib/pdf-canvas/embedpdfEngine'
 import { EMBEDPDF_CANVAS_PLUGINS } from '@renderer/lib/pdf-canvas/embedpdfPlugins'
+import { normalizePdfClip } from '@renderer/lib/pdf-canvas/pdfClip'
 import {
   attachmentFileIdsFromSearchCaptures,
   createSearchCaptureFromHighlight,
@@ -54,8 +57,6 @@ import {
   isPdfSearchCapture,
   normalizePdfSearchCapture,
   SEARCH_CAPTURE_EMBED_LINK,
-  SEARCH_CAPTURE_LANDSCAPE,
-  SEARCH_CAPTURE_PORTRAIT,
   syncPdfSearchArrows
 } from '@renderer/lib/pdf-canvas/pdfSearchCapture'
 import {
@@ -75,12 +76,9 @@ import { shouldSuppressUnlockPopup } from '@renderer/lib/pdf-canvas/suppressUnlo
 import { ThumbPool } from '@renderer/lib/pdf-canvas/ThumbPool'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { useSettings } from '@renderer/stores/settings'
-import { useLang } from '@renderer/i18n/lang-context'
-import type { TranslationsKeys } from '@renderer/i18n/translations-keys'
 import { Globe, Search, StickyNote } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
-import { BrowserChrome } from './BrowserChrome'
 import { HighlightToolbar } from './HighlightToolbar'
 import { PageNavigator, type PageNavigatorHandle } from './PageNavigator'
 import { PdfFindBar } from './PdfFindBar'
@@ -88,7 +86,7 @@ import { PdfLayer, type PdfLayerHandle } from './PdfLayer'
 import { PdfSidebar, type PdfSidebarHandle } from './PdfSidebar'
 import { SearchBrowseHint } from './SearchBrowseHint'
 import { liveExcalidrawApi } from './selectionTool'
-import { usePdfCamera, INITIAL_CAMERA } from './usePdfCamera'
+import { INITIAL_CAMERA, usePdfCamera } from './usePdfCamera'
 import { usePdfFindBar } from './usePdfFindBar'
 import { usePdfHighlights } from './usePdfHighlights'
 import { usePdfHostScene } from './usePdfHostScene'
@@ -335,26 +333,12 @@ function PdfCanvasAppInner({
     markUnsaved
   })
 
-  const {
-    browserChromeRef,
-    zoomPercentRef,
-    zoomIn,
-    zoomOut,
-    resizeActiveBrowser,
-    isBrowsing,
-    syncActiveBrowserBounds,
-    suppressActiveEmbedWhileBrowsing,
-    openSearchBrowser,
-    deactivateSearchBrowser,
-    disposeBrowser
-  } = useSearchCaptureBrowser({
+  const { openSearchBrowser, disposeBrowser, syncBrowserTarget } = useSearchCaptureBrowser({
     apiRef,
-    containerRef,
     excalidrawHostRef,
     persistedAttachmentIdsRef,
     dirtyRef,
-    syncSaveChip,
-    clearActiveEmbeddable
+    syncSaveChip
   })
 
   /** Promoted image under pointer (reading mode) — drives browse chip without selection. */
@@ -385,12 +369,8 @@ function PdfCanvasAppInner({
     hint.style.display = 'flex'
   }, [hideSearchBrowseHint])
 
-  /** Show chip for hovered or single-selected promoted search image (not browsing). */
+  /** Show chip for hovered or single-selected promoted search image. */
   const syncSearchBrowseHint = useCallback(() => {
-    if (isBrowsing()) {
-      hideSearchBrowseHint()
-      return
-    }
     const api = apiRef.current
     if (!api) {
       hideSearchBrowseHint()
@@ -416,7 +396,7 @@ function PdfCanvasAppInner({
     }
     activeSearchImageIdRef.current = id
     positionSearchBrowseHint()
-  }, [hideSearchBrowseHint, isBrowsing, positionSearchBrowseHint])
+  }, [hideSearchBrowseHint, positionSearchBrowseHint])
 
   const pushCamera = useCallback(
     (patch: Partial<CameraState>) => {
@@ -424,9 +404,8 @@ function PdfCanvasAppInner({
       // No-op safe: each positioner returns early when nothing is active.
       positionHighlightToolbar()
       positionSearchBrowseHint()
-      syncActiveBrowserBounds()
     },
-    [pushCameraRaw, positionHighlightToolbar, positionSearchBrowseHint, syncActiveBrowserBounds]
+    [pushCameraRaw, positionHighlightToolbar, positionSearchBrowseHint]
   )
 
   const { goToPage, goToAnnotation, goToPage1Based, goPrevPage, goNextPage, handleScrollChange } =
@@ -637,7 +616,7 @@ function PdfCanvasAppInner({
                   syncPdfNoteArrows(
                     (
                       migrated.elements as ReturnType<ExcalidrawImperativeAPI['getSceneElements']>
-                    ).map((el) => normalizePdfSearchCapture(normalizePdfNote(el)))
+                    ).map((el) => normalizePdfClip(normalizePdfSearchCapture(normalizePdfNote(el))))
                   ).elements
                 ).elements
               ).elements
@@ -895,10 +874,6 @@ function PdfCanvasAppInner({
     pendingPlateByNoteIdRef,
     queueStripPdfNoteLinks,
     syncAnnotations,
-    deactivateSearchBrowser,
-    isBrowsing,
-    syncActiveBrowserBounds,
-    hideSearchBrowseHint,
     syncSearchBrowseHint,
     markUnsaved
   })
@@ -928,10 +903,8 @@ function PdfCanvasAppInner({
           // Selection-driven browse chip — must run before hover early-return
           // (pointermove over note/search center emits hover and would otherwise leave a ghost chip).
           syncSearchBrowseHint()
-
-          // Browse owns the guest via activeBrowserCaptureIdRef — keep Excalidraw
-          // from flipping the capture into activeEmbeddable (blocks ring drag).
-          suppressActiveEmbedWhileBrowsing()
+          // Browser Update-target = single selected pdfSearchCapture (identity only).
+          syncBrowserTarget(api)
 
           // Force sharp before draw starts — A while arrow tool cycles onto elbow.
           // AppState-only; safe mid-draw (does not rewrite the in-progress element).
@@ -964,7 +937,6 @@ function PdfCanvasAppInner({
 
           // Drag hot path: arrows scheduled; skip O(n) scans + full persist until pointerup.
           if (pointerButtonsDownRef.current) {
-            if (isBrowsing()) syncActiveBrowserBounds()
             if (activeSearchImageIdRef.current) positionSearchBrowseHint()
             markUnsaved()
             return
@@ -977,13 +949,11 @@ function PdfCanvasAppInner({
     },
     [
       hideHighlightToolbar,
-      isBrowsing,
       markUnsaved,
       positionSearchBrowseHint,
       runHostSceneMaintenance,
       scheduleHostArrowSync,
-      suppressActiveEmbedWhileBrowsing,
-      syncActiveBrowserBounds,
+      syncBrowserTarget,
       syncSearchBrowseHint
     ]
   )
@@ -1083,7 +1053,6 @@ function PdfCanvasAppInner({
     goToAnnotation,
     goToPage,
     exitPlaceModes,
-    isBrowsing,
     endPointerGesture
   })
 
@@ -1235,19 +1204,6 @@ function PdfCanvasAppInner({
         onRemove={removeActiveHighlight}
       />
       <SearchBrowseHint ref={searchBrowseHintRef} />
-
-      <BrowserChrome
-        ref={browserChromeRef}
-        zoomPercentRef={zoomPercentRef}
-        onZoomIn={() => void zoomIn()}
-        onZoomOut={() => void zoomOut()}
-        onResizePortrait={() =>
-          resizeActiveBrowser(SEARCH_CAPTURE_PORTRAIT.width, SEARCH_CAPTURE_PORTRAIT.height)
-        }
-        onResizeLandscape={() =>
-          resizeActiveBrowser(SEARCH_CAPTURE_LANDSCAPE.width, SEARCH_CAPTURE_LANDSCAPE.height)
-        }
-      />
 
       {session && pageCount > 0 && showPdfOutline ? (
         <PdfSidebar

@@ -24,6 +24,7 @@ export const es: Record<TranslationsKeys, string> = {
   sidebar_delete_category_confirm: '¡Sí! Eliminarla',
   sidebar_pdf_count: '{count} pdfs',
   navbar_toggle_pdf_sidebar_aria: 'Alternar barra lateral del PDF',
+  navbar_open_browser_aria: 'Abrir navegador web',
 
   // Home
   home_welcome: 'Bienvenido a Libritus',
@@ -134,12 +135,11 @@ export const es: Record<TranslationsKeys, string> = {
   // Search capture browser chrome
   browser_back_aria: 'Atrás',
   browser_forward_aria: 'Adelante',
-  browser_zoom_out: 'Alejar ({keys}−)',
-  browser_zoom_in: 'Acercar ({keys}+)',
-  browser_portrait_aria: 'Tamaño vertical',
-  browser_portrait_title: 'Vertical ({w}×{h})',
-  browser_landscape_aria: 'Tamaño horizontal',
-  browser_landscape_title: 'Horizontal ({w}×{h})',
+  browser_url_placeholder: 'Buscar o introducir URL',
+  browser_capture: 'Capturar',
+  browser_replace_capture: 'Reemplazar captura',
+  browser_updating_capture: 'Actualizando esta captura',
+  browser_save_pdf: 'Guardar como PDF',
   browser_save_filter_images: 'Imágenes',
 
   // PDF layer links

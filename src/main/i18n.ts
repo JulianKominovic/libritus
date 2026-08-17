@@ -64,6 +64,10 @@ export function setMainLocale(locale: MainLocale): void {
   currentLocale = locale === 'es' ? 'es' : 'en'
 }
 
+export function getMainLocale(): MainLocale {
+  return currentLocale
+}
+
 export function tMenu(key: MenuKey): string {
   return MESSAGES[currentLocale][key]
 }
