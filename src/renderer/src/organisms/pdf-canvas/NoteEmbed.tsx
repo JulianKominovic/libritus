@@ -11,6 +11,7 @@ import { EmbedActivateHint } from './EmbedActivateHint'
 type NoteEmbedProps = {
   noteId: string
   plateValue: Value
+  backgroundColor: string
   editing: boolean
   onValueChange: (noteId: string, value: Value) => void
   onExitEdit: () => void
@@ -117,6 +118,7 @@ function NoteEditableBody({
 export const NoteEmbed = memo(function NoteEmbed({
   noteId,
   plateValue,
+  backgroundColor,
   editing,
   onValueChange,
   onExitEdit
@@ -129,7 +131,8 @@ export const NoteEmbed = memo(function NoteEmbed({
 
   return (
     <div
-      className="relative box-border h-full w-full overflow-hidden bg-neutral-50"
+      className="relative box-border h-full w-full overflow-hidden"
+      style={{ backgroundColor }}
       data-pdf-note-id={noteId}
       data-pdf-note
       data-editing={editing ? '' : undefined}

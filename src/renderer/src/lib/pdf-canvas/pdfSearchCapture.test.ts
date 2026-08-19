@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
+import { PDF_CONNECTOR_ROUGHNESS, PDF_CONNECTOR_STROKE_WIDTH } from './pdfHighlightModel'
 
 let idSeq = 0
 
@@ -222,13 +223,11 @@ function stubDrop(opts: {
   const uri = opts.uri ?? ''
   const text = opts.text ?? ''
   const html = opts.html ?? ''
-  const types =
-    opts.types ??
-    [
-      ...(uri ? (['text/uri-list'] as const) : []),
-      ...(text ? (['text/plain'] as const) : []),
-      ...(html ? (['text/html'] as const) : [])
-    ]
+  const types = opts.types ?? [
+    ...(uri ? (['text/uri-list'] as const) : []),
+    ...(text ? (['text/plain'] as const) : []),
+    ...(html ? (['text/html'] as const) : [])
+  ]
   return {
     types,
     files: { length: opts.filesLength ?? 0 } as FileList,
@@ -249,9 +248,9 @@ describe('droppedHttpUrlForSearchCapture', () => {
   })
 
   test('plain text URL fallback', () => {
-    expect(
-      droppedHttpUrlForSearchCapture(stubDrop({ text: 'https://example.com/plain' }))
-    ).toBe('https://example.com/plain')
+    expect(droppedHttpUrlForSearchCapture(stubDrop({ text: 'https://example.com/plain' }))).toBe(
+      'https://example.com/plain'
+    )
   })
 
   test('uri-list preferred over plain', () => {
@@ -340,6 +339,9 @@ describe('createSearchCaptureFromHighlight', () => {
     expect(capture.customData?.sourceHighlightId).toBe('hl-1')
 
     expect(arrow.locked).toBe(true)
+    expect(arrow.strokeColor).toBe(highlight.backgroundColor)
+    expect(arrow.strokeWidth).toBe(PDF_CONNECTOR_STROKE_WIDTH)
+    expect(arrow.roughness).toBe(PDF_CONNECTOR_ROUGHNESS)
     expect(arrow.customData?.captureId).toBe(capture.id)
     expect(arrow.customData?.side).toBe('right')
     expect(capture.x).toBe(highlight.x + highlight.width + SEARCH_GAP)
@@ -635,6 +637,21 @@ describe('syncPdfSearchArrows', () => {
     expect(arrow.customData?.side).toBe('right')
     expect(arrow.customData?.startX).toBe(80)
     expect(arrow.width).not.toBe(0)
+  })
+
+  test('follows highlight color changes', () => {
+    const highlight = fakeHighlight({ id: 'hl-color', x: 0, y: 0, width: 80, height: 20 })
+    const { newElements } = createSearchCaptureFromHighlight(highlight)
+    const capture = newElements.find(isPdfSearchCapture)!
+    const arrow = newElements.find(isPdfSearchArrow)!
+    const recolored = { ...highlight, backgroundColor: '#22C55E' }
+
+    const { elements, changed } = syncPdfSearchArrows([recolored, capture, arrow])
+    expect(changed).toBe(true)
+    const nextArrow = elements.find(isPdfSearchArrow)!
+    expect(nextArrow.strokeColor).toBe('#22C55E')
+    expect(nextArrow.strokeWidth).toBe(PDF_CONNECTOR_STROKE_WIDTH)
+    expect(nextArrow.roughness).toBe(PDF_CONNECTOR_ROUGHNESS)
   })
 
   test('flips to left when capture crosses highlight', () => {

@@ -5,7 +5,14 @@ import type {
   OrderedExcalidrawElement
 } from '@excalidraw/excalidraw/element/types'
 import { arrowBetweenRects, unionRect } from './arrowBetweenRects'
-import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
+import {
+  highlightGroupColor,
+  highlightGroupId,
+  highlightGroupMembers,
+  PDF_CONNECTOR_FALLBACK_COLOR,
+  PDF_CONNECTOR_ROUGHNESS,
+  PDF_CONNECTOR_STROKE_WIDTH
+} from './pdfHighlightModel'
 import { elementContainsPoint } from './sceneHit'
 
 export type PdfSearchCaptureData = {
@@ -241,12 +248,24 @@ export function syncPdfSearchArrows(elements: readonly OrderedExcalidrawElement[
       startY: data.startY
     })
     const geo = arrowBetweenRects(hl, capture)
+    const sourceHighlightId = capture.customData?.sourceHighlightId
+    const strokeColor =
+      typeof sourceHighlightId === 'string'
+        ? highlightGroupColor(elements, sourceHighlightId)
+        : PDF_CONNECTOR_FALLBACK_COLOR
     const metaOk =
       data.startX === geo.startX && data.startY === geo.startY && data.side === geo.side
-    if (!el.isDeleted && geomClose(el, geo) && metaOk && el.locked) return el
+    const styleOk =
+      el.strokeColor === strokeColor &&
+      el.strokeWidth === PDF_CONNECTOR_STROKE_WIDTH &&
+      el.roughness === PDF_CONNECTOR_ROUGHNESS
+    if (!el.isDeleted && geomClose(el, geo) && metaOk && styleOk && el.locked) return el
     changed = true
     return newElementWith(el, {
       ...geo,
+      strokeColor,
+      strokeWidth: PDF_CONNECTOR_STROKE_WIDTH,
+      roughness: PDF_CONNECTOR_ROUGHNESS,
       isDeleted: false,
       locked: true,
       customData: {
@@ -495,8 +514,9 @@ export function createSearchCaptureFromHighlight(
       y: geo.y,
       width: geo.width,
       height: geo.height,
-      strokeColor: '#495057',
-      roughness: 0,
+      strokeColor: highlightGroupColor([highlight], groupId),
+      strokeWidth: PDF_CONNECTOR_STROKE_WIDTH,
+      roughness: PDF_CONNECTOR_ROUGHNESS,
       locked: true
     } as ExcalidrawElementSkeleton
   ])

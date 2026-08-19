@@ -5,6 +5,7 @@ import { isPdfHighlight } from '@renderer/lib/pdf-canvas/selectionToHighlights'
 import {
   isPdfNote,
   repairUnvalidatedPdfNotes,
+  syncPdfNoteColor,
   syncPdfNoteArrows,
   withNotePlateValue
 } from '@renderer/lib/pdf-canvas/pdfNotes'
@@ -84,6 +85,15 @@ export function usePdfHostScene({
     if (!api || restoringRef.current) return
 
     let scene = api.getSceneElementsIncludingDeleted()
+
+    const syncedColors = syncPdfNoteColor(scene)
+    if (syncedColors.changed) {
+      scene = syncedColors.elements
+      api.updateScene({
+        elements: scene,
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+    }
 
     // Ban elbow arrows (Excalidraw ±1e6 render hard-limit). A-key still cycles to elbow.
     const stripped = stripElbowArrows(scene)

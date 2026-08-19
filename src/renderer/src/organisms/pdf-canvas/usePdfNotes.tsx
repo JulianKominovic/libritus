@@ -1,5 +1,5 @@
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
-import { getNotePlateValue, isPdfNote } from '@renderer/lib/pdf-canvas/pdfNotes'
+import { getNoteColor, getNotePlateValue, isPdfNote } from '@renderer/lib/pdf-canvas/pdfNotes'
 import {
   getSearchCaptureQuery,
   isPdfSearchCapture
@@ -105,6 +105,7 @@ export function usePdfNotes({
         <NoteEmbed
           noteId={element.id}
           plateValue={getNotePlateValue(element)}
+          backgroundColor={getNoteColor(element)}
           editing={editing}
           onValueChange={updateNotePlateValue}
           onExitEdit={clearActiveEmbeddable}

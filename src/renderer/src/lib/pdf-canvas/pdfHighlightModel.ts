@@ -12,6 +12,11 @@ export type PdfHighlightData = {
   createdAt?: string
 }
 
+/** Small, sketchy connectors between highlights and canvas artifacts. */
+export const PDF_CONNECTOR_STROKE_WIDTH = 1
+export const PDF_CONNECTOR_ROUGHNESS = 1
+export const PDF_CONNECTOR_FALLBACK_COLOR = '#495057'
+
 export function isPdfHighlight(el: ExcalidrawElement): el is OrderedExcalidrawElement {
   return el.customData?.pdfHighlight === true
 }
@@ -31,6 +36,16 @@ export function highlightGroupMembers(
     (el): el is OrderedExcalidrawElement =>
       !el.isDeleted && isPdfHighlight(el) && highlightGroupId(el) === groupId
   )
+}
+
+/** Use the highlight fill for linked connectors, with a visible legacy fallback. */
+export function highlightGroupColor(
+  elements: readonly ExcalidrawElement[],
+  groupId: string,
+  fallback = PDF_CONNECTOR_FALLBACK_COLOR
+): string {
+  const color = highlightGroupMembers(elements, groupId)[0]?.backgroundColor
+  return color && color !== 'transparent' ? color : fallback
 }
 
 /** Top-most PDF highlight under scene point (later scene index wins). */
