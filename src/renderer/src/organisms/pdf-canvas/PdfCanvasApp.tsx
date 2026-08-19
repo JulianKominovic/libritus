@@ -205,7 +205,7 @@ function PdfCanvasAppInner({
   const persistedAttachmentIdsRef = useRef(new Set<string>())
   /** Note ids Excalidraw has already validated (may have link stripped for UI). */
   const noteIdsRef = useRef(new Set<string>())
-  /** Clears UnlockPopup for host-locked PDF artifacts (highlights / note+search arrows). */
+  /** Clears Excalidraw UI state that is disabled for the PDF canvas. */
   const unlockSuppressUnsubRef = useRef<(() => void) | null>(null)
 
   const { cameraRef, currentPageRef, pushCameraRaw } = usePdfCamera({
@@ -231,6 +231,7 @@ function PdfCanvasAppInner({
       appState: {
         viewBackgroundColor: 'transparent',
         currentItemArrowType: 'sharp' as const,
+        boxSelectionMode: 'overlap' as const,
         scrollX: INITIAL_CAMERA.scrollX,
         scrollY: INITIAL_CAMERA.scrollY,
         zoom: { value: INITIAL_CAMERA.zoom as NormalizedZoomValue }
@@ -1064,6 +1065,17 @@ function PdfCanvasAppInner({
       data-pdf-canvas-root
       tabIndex={-1}
       className="relative h-full w-full overflow-hidden bg-morphing-50"
+      onKeyDownCapture={(event) => {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === 'f' &&
+          event.target instanceof Node &&
+          excalidrawHostRef.current?.contains(event.target)
+        ) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
     >
       {session ? (
         <PdfLayer
@@ -1084,13 +1096,24 @@ function PdfCanvasAppInner({
           }}
           onInitialize={(api) => {
             unlockSuppressUnsubRef.current?.()
-            unlockSuppressUnsubRef.current = api.onStateChange('activeLockedId', (id) => {
+            const unsubscribeUnlockSuppress = api.onStateChange('activeLockedId', (id) => {
               if (!shouldSuppressUnlockPopup(id, api.getSceneElements())) return
               api.updateScene({
                 appState: { activeLockedId: null },
                 captureUpdate: CaptureUpdateAction.NEVER
               })
             })
+            const unsubscribeDefaultSidebar = api.onStateChange('openSidebar', (openSidebar) => {
+              if (!openSidebar) return
+              api.updateScene({
+                appState: { openSidebar: null },
+                captureUpdate: CaptureUpdateAction.NEVER
+              })
+            })
+            unlockSuppressUnsubRef.current = () => {
+              unsubscribeUnlockSuppress()
+              unsubscribeDefaultSidebar()
+            }
           }}
           // PDF text pass-through / toolbar clicks leave focus outside `.excalidraw`;
           // without this, Cmd/Ctrl+Z (undo) only works after clicking the canvas.

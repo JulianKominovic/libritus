@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
+import { PDF_CONNECTOR_ROUGHNESS, PDF_CONNECTOR_STROKE_WIDTH } from './pdfHighlightModel'
 
 let idSeq = 0
 
@@ -238,6 +239,9 @@ describe('pdfNotes', () => {
     const arrowMeta = arrow as {
       locked?: boolean
       elbowed?: boolean
+      strokeColor?: string
+      strokeWidth?: number
+      roughness?: number
       width: number
       height: number
       startBinding?: unknown
@@ -246,6 +250,9 @@ describe('pdfNotes', () => {
     }
     expect(arrowMeta.locked).toBe(true)
     expect(arrowMeta.elbowed).toBe(false)
+    expect(arrowMeta.strokeColor).toBe(highlight.backgroundColor)
+    expect(arrowMeta.strokeWidth).toBe(PDF_CONNECTOR_STROKE_WIDTH)
+    expect(arrowMeta.roughness).toBe(PDF_CONNECTOR_ROUGHNESS)
     expect(arrowMeta.startBinding).toBeNull()
     expect(arrowMeta.endBinding).toBeNull()
     expect(arrowMeta.customData?.noteId).toBe(note.id)
@@ -437,6 +444,21 @@ describe('pdfNotes', () => {
     expect(arrow.customData?.startX).toBe(80)
     // End tracks note left edge (x); y is overlap/gap closed-form.
     expect(arrow.width).toBeCloseTo(movedNote.x - 80, 0)
+  })
+
+  test('syncPdfNoteArrows follows highlight color changes', () => {
+    const highlight = fakeHighlight({ id: 'hl-color', x: 0, y: 0, width: 80, height: 20 })
+    const { newElements } = createNoteFromHighlight(highlight)
+    const note = newElements.find((el) => isPdfNote(el))!
+    const arrow = newElements.find((el) => isPdfNoteArrow(el))!
+    const recolored = { ...highlight, backgroundColor: '#22C55E' }
+
+    const { elements, changed } = syncPdfNoteArrows([recolored, note, arrow])
+    expect(changed).toBe(true)
+    const nextArrow = elements.find((el) => isPdfNoteArrow(el))!
+    expect(nextArrow.strokeColor).toBe('#22C55E')
+    expect(nextArrow.strokeWidth).toBe(PDF_CONNECTOR_STROKE_WIDTH)
+    expect(nextArrow.roughness).toBe(PDF_CONNECTOR_ROUGHNESS)
   })
 
   test('syncPdfNoteArrows flips to left when note crosses highlight', () => {

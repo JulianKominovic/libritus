@@ -13,7 +13,14 @@ import {
   plateValueFromQuote
 } from './pdfNoteModel'
 import { arrowBetweenRects, unionRect } from './arrowBetweenRects'
-import { highlightGroupId, highlightGroupMembers } from './pdfHighlightModel'
+import {
+  highlightGroupColor,
+  highlightGroupId,
+  highlightGroupMembers,
+  PDF_CONNECTOR_FALLBACK_COLOR,
+  PDF_CONNECTOR_ROUGHNESS,
+  PDF_CONNECTOR_STROKE_WIDTH
+} from './pdfHighlightModel'
 import { searchCaptureIdsForHighlight } from './pdfSearchCapture'
 
 export {
@@ -151,9 +158,16 @@ export function syncPdfNoteArrows(
         changed = true
         const hl = noteArrowAnchor(elements, note, { startX: el.x, startY: el.y })
         const geo = arrowBetweenRects(hl, note)
+        const sourceHighlightId = note.customData?.sourceHighlightId
         return {
           ...el,
           ...geo,
+          strokeColor:
+            typeof sourceHighlightId === 'string'
+              ? highlightGroupColor(elements, sourceHighlightId)
+              : PDF_CONNECTOR_FALLBACK_COLOR,
+          strokeWidth: PDF_CONNECTOR_STROKE_WIDTH,
+          roughness: PDF_CONNECTOR_ROUGHNESS,
           locked: true,
           elbowed: false,
           startBinding: null,
@@ -205,14 +219,24 @@ export function syncPdfNoteArrows(
       startY: data.startY
     })
     const geo = arrowBetweenRects(hl, note)
+    const sourceHighlightId = note.customData?.sourceHighlightId
+    const strokeColor =
+      typeof sourceHighlightId === 'string'
+        ? highlightGroupColor(migrated, sourceHighlightId)
+        : PDF_CONNECTOR_FALLBACK_COLOR
     const metaOk =
       data.startX === geo.startX && data.startY === geo.startY && data.side === geo.side
+    const styleOk =
+      el.strokeColor === strokeColor &&
+      el.strokeWidth === PDF_CONNECTOR_STROKE_WIDTH &&
+      el.roughness === PDF_CONNECTOR_ROUGHNESS
     const startBinding = (el as { startBinding?: unknown }).startBinding
     const endBinding = (el as { endBinding?: unknown }).endBinding
     if (
       !el.isDeleted &&
       geomClose(el, geo) &&
       metaOk &&
+      styleOk &&
       !(el as { elbowed?: boolean }).elbowed &&
       !startBinding &&
       !endBinding &&
@@ -223,6 +247,9 @@ export function syncPdfNoteArrows(
     changed = true
     return newElementWith(el, {
       ...geo,
+      strokeColor,
+      strokeWidth: PDF_CONNECTOR_STROKE_WIDTH,
+      roughness: PDF_CONNECTOR_ROUGHNESS,
       isDeleted: false,
       locked: true,
       elbowed: false,
@@ -524,8 +551,9 @@ export function createNoteFromHighlight(
       y: geo.y,
       width: geo.width,
       height: geo.height,
-      strokeColor: '#495057',
-      roughness: 0,
+      strokeColor: highlightGroupColor([highlight], groupId),
+      strokeWidth: PDF_CONNECTOR_STROKE_WIDTH,
+      roughness: PDF_CONNECTOR_ROUGHNESS,
       locked: true
     } as ExcalidrawElementSkeleton
   ])

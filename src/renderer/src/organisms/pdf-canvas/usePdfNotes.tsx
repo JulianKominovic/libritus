@@ -105,6 +105,7 @@ export function usePdfNotes({
         <NoteEmbed
           noteId={element.id}
           plateValue={getNotePlateValue(element)}
+          backgroundColor={element.backgroundColor}
           editing={editing}
           onValueChange={updateNotePlateValue}
           onExitEdit={clearActiveEmbeddable}

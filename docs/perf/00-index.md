@@ -4,23 +4,23 @@ Estos documentos separan la auditoría de `react-pdf-canvas-audit.md` en tareas 
 
 ## Paquetes
 
-| ID | Documento | Prioridad | Área principal | Conflictos directos |
-| --- | --- | --- | --- | --- |
-| PERF-01 | [`01-persistence-signature.md`](./01-persistence-signature.md) | P0 | Dirty gate / autosave | `PdfCanvasApp.tsx`, `usePdfPersistence.ts` |
-| PERF-02 | [`02-pointermove-hit-testing.md`](./02-pointermove-hit-testing.md) | P0 | Pointer / layout / hit-test | `usePdfTextPass.tsx` |
-| PERF-03 | [`03-excalidraw-onchange-pipeline.md`](./03-excalidraw-onchange-pipeline.md) | P0 | Excalidraw callbacks | `PdfCanvasApp.tsx`, `usePdfHostScene.ts` |
-| PERF-04 | [`04-react-render-fanout.md`](./04-react-render-fanout.md) | P1 | React renders / memo | `PdfCanvasApp.tsx`, `PdfLayer.tsx`, `PdfSidebar.tsx` |
-| PERF-05 | [`05-thumbpool-concurrency.md`](./05-thumbpool-concurrency.md) | P1 | PDFium render queue | `ThumbPool.ts` |
-| PERF-06 | [`06-pdf-buffer-memory.md`](./06-pdf-buffer-memory.md) | P1 | PDF buffer / RAM | `PdfCanvasApp.tsx`, `PdfDocument.ts` |
-| PERF-07 | [`07-catalog-writeback.md`](./07-catalog-writeback.md) | P1 | Zustand / disk writes | `categories.ts`, `catalogWriteback.ts` |
-| PERF-08 | [`08-pdf-search-progress.md`](./08-pdf-search-progress.md) | P1 | Search allocations | `pdfSearch.ts`, `usePdfFindBar.ts` |
-| PERF-09 | [`09-sidebar-autoscroll-timer.md`](./09-sidebar-autoscroll-timer.md) | P2 | Timer lifecycle | `templates/sidebar.tsx` |
-| PERF-10 | [`10-sidebar-rerenders-observer.md`](./10-sidebar-rerenders-observer.md) | P2 | Sidebar React / observers | `PdfSidebar.tsx` |
-| PERF-11 | [`11-render-time-sorting.md`](./11-render-time-sorting.md) | P2 | Derived catalog views | `pages/category.tsx`, `recentPdfs.ts` |
-| PERF-12 | [`12-raf-async-cleanup.md`](./12-raf-async-cleanup.md) | P2 | rAF / async teardown | `usePdfHostScene.ts`, `usePdfPersistence.ts`, `PdfLayer.tsx` |
-| PERF-13 | [`13-motion-bundle.md`](./13-motion-bundle.md) | P2 | Bundle / Motion | `App.tsx`, shell components |
-| PERF-14 | [`14-language-context-value.md`](./14-language-context-value.md) | P2 | Context identity | `lang-context.tsx` |
-| PERF-15 | [`15-refs-react-doctor.md`](./15-refs-react-doctor.md) | Review | Refs / Doctor noise | Several canvas hooks |
+| ID      | Documento                                                                    | Prioridad | Área principal              | Conflictos directos                                          |
+| ------- | ---------------------------------------------------------------------------- | --------- | --------------------------- | ------------------------------------------------------------ |
+| PERF-01 | [`01-persistence-signature.md`](./01-persistence-signature.md)               | P0        | Dirty gate / autosave       | `PdfCanvasApp.tsx`, `usePdfPersistence.ts`                   |
+| PERF-02 | [`02-pointermove-hit-testing.md`](./02-pointermove-hit-testing.md)           | P0        | Pointer / layout / hit-test | `usePdfTextPass.tsx`                                         |
+| PERF-03 | [`03-excalidraw-onchange-pipeline.md`](./03-excalidraw-onchange-pipeline.md) | P0        | Excalidraw callbacks        | `PdfCanvasApp.tsx`, `usePdfHostScene.ts`                     |
+| PERF-04 | [`04-react-render-fanout.md`](./04-react-render-fanout.md)                   | P1        | React renders / memo        | `PdfCanvasApp.tsx`, `PdfLayer.tsx`, `PdfSidebar.tsx`         |
+| PERF-05 | [`05-thumbpool-concurrency.md`](./05-thumbpool-concurrency.md)               | P1        | PDFium render queue         | `ThumbPool.ts`                                               |
+| PERF-06 | [`06-pdf-buffer-memory.md`](./06-pdf-buffer-memory.md)                       | P1        | PDF buffer / RAM            | `PdfCanvasApp.tsx`, `PdfDocument.ts`                         |
+| PERF-07 | [`07-catalog-writeback.md`](./07-catalog-writeback.md)                       | P1        | Zustand / disk writes       | `categories.ts`, `catalogWriteback.ts`                       |
+| PERF-08 | [`08-pdf-search-progress.md`](./08-pdf-search-progress.md)                   | P1        | Search allocations          | `pdfSearch.ts`, `usePdfFindBar.ts`                           |
+| PERF-09 | [`09-sidebar-autoscroll-timer.md`](./09-sidebar-autoscroll-timer.md)         | P2        | Timer lifecycle             | `templates/sidebar.tsx`                                      |
+| PERF-10 | [`10-sidebar-rerenders-observer.md`](./10-sidebar-rerenders-observer.md)     | P2        | Sidebar React / observers   | `PdfSidebar.tsx`                                             |
+| PERF-11 | [`11-render-time-sorting.md`](./11-render-time-sorting.md)                   | P2        | Derived catalog views       | `pages/category.tsx`, `recentPdfs.ts`                        |
+| PERF-12 | [`12-raf-async-cleanup.md`](./12-raf-async-cleanup.md)                       | P2        | rAF / async teardown        | `usePdfHostScene.ts`, `usePdfPersistence.ts`, `PdfLayer.tsx` |
+| PERF-13 | [`13-motion-bundle.md`](./13-motion-bundle.md)                               | P2        | Bundle / Motion             | `App.tsx`, shell components                                  |
+| PERF-14 | [`14-language-context-value.md`](./14-language-context-value.md)             | P2        | Context identity            | `lang-context.tsx`                                           |
+| PERF-15 | [`15-refs-react-doctor.md`](./15-refs-react-doctor.md)                       | Review    | Refs / Doctor noise         | Several canvas hooks                                         |
 
 ## Cómo paralelizar
 
@@ -34,15 +34,15 @@ Se pueden ejecutar en paralelo estos grupos siempre que ningún agente edite los
 
 ## Matriz de conflictos
 
-| Archivos compartidos | Paquetes que deben coordinarse |
-| --- | --- |
-| `PdfCanvasApp.tsx` | PERF-01, PERF-03, PERF-04, PERF-06 |
-| `usePdfPersistence.ts` | PERF-01, PERF-12 |
-| `usePdfTextPass.tsx` | PERF-02, PERF-03 |
-| `PdfLayer.tsx` | PERF-04, PERF-08, PERF-12 |
-| `PdfSidebar.tsx` | PERF-04, PERF-10 |
-| `templates/sidebar.tsx` | PERF-07, PERF-09, PERF-13 |
-| `categories.ts` | PERF-07, PERF-11 |
+| Archivos compartidos    | Paquetes que deben coordinarse     |
+| ----------------------- | ---------------------------------- |
+| `PdfCanvasApp.tsx`      | PERF-01, PERF-03, PERF-04, PERF-06 |
+| `usePdfPersistence.ts`  | PERF-01, PERF-12                   |
+| `usePdfTextPass.tsx`    | PERF-02, PERF-03                   |
+| `PdfLayer.tsx`          | PERF-04, PERF-08, PERF-12          |
+| `PdfSidebar.tsx`        | PERF-04, PERF-10                   |
+| `templates/sidebar.tsx` | PERF-07, PERF-09, PERF-13          |
+| `categories.ts`         | PERF-07, PERF-11                   |
 
 ## Reglas comunes
 
