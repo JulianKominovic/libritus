@@ -281,6 +281,9 @@ export function resolveNoteFill(): string {
   )
 }
 
+/** Excalidraw no-fill sentinel — colored notes never paint the rect (NoteEmbed owns the card color). */
+const NOTE_COLOR_TRANSPARENT = 'transparent'
+
 /** Valid (non-whitespace) persisted color, or undefined for the theme default. */
 function noteColorValue(el: OrderedExcalidrawElement): string | undefined {
   const color = el.customData?.noteColor
@@ -291,9 +294,11 @@ function noteColorValue(el: OrderedExcalidrawElement): string | undefined {
  * Solid fill (interior hit-test) + migrate legacy rectangle notes → embeddable.
  * Call on session restore / persist.
  *
- * Color mirror: `noteColor` set → backgroundColor mirrors it (colored note);
- * `noteColor` absent → backgroundColor is the theme fill (default note). A legacy
- * tint or a persisted mixed state (bg=fill + noteColor) heals to the mirror.
+ * Color model: a colored note (noteColor set) keeps backgroundColor 'transparent'
+ * so Excalidraw never paints its rect — NoteEmbed paints the card via noteColor.
+ * A default note (no noteColor) uses the theme fill, which is both the visible
+ * card color and a solid interior hit-test. Legacy tints and persisted mixed
+ * states (bg=fill + noteColor) heal to this model.
  *
  * Prefer plain object patches over newElementWith when possible: newElementWith
  * bumps versionNonce/updated, and mapping that on every dirty-signature read
@@ -303,7 +308,7 @@ export function normalizePdfNote(el: OrderedExcalidrawElement): OrderedExcalidra
   if (!isPdfNote(el)) return el
 
   const noteColor = noteColorValue(el)
-  const targetFill = noteColor ?? resolveNoteFill()
+  const targetFill = noteColor ? NOTE_COLOR_TRANSPARENT : resolveNoteFill()
   const fillOk = el.backgroundColor === targetFill
   const strokeOk = el.strokeColor === NOTE_STROKE && el.strokeWidth === 0
   const customDataOk = el.customData?.noteColor === noteColor
@@ -341,10 +346,10 @@ export function normalizePdfNote(el: OrderedExcalidrawElement): OrderedExcalidra
  * Capture live note recolors from Excalidraw's properties panel without touching
  * the UI-only embed link.
  *
- * Mirror rule: colored notes keep backgroundColor = noteColor (solid hit-test area
- * matches the visible card); default notes use the theme fill. Because bg mirrors
- * the color, picking the default fill over a colored note is observable
- * (bg === fill while noteColor set) → reset to default.
+ * A colored note always keeps backgroundColor 'transparent' — the rect is never
+ * painted (NoteEmbed owns the card color via noteColor). Because the rect is
+ * neutral, any other solid bg means the user picked a color; picking the default
+ * theme fill over a colored note resets to default.
  */
 export function syncPdfNoteColor(
   elements: readonly OrderedExcalidrawElement[]
@@ -357,19 +362,31 @@ export function syncPdfNoteColor(
     const bg = el.backgroundColor
 
     if (noteColor === undefined) {
-      // Default note — a non-fill bg means the user picked a color.
-      if (bg === fill) return el
+      // Default note — a solid (non-fill, non-transparent) bg means the user picked a color.
+      if (bg === fill || bg === NOTE_COLOR_TRANSPARENT) return el
       changed = true
-      return { ...el, customData: { ...(el.customData ?? {}), noteColor: bg } }
+      return {
+        ...el,
+        backgroundColor: NOTE_COLOR_TRANSPARENT,
+        customData: { ...(el.customData ?? {}), noteColor: bg }
+      }
     }
-    if (bg === noteColor) return el // already mirrored
+    if (bg === NOTE_COLOR_TRANSPARENT) return el // colored note, rect already neutral
     changed = true
     if (bg === fill) {
       // User re-picked the default fill → reset to theme-default.
-      return { ...el, customData: { ...(el.customData ?? {}), noteColor: undefined } }
+      return {
+        ...el,
+        backgroundColor: fill,
+        customData: { ...(el.customData ?? {}), noteColor: undefined }
+      }
     }
     // User picked a different color.
-    return { ...el, customData: { ...(el.customData ?? {}), noteColor: bg } }
+    return {
+      ...el,
+      backgroundColor: NOTE_COLOR_TRANSPARENT,
+      customData: { ...(el.customData ?? {}), noteColor: bg }
+    }
   })
   return { elements: next, changed }
 }

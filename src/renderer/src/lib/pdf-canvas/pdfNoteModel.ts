@@ -7,7 +7,9 @@ import type { Value } from 'platejs'
 export type PdfNoteData = {
   pdfNote: true
   plateValue: Value
-  /** Visible note color. Mirrors backgroundColor (solid hit-test) when set; absent = theme fill. */
+  /** Visible note color. Colored notes keep element backgroundColor 'transparent'
+   *  (the Excalidraw rect is never painted); NoteEmbed paints this over the card.
+   *  Absent = theme fill (backgroundColor / resolveNoteFill). */
   noteColor?: string
   /** Set when created via Add note from a highlight (for side alternation). */
   sourceHighlightId?: string

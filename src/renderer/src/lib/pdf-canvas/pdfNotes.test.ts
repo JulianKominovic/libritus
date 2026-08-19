@@ -183,10 +183,10 @@ describe('pdfNotes', () => {
     expect(normalizePdfNote(highlight)).toBe(highlight)
   })
 
-  test('normalizePdfNote: colored notes keep mirrored bg and heal mixed states', () => {
+  test('normalizePdfNote: colored notes leave the rect transparent and heal mixed states', () => {
     const colored = {
       ...createWysiwygNote({ x: 0, y: 0, id: 'n-colored' }),
-      backgroundColor: '#22C55E',
+      backgroundColor: 'transparent',
       customData: {
         pdfNote: true as const,
         plateValue: emptyPlateValue(),
@@ -195,7 +195,7 @@ describe('pdfNotes', () => {
     } as OrderedExcalidrawElement
     expect(normalizePdfNote(colored)).toBe(colored)
 
-    // Persisted mixed state (old separated model): bg=fill + noteColor → heal bg.
+    // Persisted mixed state (old separated model): bg=fill + noteColor → heal to transparent.
     const mixed = {
       ...createWysiwygNote({ x: 0, y: 0, id: 'n-mixed' }),
       backgroundColor: resolveNoteFill(),
@@ -206,7 +206,7 @@ describe('pdfNotes', () => {
       }
     } as OrderedExcalidrawElement
     const healed = normalizePdfNote(mixed)
-    expect(healed.backgroundColor).toBe('#22C55E')
+    expect(healed.backgroundColor).toBe('transparent')
     expect(healed.customData?.noteColor).toBe('#22C55E')
     expect(normalizePdfNote(healed)).toBe(healed)
 
@@ -234,7 +234,7 @@ describe('pdfNotes', () => {
     expect(normalizePdfNote(cleaned)).toBe(cleaned)
   })
 
-  test('syncPdfNoteColor: capture, mirror, reset and recolor round-trip is stable', () => {
+  test('syncPdfNoteColor: capture with transparent rect, reset and recolor are stable', () => {
     const base = createWysiwygNote({ x: 0, y: 0, id: 'n-live' })
 
     // Default note (bg = theme fill, no noteColor) → no-op.
@@ -242,17 +242,17 @@ describe('pdfNotes', () => {
     expect(unchanged).toBe(false)
     expect(syncPdfNoteColor([base]).elements[0]).toBe(base)
 
-    // User picks a color on a default note → captured, bg mirrors the pick.
+    // User picks a color on a default note → captured; the rect stays transparent.
     const picked = {
       ...base,
       backgroundColor: '#22C55E'
     } as typeof base
     const { elements: captured, changed } = syncPdfNoteColor([picked])
     expect(changed).toBe(true)
-    expect(captured[0]!.backgroundColor).toBe('#22C55E')
+    expect(captured[0]!.backgroundColor).toBe('transparent')
     expect(captured[0]!.customData?.noteColor).toBe('#22C55E')
 
-    // The mirrored state is stable (no churn on the next pass).
+    // The captured state is stable (no churn on the next pass).
     const { changed: stable } = syncPdfNoteColor(captured)
     expect(stable).toBe(false)
     expect(syncPdfNoteColor(captured).elements[0]).toBe(captured[0])
@@ -269,14 +269,14 @@ describe('pdfNotes', () => {
     const { changed: resetStable } = syncPdfNoteColor(reset)
     expect(resetStable).toBe(false)
 
-    // User picks a different color over a colored note → recolor.
+    // User picks a different color over a colored note → recolor, rect stays transparent.
     const recolored = {
       ...captured[0]!,
       backgroundColor: '#FF0000'
     } as typeof base
     const { elements: recoloredEls } = syncPdfNoteColor([recolored])
     expect(recoloredEls[0]!.customData?.noteColor).toBe('#FF0000')
-    expect(recoloredEls[0]!.backgroundColor).toBe('#FF0000')
+    expect(recoloredEls[0]!.backgroundColor).toBe('transparent')
   })
 
   test('syncPdfNoteColor skips deleted notes, legacy rectangles and non-notes', () => {
@@ -313,7 +313,7 @@ describe('pdfNotes', () => {
     // Simulate session.json: JSON round-trip (drops undefined keys) → restore.
     const restored = JSON.parse(JSON.stringify(persisted)) as OrderedExcalidrawElement
     const reopened = normalizePdfNote(restored)
-    expect(reopened.backgroundColor).toBe('#22C55E')
+    expect(reopened.backgroundColor).toBe('transparent')
     expect(reopened.customData?.noteColor).toBe('#22C55E')
     expect(normalizePdfNote(reopened)).toBe(reopened)
 
