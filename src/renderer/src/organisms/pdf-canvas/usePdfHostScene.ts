@@ -45,6 +45,8 @@ export function usePdfHostScene({
 }: UsePdfHostSceneArgs) {
   /** Coalesce host arrow updateScene to one per animation frame. */
   const arrowSyncRafRef = useRef<number | null>(null)
+  /** Coalesce full maintenance (scans + relock + repair) to one per frame. */
+  const maintenanceRafRef = useRef<number | null>(null)
 
   const flushHostArrowSync = useCallback((): boolean => {
     arrowSyncRafRef.current = null
@@ -180,16 +182,34 @@ export function usePdfHostScene({
       cancelAnimationFrame(arrowSyncRafRef.current)
       arrowSyncRafRef.current = null
     }
+    if (maintenanceRafRef.current != null) {
+      cancelAnimationFrame(maintenanceRafRef.current)
+      maintenanceRafRef.current = null
+    }
     flushHostArrowSync()
     runHostSceneMaintenance()
     markUnsaved()
   }, [flushHostArrowSync, markUnsaved, pointerButtonsDownRef, runHostSceneMaintenance])
+
+  const flushHostSceneMaintenance = useCallback(() => {
+    maintenanceRafRef.current = null
+    runHostSceneMaintenance()
+  }, [runHostSceneMaintenance])
+
+  /** One maintenance pass per frame — onChange bursts (clicks, typing) collapse. */
+  const scheduleHostSceneMaintenance = useCallback(() => {
+    if (maintenanceRafRef.current != null) return
+    maintenanceRafRef.current = requestAnimationFrame(() => {
+      flushHostSceneMaintenance()
+    })
+  }, [flushHostSceneMaintenance])
 
   return {
     arrowSyncRafRef,
     flushHostArrowSync,
     scheduleHostArrowSync,
     runHostSceneMaintenance,
+    scheduleHostSceneMaintenance,
     endPointerGesture
   }
 }

@@ -2,6 +2,7 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import { setActivePageJump } from '@renderer/lib/pdf-canvas/active-page-jump'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import { useCallback, useEffect, type RefObject } from 'react'
+import type { MarkUnsavedKind } from './usePdfPersistence'
 
 type RuntimeSessionLike = {
   layout: {
@@ -18,7 +19,7 @@ type UsePdfNavigationArgs = {
   cameraRef: RefObject<CameraState>
   currentPageRef: RefObject<number>
   pushCamera: (partial: Partial<CameraState>) => void
-  markUnsaved: () => void
+  markUnsaved: (kind?: MarkUnsavedKind) => void
 }
 
 export function usePdfNavigation({
@@ -46,7 +47,7 @@ export function usePdfNavigation({
           scrollY: target.scrollY
         }
       })
-      markUnsaved()
+      markUnsaved('camera')
     },
     [apiRef, cameraRef, markUnsaved, pushCamera, sessionRef]
   )
@@ -74,7 +75,7 @@ export function usePdfNavigation({
           scrollY
         }
       })
-      markUnsaved()
+      markUnsaved('camera')
     },
     [apiRef, cameraRef, markUnsaved, pushCamera, sessionRef]
   )
@@ -108,7 +109,8 @@ export function usePdfNavigation({
         scrollY,
         zoom: zoom.value
       })
-      markUnsaved()
+      // Camera-only: reuses the cached content signature (no scene scan per wheel tick).
+      markUnsaved('camera')
     },
     [markUnsaved, pushCamera]
   )

@@ -9,6 +9,7 @@ import { useCallback, useRef, useState, type RefObject } from 'react'
 import { NoteEmbed } from './NoteEmbed'
 import { SearchCaptureEmbed } from './SearchCaptureEmbed'
 import { setSelectionToolLocked } from './selectionTool'
+import type { MarkUnsavedKind } from './usePdfPersistence'
 
 type UsePdfNotesArgs = {
   apiRef: RefObject<ExcalidrawImperativeAPI | null>
@@ -16,7 +17,7 @@ type UsePdfNotesArgs = {
   clearActiveEmbeddable: () => void
   hideHighlightToolbar: () => void
   setPdfTextPass: (on: boolean) => void
-  markUnsaved: () => void
+  markUnsaved: (kind?: MarkUnsavedKind) => void
 }
 
 /**
@@ -81,7 +82,8 @@ export function usePdfNotes({
       }
       // Keep edits in a ref — updateScene per keystroke re-renders Excalidraw + parent.
       pending.set(noteId, value)
-      markUnsaved()
+      // Plate-only: re-signs the small pending map, not the whole scene.
+      markUnsaved('plate')
     },
     [apiRef, markUnsaved, pendingPlateByNoteIdRef]
   )

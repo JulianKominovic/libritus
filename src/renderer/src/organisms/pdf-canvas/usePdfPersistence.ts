@@ -14,7 +14,14 @@ import {
   type SaveStatus,
   type SessionSnapshot
 } from '@renderer/lib/pdf-canvas/session'
-import { persistSignature, shouldMarkDirty } from '@renderer/lib/pdf-canvas/sessionPersist'
+import {
+  combinePersistSignatures,
+  elementsVersionKey,
+  persistCameraSignature,
+  persistElementsSignature,
+  persistPlateSignature,
+  shouldMarkDirty
+} from '@renderer/lib/pdf-canvas/sessionPersist'
 import { isSessionPersistFrozen } from '@renderer/lib/pdf-canvas/sessionPersistFreeze'
 import type { CameraState } from '@renderer/lib/pdf-canvas/types'
 import type { Value } from 'platejs'
@@ -22,6 +29,13 @@ import { useCallback, useRef, useState, type RefObject } from 'react'
 import { liveExcalidrawApi } from './selectionTool'
 
 const AUTOSAVE_DEBOUNCE_MS = 5_000
+
+/**
+ * Where markUnsaved comes from. Camera events skip the scene scan entirely
+ * (content is cached); Plate edits only re-sign the small pending map; scene
+ * events run the cheap versionNonce key and re-normalize only when it moved.
+ */
+export type MarkUnsavedKind = 'camera' | 'plate' | 'scene'
 
 const SAVE_STATUS_LABEL: Record<SaveStatus, string> = {
   saved: 'Saved',
@@ -65,6 +79,9 @@ export function usePdfPersistence({
   const sceneCacheRef = useRef<unknown[] | null>(null)
   /** Live Plate edits not yet written to the Excalidraw scene (avoid updateScene per keystroke). */
   const pendingPlateByNoteIdRef = useRef(new Map<string, Value>())
+  /** Cached elements-only persist signature + the cheap versionNonce key that produced it. */
+  const contentSigRef = useRef<string | null>(null)
+  const elementsKeyRef = useRef('')
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
 
@@ -85,29 +102,29 @@ export function usePdfPersistence({
   }, [])
 
   /** Persist notes/captures with link restored (UI may have stripped it after embed validate). */
-  const sceneElementsForPersist = useCallback(() => {
+  const normalizedLiveScene = useCallback(() => {
     const api = liveExcalidrawApi(apiRef.current)
-    const pending = pendingPlateByNoteIdRef.current
     const live = api
       ? api
           .getSceneElements()
           .filter((el) => !el.isDeleted)
-          .map((el) => {
-            let normalized = normalizePdfNote(el)
-            normalized = normalizePdfSearchCapture(normalized)
-            normalized = normalizePdfClip(normalized)
-            return normalized
-          })
+          .map((el) => normalizePdfClip(normalizePdfSearchCapture(normalizePdfNote(el))))
       : null
     if (live) sceneCacheRef.current = live
-    const base = live ?? (sceneCacheRef.current as typeof live)
+    return live ?? (sceneCacheRef.current as typeof live)
+  }, [apiRef])
+
+  /** Normalized scene + pending Plate edits merged (autosave / flush payload). */
+  const sceneElementsForPersist = useCallback(() => {
+    const base = normalizedLiveScene()
     if (!base) return null
+    const pending = pendingPlateByNoteIdRef.current
     return base.map((el) => {
       const plate = pending.get(el.id)
       // ponytail: merge unsynced Plate edits so autosave/flush see live text
       return plate !== undefined ? withNotePlateValue(el, plate) : el
     })
-  }, [apiRef])
+  }, [normalizedLiveScene])
 
   /**
    * After Excalidraw validates note embeds (needs link once), clear note links so
@@ -159,12 +176,50 @@ export function usePdfPersistence({
     })
   }, [stripPdfNoteLinksAfterValidate])
 
-  const currentPersistSignature = useCallback((): string | null => {
-    const elements = sceneElementsForPersist()
-    if (!elements) return null
-    const cam = cameraRef.current
-    return persistSignature(JSON.parse(JSON.stringify(elements)) as unknown[], cam)
-  }, [cameraRef, sceneElementsForPersist])
+  /**
+   * Elements-only signature, cached. `scanScene` runs the cheap
+   * id:versionNonce check and re-normalizes/stringifies only when the scene
+   * actually moved; camera/plate events reuse the cache untouched.
+   */
+  const refreshContentSignature = useCallback(
+    (scanScene: boolean): string | null => {
+      if (!scanScene && contentSigRef.current != null) return contentSigRef.current
+      const api = liveExcalidrawApi(apiRef.current)
+      const elements = api?.getSceneElementsIncludingDeleted() ?? null
+      if (elements != null) {
+        const key = elementsVersionKey(elements)
+        if (scanScene && key === elementsKeyRef.current && contentSigRef.current != null) {
+          return contentSigRef.current
+        }
+        elementsKeyRef.current = key
+      }
+      const normalized = normalizedLiveScene()
+      if (!normalized) return contentSigRef.current
+      const sig = persistElementsSignature(normalized)
+      contentSigRef.current = sig
+      return sig
+    },
+    [apiRef, normalizedLiveScene]
+  )
+
+  /** New session: forget cached content/element keys (scene is different). */
+  const resetSignatureCaches = useCallback(() => {
+    contentSigRef.current = null
+    elementsKeyRef.current = ''
+  }, [])
+
+  const currentPersistSignature = useCallback(
+    (kind: MarkUnsavedKind = 'scene'): string | null => {
+      const content = refreshContentSignature(kind === 'scene')
+      if (content == null) return null
+      return combinePersistSignatures(
+        content,
+        persistPlateSignature(pendingPlateByNoteIdRef.current),
+        persistCameraSignature(cameraRef.current)
+      )
+    },
+    [cameraRef, refreshContentSignature]
+  )
 
   const buildSnapshot = useCallback((): SessionSnapshot | null => {
     const elements = sceneElementsForPersist()
@@ -191,7 +246,8 @@ export function usePdfPersistence({
     }
     const snapshot = buildSnapshot()
     if (!snapshot) return true
-    const sig = persistSignature(snapshot.elements, snapshot.camera)
+    // Canonical signature from the live scene (scene-kind: fresh read, not cache).
+    const sig = currentPersistSignature('scene') ?? ''
 
     syncSaveChip('saving')
     try {
@@ -209,7 +265,7 @@ export function usePdfPersistence({
       syncSaveChip('error')
       return false
     }
-  }, [buildSnapshot, categoryId, pdfId, syncSaveChip])
+  }, [buildSnapshot, categoryId, currentPersistSignature, pdfId, syncSaveChip])
 
   const armAutosaveTimer = useCallback(() => {
     clearSaveTimer()
@@ -219,40 +275,43 @@ export function usePdfPersistence({
     }, AUTOSAVE_DEBOUNCE_MS)
   }, [clearSaveTimer, writeSnapshotNow])
 
-  const markUnsaved = useCallback(() => {
-    if (!readyRef.current || restoringRef.current) return
+  const markUnsaved = useCallback(
+    (kind: MarkUnsavedKind = 'scene') => {
+      if (!readyRef.current || restoringRef.current) return
 
-    // During drag with session already dirty: skip full-scene JSON stringify.
-    if (pointerButtonsDownRef.current && dirtyRef.current) {
+      // During drag with session already dirty: skip full-scene JSON stringify.
+      if (pointerButtonsDownRef.current && dirtyRef.current) {
+        armAutosaveTimer()
+        return
+      }
+
+      const sig = currentPersistSignature(kind)
+      if (sig == null) return
+
+      const gate = shouldMarkDirty({
+        sig,
+        lastSaved: lastSavedSigRef.current,
+        pending: pendingSigRef.current,
+        dirty: dirtyRef.current
+      })
+
+      if (gate.action === 'noop') return
+
+      if (gate.action === 'clear') {
+        dirtyRef.current = false
+        pendingSigRef.current = ''
+        clearSaveTimer()
+        syncSaveChip('saved')
+        return
+      }
+
+      dirtyRef.current = true
+      pendingSigRef.current = gate.pending
+      syncSaveChip('unsaved')
       armAutosaveTimer()
-      return
-    }
-
-    const sig = currentPersistSignature()
-    if (sig == null) return
-
-    const gate = shouldMarkDirty({
-      sig,
-      lastSaved: lastSavedSigRef.current,
-      pending: pendingSigRef.current,
-      dirty: dirtyRef.current
-    })
-
-    if (gate.action === 'noop') return
-
-    if (gate.action === 'clear') {
-      dirtyRef.current = false
-      pendingSigRef.current = ''
-      clearSaveTimer()
-      syncSaveChip('saved')
-      return
-    }
-
-    dirtyRef.current = true
-    pendingSigRef.current = gate.pending
-    syncSaveChip('unsaved')
-    armAutosaveTimer()
-  }, [armAutosaveTimer, clearSaveTimer, currentPersistSignature, syncSaveChip])
+    },
+    [armAutosaveTimer, clearSaveTimer, currentPersistSignature, syncSaveChip]
+  )
 
   const flushSave = useCallback(async () => {
     clearSaveTimer()
@@ -272,6 +331,7 @@ export function usePdfPersistence({
     sceneElementsForPersist,
     stripPdfNoteLinksAfterValidate,
     queueStripPdfNoteLinks,
+    resetSignatureCaches,
     currentPersistSignature,
     buildSnapshot,
     writeSnapshotNow,

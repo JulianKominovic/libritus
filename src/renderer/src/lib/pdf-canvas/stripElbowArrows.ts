@@ -20,8 +20,11 @@ export function stripElbowArrows(
     const start = points[0] ?? ([0, 0] as [number, number])
     const end = points.length > 1 ? points[points.length - 1]! : start
     // ponytail: plain spread — same as normalizePdfNote hot path; avoids
-    // versionNonce churn and keeps bun:test free of Excalidraw runtime.
+    // newElementWith and keeps bun:test free of Excalidraw runtime.
     // LocalPoint is branded; plain tuples are fine at runtime (same as tests).
+    // Bump versionNonce manually: the dirty-gate cache (elementsVersionKey)
+    // treats it as the scene-change detector, so silent geometry rewrites
+    // without a bump would leave the persisted signature stale.
     return {
       ...el,
       elbowed: false,
@@ -30,7 +33,8 @@ export function stripElbowArrows(
       height: Math.abs(end[1] - start[1]),
       fixedSegments: null,
       startIsSpecial: null,
-      endIsSpecial: null
+      endIsSpecial: null,
+      versionNonce: (el.versionNonce ?? 0) + 1
     } as unknown as OrderedExcalidrawElement
   })
   return { elements: changed ? next : [...elements], changed }

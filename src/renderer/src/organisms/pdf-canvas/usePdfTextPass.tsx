@@ -491,6 +491,25 @@ export function usePdfTextPass({
     if (!el) return
 
     let forwardingPointer = false
+    // Coalesce pointermove hit-tests to one per animation frame.
+    let passRafId: number | null = null
+    let pendingPassPoint: { clientX: number; clientY: number; target: EventTarget | null } | null =
+      null
+
+    const flushPassThrough = () => {
+      passRafId = null
+      const p = pendingPassPoint
+      pendingPassPoint = null
+      if (p) updatePassThrough(p.clientX, p.clientY, p.target)
+    }
+
+    const cancelPendingPass = () => {
+      if (passRafId != null) {
+        cancelAnimationFrame(passRafId)
+        passRafId = null
+      }
+      pendingPassPoint = null
+    }
 
     const isOverPdfPageBox = (clientX: number, clientY: number): boolean => {
       for (const pageEl of el.querySelectorAll('[data-pdf-page]')) {
@@ -550,12 +569,19 @@ export function usePdfTextPass({
     }
 
     const onPointerMove = (event: PointerEvent) => {
-      updatePassThrough(event.clientX, event.clientY, event.target)
+      // Latest point wins; one updatePassThrough per frame (layout reads capped).
+      pendingPassPoint = { clientX: event.clientX, clientY: event.clientY, target: event.target }
+      if (passRafId == null) {
+        passRafId = requestAnimationFrame(flushPassThrough)
+      }
     }
 
     const onPointerDown = (event: PointerEvent) => {
       // Synthetic re-dispatch from the race fix below — don't re-enter.
       if (forwardingPointer) return
+
+      // Stale move flush must not run after this down — recompute from the down point.
+      cancelPendingPass()
 
       if (event.buttons !== 0) pointerButtonsDownRef.current = true
 
@@ -641,17 +667,20 @@ export function usePdfTextPass({
     }
 
     const onPointerUp = (event: PointerEvent) => {
+      cancelPendingPass()
       textSelectGestureRef.current = false
       updatePassThrough(event.clientX, event.clientY, event.target)
       endPointerGesture()
     }
 
     const onPointerCancel = () => {
+      cancelPendingPass()
       textSelectGestureRef.current = false
       endPointerGesture()
     }
 
     const onBlur = () => {
+      cancelPendingPass()
       textSelectGestureRef.current = false
       setPdfTextPass(false)
       endPointerGesture()
@@ -813,6 +842,7 @@ export function usePdfTextPass({
     window.addEventListener('pointercancel', onPointerCancel)
     window.addEventListener('blur', onBlur)
     return () => {
+      cancelPendingPass()
       el.removeEventListener('pointermove', onPointerMove, true)
       el.removeEventListener('pointerdown', onPointerDown, true)
       el.removeEventListener('dragover', onDragOver, true)
@@ -849,6 +879,10 @@ export function usePdfTextPass({
     if (!host) return
 
     let hoveredEmbedId: string | null = null
+    /** Same viewport point → same hit result; skip scene scans + DOM writes. */
+    let lastHintPointKey = ''
+    /** Last processed point sat over a note/embed → keep stopping propagation. */
+    let lastHintWasOverEmbed = false
 
     const hintRoot = () => containerRef.current ?? host
 
@@ -877,6 +911,8 @@ export function usePdfTextPass({
 
     const onPointerMoveCapture = (event: PointerEvent) => {
       if (event.buttons !== 0) {
+        lastHintPointKey = ''
+        lastHintWasOverEmbed = false
         clearActivateHintHover()
         hoveredSearchImageIdRef.current = null
         syncSearchBrowseHintRef.current()
@@ -885,11 +921,21 @@ export function usePdfTextPass({
       if (event.altKey || event.shiftKey || event.metaKey || event.ctrlKey) return
       // Style panel / toolbars sit over the scene — don't steal their hover.
       if (isExcalidrawUiPointerTarget(event.target)) {
+        lastHintPointKey = ''
+        lastHintWasOverEmbed = false
         clearActivateHintHover()
         hoveredSearchImageIdRef.current = null
         syncSearchBrowseHintRef.current()
         return
       }
+      const pointKey = `${event.clientX},${event.clientY}`
+      if (pointKey === lastHintPointKey) {
+        // Repeated move at identical coords: keep the hover-suppression up or
+        // Excalidraw's unguarded activeEmbeddable hover setState leaks through.
+        if (lastHintWasOverEmbed) event.stopPropagation()
+        return
+      }
+      lastHintPointKey = pointKey
       const api = apiRef.current
       if (!api) return
       const appState = api.getAppState()
@@ -911,6 +957,7 @@ export function usePdfTextPass({
       // remounts renderEmbeddable and would wipe data-activate-hint-hover.
       // pointerdown/up still reach the canvas so edge-drag / center-activate work.
       if (note && !note.locked) {
+        lastHintWasOverEmbed = true
         hoveredSearchImageIdRef.current = null
         setActivateHintHover(note.id)
         syncSearchBrowseHintRef.current()
@@ -918,12 +965,14 @@ export function usePdfTextPass({
         return
       }
       if (embedCapture) {
+        lastHintWasOverEmbed = true
         hoveredSearchImageIdRef.current = null
         setActivateHintHover(embedCapture.id)
         syncSearchBrowseHintRef.current()
         event.stopPropagation()
         return
       }
+      lastHintWasOverEmbed = false
       // Reading-mode PNG: no embed DOM — host chip on hover (do not stopPropagation).
       if (imageCapture) {
         setActivateHintHover(null)
@@ -937,6 +986,8 @@ export function usePdfTextPass({
     }
 
     const onPointerLeave = () => {
+      lastHintPointKey = ''
+      lastHintWasOverEmbed = false
       clearActivateHintHover()
       hoveredSearchImageIdRef.current = null
       syncSearchBrowseHintRef.current()
