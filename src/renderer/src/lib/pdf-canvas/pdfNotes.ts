@@ -26,6 +26,7 @@ import { searchCaptureIdsForHighlight } from './pdfSearchCapture'
 export {
   emptyPlateValue,
   findPdfNoteAt,
+  getNoteColor,
   getNotePlateValue,
   isPdfNote,
   isPdfNoteCenterHit,
@@ -280,9 +281,19 @@ export function resolveNoteFill(): string {
   )
 }
 
+/** Valid (non-whitespace) persisted color, or undefined for the theme default. */
+function noteColorValue(el: OrderedExcalidrawElement): string | undefined {
+  const color = el.customData?.noteColor
+  return typeof color === 'string' && color.trim() ? color : undefined
+}
+
 /**
  * Solid fill (interior hit-test) + migrate legacy rectangle notes → embeddable.
  * Call on session restore / persist.
+ *
+ * Color mirror: `noteColor` set → backgroundColor mirrors it (colored note);
+ * `noteColor` absent → backgroundColor is the theme fill (default note). A legacy
+ * tint or a persisted mixed state (bg=fill + noteColor) heals to the mirror.
  *
  * Prefer plain object patches over newElementWith when possible: newElementWith
  * bumps versionNonce/updated, and mapping that on every dirty-signature read
@@ -291,35 +302,76 @@ export function resolveNoteFill(): string {
 export function normalizePdfNote(el: OrderedExcalidrawElement): OrderedExcalidrawElement {
   if (!isPdfNote(el)) return el
 
-  const fill = resolveNoteFill()
-  const fillOk = el.backgroundColor === fill
+  const noteColor = noteColorValue(el)
+  const targetFill = noteColor ?? resolveNoteFill()
+  const fillOk = el.backgroundColor === targetFill
   const strokeOk = el.strokeColor === NOTE_STROKE && el.strokeWidth === 0
+  const customDataOk = el.customData?.noteColor === noteColor
 
   if (el.type === 'rectangle') {
     // Type change must go through newElementWith for Excalidraw's element shape.
     return newElementWith(el, {
       type: 'embeddable',
       link: NOTE_EMBED_LINK,
-      backgroundColor: fill,
+      backgroundColor: targetFill,
       strokeColor: NOTE_STROKE,
-      strokeWidth: 0
+      strokeWidth: 0,
+      customData: { ...(el.customData ?? {}), noteColor }
     } as Parameters<typeof newElementWith>[1]) as OrderedExcalidrawElement
   }
 
   if (el.type === 'embeddable') {
     const link = el.link === NOTE_EMBED_LINK ? el.link : NOTE_EMBED_LINK
-    if (link === el.link && fillOk && strokeOk) return el
+    if (link === el.link && fillOk && strokeOk && customDataOk) return el
     // ponytail: spread avoids versionNonce churn on the hot persist/signature path
     return {
       ...el,
       link,
-      backgroundColor: fill,
+      backgroundColor: targetFill,
       strokeColor: NOTE_STROKE,
-      strokeWidth: 0
+      strokeWidth: 0,
+      customData: { ...(el.customData ?? {}), noteColor }
     }
   }
 
   return el
+}
+
+/**
+ * Capture live note recolors from Excalidraw's properties panel without touching
+ * the UI-only embed link.
+ *
+ * Mirror rule: colored notes keep backgroundColor = noteColor (solid hit-test area
+ * matches the visible card); default notes use the theme fill. Because bg mirrors
+ * the color, picking the default fill over a colored note is observable
+ * (bg === fill while noteColor set) → reset to default.
+ */
+export function syncPdfNoteColor(
+  elements: readonly OrderedExcalidrawElement[]
+): { elements: OrderedExcalidrawElement[]; changed: boolean } {
+  const fill = resolveNoteFill()
+  let changed = false
+  const next = elements.map((el) => {
+    if (!isPdfNote(el) || el.type !== 'embeddable' || el.isDeleted) return el
+    const noteColor = noteColorValue(el)
+    const bg = el.backgroundColor
+
+    if (noteColor === undefined) {
+      // Default note — a non-fill bg means the user picked a color.
+      if (bg === fill) return el
+      changed = true
+      return { ...el, customData: { ...(el.customData ?? {}), noteColor: bg } }
+    }
+    if (bg === noteColor) return el // already mirrored
+    changed = true
+    if (bg === fill) {
+      // User re-picked the default fill → reset to theme-default.
+      return { ...el, customData: { ...(el.customData ?? {}), noteColor: undefined } }
+    }
+    // User picked a different color.
+    return { ...el, customData: { ...(el.customData ?? {}), noteColor: bg } }
+  })
+  return { elements: next, changed }
 }
 
 /**

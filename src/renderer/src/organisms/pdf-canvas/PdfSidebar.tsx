@@ -111,6 +111,12 @@ function AnnotationThumb({ src, alt }: { src: string; alt: string }) {
   )
 }
 
+/** Hex `#RRGGBB` → translucent tint matching the highlight on canvas (~25% alpha). */
+function highlightTint(color?: string): string | undefined {
+  if (!color) return undefined
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? `${color}40` : color
+}
+
 function AnnotationRow({
   item,
   onGoToAnnotation
@@ -147,10 +153,18 @@ function AnnotationRow({
       </span>
       <FadeClip>
         {item.kind === 'highlight' ? (
-          <span className="block text-xs leading-snug text-neutral-900 italic">{item.preview}</span>
+          <span
+            className="block rounded-md px-1.5 py-0.5 text-xs leading-snug text-neutral-900 italic"
+            style={{ backgroundColor: highlightTint(item.color) }}
+          >
+            {item.preview}
+          </span>
         ) : null}
         {item.kind === 'note' ? (
-          <div className="pointer-events-none overflow-hidden rounded-lg bg-white outline -outline-offset-1 outline-black/10">
+          <div
+            className="pointer-events-none overflow-hidden rounded-lg outline -outline-offset-1 outline-black/10"
+            style={{ backgroundColor: item.noteColor ?? '#ffffff' }}
+          >
             <NoteStaticBody value={item.plateValue ?? [{ type: 'p', children: [{ text: '' }] }]} />
           </div>
         ) : null}

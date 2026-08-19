@@ -225,6 +225,28 @@ describe('annotationList', () => {
     expect(items.filter((i) => i.kind === 'highlight')).toHaveLength(2)
     expect(items.map((i) => i.id)).toEqual(['r3', 'r1'])
     expect(countCanvasStats([a, b, other])).toEqual({ highlights: 2, notes: 0, searches: 0 })
+    expect(items.find((i) => i.id === 'r1')?.color).toBe('#fff')
+  })
+
+  test('listAnnotations keeps full highlight text (no preview truncation)', () => {
+    const longText = 'word '.repeat(40).trim()
+    const el = baseEl({
+      id: 'h1',
+      customData: { pdfHighlight: true, text: longText, createdAt: '2026-01-01T00:00:00.000Z' }
+    })
+    const items = listAnnotations([el])
+    expect(items[0]?.preview).toBe(longText)
+  })
+
+  test('listAnnotations omits color for transparent highlights', () => {
+    const el = baseEl({
+      id: 'h1',
+      backgroundColor: 'transparent',
+      customData: { pdfHighlight: true, text: 'legacy', createdAt: '2026-01-01T00:00:00.000Z' }
+    })
+    const items = listAnnotations([el])
+    expect(items[0]).toMatchObject({ id: 'h1', kind: 'highlight' })
+    expect(items[0]?.color).toBeUndefined()
   })
 
   test('annotationsSignature stable for same content', () => {

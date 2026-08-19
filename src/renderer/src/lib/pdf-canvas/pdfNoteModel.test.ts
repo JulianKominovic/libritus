@@ -3,6 +3,7 @@ import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/ty
 import {
   emptyPlateValue,
   findPdfNoteAt,
+  getNoteColor,
   getNotePlateValue,
   isPdfNote,
   isPdfNoteCenterHit,
@@ -70,6 +71,39 @@ describe('pdfNoteModel', () => {
     expect(getNotePlateValue({ ...note, customData: {} } as OrderedExcalidrawElement).length).toBe(
       1
     )
+  })
+
+  test('getNoteColor prefers the persisted visual color', () => {
+    const note = fakeNote({ id: 'n1', x: 10, y: 20 })
+    expect(getNoteColor(note)).toBe('#ebebeb')
+    expect(
+      getNoteColor({
+        ...note,
+        customData: { ...note.customData, noteColor: '#22C55E' }
+      })
+    ).toBe('#22C55E')
+  })
+
+  test('getNoteColor treats empty/whitespace noteColor as absent', () => {
+    const note = fakeNote({ id: 'n2', x: 10, y: 20 })
+    expect(
+      getNoteColor({
+        ...note,
+        customData: { ...note.customData, noteColor: '' }
+      })
+    ).toBe('#ebebeb')
+    expect(
+      getNoteColor({
+        ...note,
+        customData: { ...note.customData, noteColor: '   ' }
+      })
+    ).toBe('#ebebeb')
+    expect(
+      getNoteColor({
+        ...note,
+        customData: { ...note.customData, noteColor: 42 as unknown as string }
+      })
+    ).toBe('#ebebeb')
   })
 
   test('findPdfNoteAt: miss, hit, deleted skip, top-most wins', () => {

@@ -1,7 +1,7 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { Value } from 'platejs'
 import { highlightGroupId, isPdfHighlight } from './pdfHighlightModel'
-import { getNotePlateValue, isPdfNote } from './pdfNoteModel'
+import { getNoteColor, getNotePlateValue, isPdfNote } from './pdfNoteModel'
 
 export type AnnotationKind = 'highlight' | 'note' | 'search' | 'image'
 
@@ -12,7 +12,11 @@ export type AnnotationListItem = {
   preview: string
   /** 0-based page for highlights when layout is available. */
   pageIndex?: number
+  /** Highlight group fill color (canvas rect backgroundColor). */
+  color?: string
   plateValue?: Value
+  /** Note embed visible background color (canvas fill). */
+  noteColor?: string
   fileDataURL?: string | null
   query?: string
 }
@@ -63,9 +67,10 @@ function truncate(s: string, max = PREVIEW_MAX): string {
   return `${s.slice(0, max - 1)}…`
 }
 
+/** Full highlight text; FadeClip in the sidebar clamps visually at max height. */
 function highlightPreview(el: ExcalidrawElement): string {
   const text = typeof el.customData?.text === 'string' ? el.customData.text.trim() : ''
-  return text ? truncate(text) : 'Highlight'
+  return text || 'Highlight'
 }
 
 function notePreview(el: ExcalidrawElement): string {
@@ -110,11 +115,16 @@ export function listAnnotations(
     if (seenHighlightGroups.has(gid)) continue
     seenHighlightGroups.add(gid)
     const pageIndex = opts?.pageIndexAt?.(el.x + el.width / 2, el.y + el.height / 2) ?? undefined
+    const color =
+      typeof el.backgroundColor === 'string' && el.backgroundColor !== 'transparent'
+        ? el.backgroundColor
+        : undefined
     items.push({
       id: el.id,
       kind: 'highlight',
       createdAt: annotationCreatedAt(el),
       preview: highlightPreview(el),
+      ...(color ? { color } : {}),
       ...(pageIndex != null ? { pageIndex } : {})
     })
   }
@@ -127,7 +137,8 @@ export function listAnnotations(
         kind: 'note',
         createdAt: annotationCreatedAt(el),
         preview: notePreview(el),
-        plateValue: getNotePlateValue(el)
+        plateValue: getNotePlateValue(el),
+        noteColor: getNoteColor(el)
       })
       continue
     }
@@ -167,7 +178,7 @@ export function annotationsSignature(items: readonly AnnotationListItem[]): stri
     .map((i) => {
       const page = i.pageIndex ?? ''
       const img = i.fileDataURL ? '1' : '0'
-      return `${i.id}|${i.kind}|${i.createdAt}|${i.preview}|${page}|${img}`
+      return `${i.id}|${i.kind}|${i.createdAt}|${i.preview}|${page}|${img}|${i.color ?? ''}|${i.noteColor ?? ''}`
     })
     .join('\n')
 }

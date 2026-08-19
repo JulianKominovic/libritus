@@ -7,6 +7,8 @@ import type { Value } from 'platejs'
 export type PdfNoteData = {
   pdfNote: true
   plateValue: Value
+  /** Visible note color. Mirrors backgroundColor (solid hit-test) when set; absent = theme fill. */
+  noteColor?: string
   /** Set when created via Add note from a highlight (for side alternation). */
   sourceHighlightId?: string
   /** ISO timestamp; stamped at create. Legacy may omit. */
@@ -33,6 +35,11 @@ export function isPdfNote(el: ExcalidrawElement): el is OrderedExcalidrawElement
 export function getNotePlateValue(el: ExcalidrawElement): Value {
   const value = el.customData?.plateValue
   return Array.isArray(value) ? (value as Value) : emptyPlateValue()
+}
+
+export function getNoteColor(el: ExcalidrawElement): string {
+  const color = el.customData?.noteColor
+  return typeof color === 'string' && color.trim() ? color : el.backgroundColor
 }
 
 /** Top-most PDF note under scene point (later scene index wins). */
