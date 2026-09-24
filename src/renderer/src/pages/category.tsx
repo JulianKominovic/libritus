@@ -22,7 +22,7 @@ const FAST_DEBOUNCE_TIME = 50
 const PDF_CARD_DRAG_TYPE = 'libritus/pdf-card'
 
 const pdfStatPillClassName =
-  'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1 tabular-nums'
+  'px-1.5 text-sm text-morphing-800 h-5 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-0.5 tabular-nums'
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
   const { t } = useLang()
@@ -59,28 +59,28 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
               alt={pdf.name}
               className={'size-full object-cover'}
             />
-            <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
+            <div className="absolute bottom-1.5 text-sm right-1.5 w-fit flex items-center gap-1">
               {essaysNumber && essaysNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="file-pen-line" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="file-pen-line" className="size-3 text-morphing-700" />
                   {essaysNumber}
                 </p>
               ) : null}
               {notesNumber && notesNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="message-circle" className="size-3 text-morphing-700" />
                   {notesNumber}
                 </p>
               ) : null}
               {searchesNumber && searchesNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="globe" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="globe" className="size-3 text-morphing-700" />
                   {searchesNumber}
                 </p>
               ) : null}
               {highlightsNumber && highlightsNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="highlighter" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="highlighter" className="size-3 text-morphing-700" />
                   {highlightsNumber}
                 </p>
               ) : null}

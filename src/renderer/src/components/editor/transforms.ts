@@ -69,9 +69,16 @@ export const insertBlock = (editor: PlateEditor, type: string) => {
       })
     }
     if (getBlockType(block[0]) !== type) {
-      editor.getApi(SuggestionPlugin).suggestion.withoutSuggestions(() => {
+      const removePreviousEmpty = () => {
         editor.tf.removeNodes({ previousEmptyBlock: true })
-      })
+      }
+      // NoteEditorKit omits SuggestionPlugin — getApi returns undefined there.
+      const withoutSuggestions = editor.getApi(SuggestionPlugin)?.suggestion?.withoutSuggestions
+      if (withoutSuggestions) {
+        withoutSuggestions(removePreviousEmpty)
+      } else {
+        removePreviousEmpty()
+      }
     }
   })
 }
