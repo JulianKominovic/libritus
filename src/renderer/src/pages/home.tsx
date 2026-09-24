@@ -23,7 +23,7 @@ function fadeInOut(order = 0) {
 }
 
 const pdfStatPillClassName =
-  'px-2 text-morphing-800 h-6 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-1 tabular-nums'
+  'px-1.5 text-sm text-morphing-800 h-5 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-0.5 tabular-nums'
 
 function HomePdfCard({
   categoryId,
@@ -52,28 +52,28 @@ function HomePdfCard({
               alt={pdf.name}
               className="size-full object-cover [outline:1px_solid_rgba(0,0,0,0.1)]"
             />
-            <div className="absolute bottom-1.5 text-xs right-1.5 w-fit flex items-center gap-1">
+            <div className="absolute bottom-1.5 text-sm right-1.5 w-fit flex items-center gap-1">
               {essaysNumber && essaysNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="file-pen-line" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="file-pen-line" className="size-3 text-morphing-700" />
                   {essaysNumber}
                 </p>
               ) : null}
               {notesNumber && notesNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="message-circle" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="message-circle" className="size-3 text-morphing-700" />
                   {notesNumber}
                 </p>
               ) : null}
               {searchesNumber && searchesNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="globe" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="globe" className="size-3 text-morphing-700" />
                   {searchesNumber}
                 </p>
               ) : null}
               {highlightsNumber && highlightsNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
-                  <DynamicIcon name="highlighter" className="size-4 text-morphing-700" />
+                  <DynamicIcon name="highlighter" className="size-3 text-morphing-700" />
                   {highlightsNumber}
                 </p>
               ) : null}
@@ -139,7 +139,7 @@ function HomePage() {
                 </Link>
               ) : null}
             </div>
-            <ul className="flex flex-wrap gap-8">
+            <ul className="flex flex-wrap justify-center gap-8">
               {recent.map(({ categoryId, categoryName, pdf }) => (
                 <li key={pdf.id}>
                   <HomePdfCard categoryId={categoryId} categoryName={categoryName} pdf={pdf} />
@@ -175,7 +175,7 @@ function HomePage() {
             {t('home_welcome_description')}
           </motion.h2>
           <section>
-            <ul className="flex flex-wrap gap-6">
+            <ul className="flex flex-wrap justify-center gap-6">
               <motion.li className="flex flex-col items-center flex-grow w-64" {...fadeInOut(2)}>
                 <Badge className="rounded-[50%] size-10 text-2xl font-serif tracking-tighter font-semibold mb-4">
                   1

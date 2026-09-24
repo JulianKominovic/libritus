@@ -1,4 +1,4 @@
-import { type NodeModel, Tree } from '@minoru/react-dnd-treeview'
+import { type NodeModel, Tree, type TreeMethods } from '@minoru/react-dnd-treeview'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,14 +90,19 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
   const movePdf = usePdfs((s) => s.movePdf)
   const initialOpen = useState<string[]>(() => {
     const openPaths: string[] = []
-    if (selectedPdfId) {
-      openPaths.push(selectedPdfId)
-    }
     if (selectedCategoryId) {
       openPaths.push(selectedCategoryId)
     }
     return openPaths
   })[0]
+  const treeRef = useRef<TreeMethods>(null)
+
+  // Keep the active category folder open when route changes (initialOpen is mount-only).
+  useEffect(() => {
+    if (selectedCategoryId) {
+      treeRef.current?.open(selectedCategoryId)
+    }
+  }, [selectedCategoryId])
 
   // From https://codesandbox.io/p/sandbox/scroll-control-ts-4s4pq4?file=%2Fsrc%2FTreeview.tsx%3A56%2C12-67%2C6
   const manager = useDragDropManager()
@@ -152,6 +157,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
 
   return (
     <Tree
+      ref={treeRef}
       tree={treeData}
       extraAcceptTypes={[NativeTypes.FILE, NativeTypes.URL, PDF_CARD_DRAG_TYPE]}
       canDrag={(node) => {
@@ -227,7 +233,6 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               <HoverCard closeDelay={0} openDelay={0}>
                 <ContextMenuTrigger
                   onClick={() => {
-                    onToggle()
                     void flushActiveSession().then(() => {
                       navigate(`/category/${node.parent}/${pdfNode.id}`, {
                         replace: true
@@ -293,7 +298,7 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
                 isActive ? 'bg-morphing-100 font-medium' : 'hover:bg-morphing-100/70'
               )}
               onClick={() => {
-                onToggle()
+                if (!isOpen) onToggle()
                 void flushActiveSession().then(() => {
                   navigate(`/category/${node.id}`)
                 })
@@ -306,14 +311,24 @@ function TreeView({ containerRef }: { containerRef: React.RefObject<HTMLDivEleme
               <p className="inline-block w-fit shrink-0 text-xs tabular-nums text-morphing-600">
                 {categoryNode.pdfs.length}
               </p>
-              <DynamicIcon
-                name="chevron-right"
-                size={14}
-                className={cn(
-                  'shrink-0 text-morphing-500 transition-transform duration-150',
-                  isOpen ? 'rotate-90' : ''
-                )}
-              />
+              <button
+                type="button"
+                aria-label={isOpen ? 'Collapse category' : 'Expand category'}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggle()
+                }}
+                className="shrink-0 p-0.5 rounded-sm relative hover:bg-morphing-200/60 before:-top-1 before:-right-1 before:absolute before:size-[calc(100%+12px)]"
+              >
+                <DynamicIcon
+                  name="chevron-right"
+                  size={14}
+                  className={cn(
+                    'text-morphing-500 transition-transform duration-150',
+                    isOpen ? 'rotate-90' : ''
+                  )}
+                />
+              </button>
             </ContextMenuTrigger>
             <ContextMenuContent className="w-fit max-w-sm">
               <div className="p-2">
@@ -390,7 +405,8 @@ function Sidebar() {
       className="overflow-hidden h-full border-r border-morphing-100/50"
       style={{ minWidth: 0 }}
     >
-      <div className="px-2 pt-13 w-full h-full grid grid-rows-[auto_1fr_auto] gap-2">
+      {/* Fixed inner width so grid-column close clips instead of reflowing labels. */}
+      <div className="px-2 pt-13 min-w-[300px] w-[300px] h-full grid grid-rows-[auto_1fr_auto] gap-2">
         <Link
           to="/"
           className={(isActive) =>
