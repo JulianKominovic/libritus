@@ -9,7 +9,7 @@ import { type Pdf, usePdfs } from '@renderer/stores/categories'
 import DragAndDropZone from '@renderer/templates/drag-and-drop'
 import chroma from 'chroma-js'
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { useLayoutEffect } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { useDrag } from 'react-dnd'
 import { useDebounceCallback } from 'usehooks-ts'
 import { Link, Redirect, useParams } from 'wouter'
@@ -21,8 +21,11 @@ const FAST_DEBOUNCE_TIME = 50
 /** Custom type — NativeTypes.HTML makes HTML5Backend treat the card as a native drag (dragleave can end it mid-flight). */
 const PDF_CARD_DRAG_TYPE = 'libritus/pdf-card'
 
+const inlineFieldClassName =
+  'rounded-md bg-transparent caret-morphing-900 outline-none selection:bg-morphing-200 selection:text-morphing-900 focus-visible:ring-[3px] focus-visible:ring-morphing-200'
+
 const pdfStatPillClassName =
-  'px-1.5 text-sm text-morphing-800 h-5 bg-morphing-100/80 border border-morphing-300 backdrop-blur-lg rounded-full flex items-center gap-0.5 tabular-nums'
+  'flex h-5 items-center gap-1 rounded-full border border-morphing-300 bg-morphing-50/90 px-1.5 text-sm tabular-nums text-morphing-900 backdrop-blur-sm'
 
 function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string }) {
   const { t } = useLang()
@@ -44,22 +47,24 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
   const searchesNumber = pdf.canvasStats?.searches
   const essaysNumber = pdf.essays?.length
   return (
-    <div key={pdf.id} className="flex w-56 flex-col gap-2">
+    <div className="flex w-56 flex-col gap-2">
       <ContextMenu>
         <ContextMenuTrigger ref={drag as unknown as React.Ref<HTMLDivElement>}>
           <Link
             to={`/category/${categoryId}/${pdf.id}`}
-            className={
-              'p-0 flex flex-col justify-center items-center h-80 w-56 object-contain bg-morphing-100 relative group pdf-card-content [--radius:16px] transition-[transform,box-shadow] duration-200 shadow-sm shadow-morphing-200 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-2xl group'
-            }
+            aria-label={pdf.name}
+            className="pdf-card-content relative flex h-80 w-56 items-center justify-center bg-morphing-100 p-0 [--radius:16px] outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-morphing-900 active:scale-[0.96]"
           >
-            <img
-              ref={preview as unknown as React.Ref<HTMLImageElement>}
-              src={pdf.thumbnail || ''}
-              alt={pdf.name}
-              className={'size-full object-cover'}
-            />
-            <div className="absolute bottom-1.5 text-sm right-1.5 w-fit flex items-center gap-1">
+            <div ref={preview as unknown as React.Ref<HTMLDivElement>} className="size-full">
+              {pdf.thumbnail ? (
+                <img src={pdf.thumbnail} alt="" className="size-full object-cover" />
+              ) : (
+                <span className="flex size-full items-center justify-center">
+                  <DynamicIcon name="file-text" className="size-8 text-morphing-600" />
+                </span>
+              )}
+            </div>
+            <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 flex flex-wrap justify-end gap-1">
               {essaysNumber && essaysNumber > 0 ? (
                 <p className={pdfStatPillClassName}>
                   <DynamicIcon name="file-pen-line" className="size-3 text-morphing-700" />
@@ -98,12 +103,20 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
       </ContextMenu>
       <input
         key={`pdf-name-${pdf.id}`}
-        className="w-full truncate bg-transparent text-center text-sm text-morphing-800 focus:outline-0"
+        aria-label={t('category_pdf_name_aria')}
+        className={cn(
+          inlineFieldClassName,
+          'w-full cursor-text text-center text-sm text-morphing-800'
+        )}
         defaultValue={pdf.name}
         title={pdf.name}
+        autoComplete="off"
         onChange={(e) => {
           const name = e.target.value.trim()
           if (name) debouncedUpdateName(name)
+        }}
+        onBlur={(e) => {
+          if (!e.target.value.trim()) e.target.value = pdf.name
         }}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
@@ -115,6 +128,7 @@ function DraggablePdfCard({ pdf, categoryId }: { pdf: Pdf; categoryId: string })
 function Category() {
   const { categoryId } = useParams()
   const { t } = useLang()
+  const [uploading, setUploading] = useState(false)
 
   const categories = usePdfs((p) => p.categories)
   const updateCategory = usePdfs((p) => p.updateCategory)
@@ -147,102 +161,153 @@ function Category() {
   }
 
   const isDefault = categoryId === 'default'
+  const showDescription = !isDefault || Boolean(category.description)
+  const pdfs = [...category.pdfs].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  )
 
   return (
     <DragAndDropZone>
-      <div className="flex items-center gap-2 pt-4">
-        <div
-          className={cn(
-            'cursor-pointer size-10 rounded-[50%] overflow-hidden aspect-square border-morphing-600 border transition-transform flex-shrink-0',
-            isDefault ? '' : '[@media(hover:hover)_and_(pointer:fine)]:hover:scale-110'
+      <header className="mb-8 max-w-3xl pt-4">
+        <h1 className="sr-only">{category.name}</h1>
+        <div className="flex items-center gap-2">
+          <div className="shrink-0 rounded-full has-focus-visible:ring-[3px] has-focus-visible:ring-morphing-200">
+            <label
+              className={cn(
+                'block size-10 overflow-hidden rounded-full border border-morphing-600',
+                isDefault ? 'cursor-default' : 'cursor-pointer'
+              )}
+            >
+              <input
+                key={`color-${categoryId}`}
+                disabled={isDefault}
+                readOnly={isDefault}
+                type="color"
+                name="color"
+                aria-label={t('category_color_aria')}
+                id={`color-${categoryId}`}
+                className="size-full"
+                defaultValue={category.color}
+                onChange={(e) => {
+                  updateColor(e.target.value)
+                  fastUpdateColor(e.target.value)
+                }}
+              />
+            </label>
+          </div>
+          {isDefault ? null : (
+            <IconPicker
+              className="size-8 shrink-0"
+              aria-label={t('category_icon_aria')}
+              defaultValue={category.icon}
+              onValueChange={(icon) => updateCategory(categoryId, { icon })}
+            >
+              <DynamicIcon name={category.icon} size={24} />
+            </IconPicker>
           )}
-        >
           <input
-            key={`color-${categoryId}`}
+            key={`name-${categoryId}`}
+            id={`name-${categoryId}`}
+            aria-label={t('category_name_aria')}
             disabled={isDefault}
             readOnly={isDefault}
-            type="color"
-            name="color"
-            id={`color-${categoryId}`}
-            className={cn('size-full')}
-            defaultValue={category.color}
+            autoComplete="off"
+            className={cn(
+              inlineFieldClassName,
+              isDefault ? 'cursor-default' : 'cursor-text',
+              'block min-w-40 flex-1 font-serif text-5xl font-semibold tracking-tighter text-morphing-900'
+            )}
+            defaultValue={category.name}
             onChange={(e) => {
-              updateColor(e.target.value)
-              fastUpdateColor(e.target.value)
+              const name = e.target.value.trim()
+              if (name) updateTitle(name)
+            }}
+            onBlur={(e) => {
+              if (!e.target.value.trim()) e.target.value = category.name
             }}
           />
         </div>
-        {isDefault ? null : (
-          <IconPicker
-            className="size-8 flex-shrink-0"
-            defaultValue={category.icon}
-            onValueChange={(icon) => updateCategory(categoryId, { icon })}
+        {showDescription ? (
+          <textarea
+            key={`description-${categoryId}`}
+            id={`description-${categoryId}`}
+            aria-label={t('category_description_aria')}
+            disabled={isDefault}
+            readOnly={isDefault}
+            rows={1}
+            placeholder={isDefault ? undefined : t('category_description_placeholder')}
+            className={cn(
+              inlineFieldClassName,
+              isDefault ? 'cursor-default' : 'cursor-text',
+              'mt-2 field-sizing-content max-h-40 min-h-7 w-full max-w-md resize-none overflow-y-auto text-lg text-morphing-700 placeholder:text-morphing-700'
+            )}
+            defaultValue={category.description}
+            onChange={(e) => updateDescription(e.target.value)}
+          />
+        ) : null}
+        <p className="mt-4 text-sm tabular-nums text-morphing-700">
+          {category.pdfs.length === 0
+            ? t('category_pdf_count_zero')
+            : category.pdfs.length === 1
+              ? t('category_pdf_count_one')
+              : t('category_pdf_count', { count: category.pdfs.length })}
+        </p>
+      </header>
+      <ul className="flex flex-wrap items-start gap-8">
+        {pdfs.map((pdf) => (
+          <li key={pdf.id}>
+            <DraggablePdfCard pdf={pdf} categoryId={categoryId} />
+          </li>
+        ))}
+        <li>
+          <div
+            className="flex h-80 w-56 flex-col overflow-hidden rounded-xl border border-morphing-300 bg-morphing-100"
+            aria-busy={uploading}
           >
-            <DynamicIcon name={category.icon} size={24} />
-          </IconPicker>
-        )}
-
-        <input
-          key={`name-${categoryId}`}
-          disabled={isDefault}
-          className={cn(
-            isDefault ? 'cursor-default' : 'cursor-text',
-            'text-5xl font-semibold tracking-tighter font-serif w-full block focus:outline-0 min-w-40 text-morphing-900'
-          )}
-          defaultValue={category.name}
-          onChange={(e) => updateTitle(e.target.value)}
-          readOnly={isDefault}
-        />
-      </div>
-      <textarea
-        key={`description-${categoryId}`}
-        disabled={isDefault}
-        className={cn(
-          isDefault ? 'cursor-default' : 'cursor-text',
-          'text-lg text-morphing-700 w-full block focus:outline-0 max-w-md min-w-40 resize-none'
-        )}
-        defaultValue={category.description}
-        onChange={(e) => updateDescription(e.target.value)}
-        readOnly={isDefault}
-        rows={3}
-      />
-      <h2 className="mb-6 text-sm tabular-nums text-muted-foreground">
-        {t('category_pdf_count', { count: category.pdfs.length })}
-      </h2>
-      <div className="flex flex-wrap gap-8 group/container">
-        {category.pdfs
-          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-          .map((pdf) => (
-            <DraggablePdfCard key={`${pdf.id}card`} pdf={pdf} categoryId={categoryId} />
-          ))}
-        <div className="flex w-56 flex-col gap-2">
-          <label
-            htmlFor={`pdf-upload-${categoryId}`}
-            className="border-morphing-200 p-4 flex flex-col justify-center items-center rounded-xl border h-80 w-56 bg-morphing-100 hover:bg-morphing-200 transition-colors duration-200"
-          >
-            <DynamicIcon name="plus" className="size-10 text-morphing-600" />
-            <p className="text-morphing-800 text-lg font-medium">{t('category_upload_pdf')}</p>
-            <p className="text-sm text-morphing-800">{t('category_drop_hint')}</p>
-            <input
-              id={`pdf-upload-${categoryId}`}
-              type="file"
-              placeholder={t('category_upload_pdf')}
-              accept="application/pdf"
-              hidden
-              multiple
-              onChange={async (e) => {
-                for (const file of e.target.files || []) {
-                  console.log('Uploading pdf', file)
-                  if (file && file.type === 'application/pdf') {
-                    await uploadPdf(categoryId, file)
+            <label
+              htmlFor={`pdf-upload-${categoryId}`}
+              className="relative flex flex-1 cursor-pointer flex-col items-center justify-center gap-2 p-4 text-center outline-none transition-colors duration-200 hover:bg-morphing-200/70 focus-within:ring-[3px] focus-within:ring-morphing-200 focus-within:ring-inset"
+            >
+              <DynamicIcon
+                name={uploading ? 'loader-circle' : 'plus'}
+                className={cn('size-10 text-morphing-600', uploading && 'animate-spin')}
+              />
+              <span className="text-lg font-medium text-morphing-800">
+                {t('category_upload_pdf')}
+              </span>
+              <span className="text-sm text-morphing-800">
+                {uploading ? t('category_uploading') : t('category_drop_hint')}
+              </span>
+              <input
+                id={`pdf-upload-${categoryId}`}
+                type="file"
+                accept="application/pdf"
+                className="absolute inset-0 cursor-pointer opacity-0 focus:outline-none"
+                multiple
+                disabled={uploading}
+                onChange={async (e) => {
+                  const files = [...(e.target.files || [])].filter(
+                    (file) => file.type === 'application/pdf'
+                  )
+                  e.target.value = ''
+                  if (files.length === 0) return
+                  setUploading(true)
+                  try {
+                    for (const file of files) {
+                      await uploadPdf(categoryId, file)
+                    }
+                  } finally {
+                    setUploading(false)
                   }
-                }
-              }}
-            />
-          </label>
-          <UrlToPdfForm categoryId={categoryId} />
-        </div>
-      </div>
+                }}
+              />
+            </label>
+            <div className="border-t border-morphing-300 p-2">
+              <UrlToPdfForm categoryId={categoryId} />
+            </div>
+          </div>
+        </li>
+      </ul>
     </DragAndDropZone>
   )
 }

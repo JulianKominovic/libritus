@@ -47,9 +47,7 @@ async function serveFixtures(): Promise<{ origin: string; close: () => Promise<v
 
 async function openCategory(page: Page, categoryId: string): Promise<void> {
   await navigateCategory(page, categoryId)
-  await page
-    .getByRole('heading', { name: /\d+ pdfs/ })
-    .waitFor({ state: 'visible', timeout: 30_000 })
+  await page.getByText(/\d+ PDFs?/).waitFor({ state: 'visible', timeout: 30_000 })
 }
 
 async function submitUrl(page: Page, url: string): Promise<void> {
@@ -69,7 +67,7 @@ test('HTML URL prints the live page into the library', async () => {
     await expect(page.getByRole('button', { name: 'Page saved as PDF' })).toBeVisible({
       timeout: 45_000
     })
-    await expect(page.getByRole('heading', { name: '2 pdfs' })).toBeVisible()
+    await expect(page.getByText('2 PDFs', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Printed Page' })).toBeVisible()
   } finally {
     await close()
@@ -89,7 +87,7 @@ test('.pdf URL fetches bytes instead of printing the viewer', async () => {
     await expect(page.getByRole('button', { name: 'Page saved as PDF' })).toBeVisible({
       timeout: 45_000
     })
-    await expect(page.getByRole('heading', { name: '2 pdfs' })).toBeVisible()
+    await expect(page.getByText('2 PDFs', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'doc' })).toBeVisible()
   } finally {
     await close()
@@ -109,7 +107,7 @@ test('PDF content-type without .pdf in the path fetches bytes', async () => {
     await expect(page.getByRole('button', { name: 'Page saved as PDF' })).toBeVisible({
       timeout: 45_000
     })
-    await expect(page.getByRole('heading', { name: '2 pdfs' })).toBeVisible()
+    await expect(page.getByText('2 PDFs', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'disguised' })).toBeVisible()
   } finally {
     await close()

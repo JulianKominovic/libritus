@@ -217,7 +217,9 @@
     border-top-left-radius: 2px;
     border-bottom-left-radius: 2px;
     overflow: hidden;
-    transition: box-shadow 200ms ease-out;
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out;
   }
 
   @media (hover: hover) and (pointer: fine) {

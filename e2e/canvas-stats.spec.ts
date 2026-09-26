@@ -15,9 +15,7 @@ import {
 
 async function openCategory(page: Page, categoryId: string): Promise<void> {
   await navigateCategory(page, categoryId)
-  await page
-    .getByRole('heading', { name: /\d+ pdfs/ })
-    .waitFor({ state: 'visible', timeout: 30_000 })
+  await page.getByText(/\d+ PDFs?/).waitFor({ state: 'visible', timeout: 30_000 })
 }
 
 async function waitForCanvasStats(

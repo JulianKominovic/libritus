@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import {
   REFERENCE_PAGE_WIDTH,
+  pageRenderRect,
   pageWorldScale,
+  readingDensity,
   renderScaleForWorld,
   scaleSessionScene
 } from './pageWorldScale'
@@ -54,8 +56,41 @@ describe('renderScaleForWorld', () => {
     expect(renderScaleForWorld(0.5)).toBe(1)
   })
 
-  test('huge worldScale clamps to 4', () => {
-    expect(renderScaleForWorld(10)).toBe(4)
+  test('huge worldScale clamps to 8', () => {
+    expect(renderScaleForWorld(10)).toBe(8)
+  })
+
+  test('reading density 3 is not clamped at the old max of 4', () => {
+    expect(readingDensity(2)).toBe(3)
+    expect(renderScaleForWorld(2, readingDensity(2))).toBe(6)
+  })
+
+  test('non-positive dpr falls back to 1', () => {
+    expect(readingDensity(0)).toBe(1.5)
+    expect(readingDensity(Number.NaN)).toBe(1.5)
+  })
+})
+
+describe('pageRenderRect', () => {
+  const size = { width: 441, height: 645 }
+
+  test('no crop paints from the origin', () => {
+    expect(pageRenderRect({ size })).toEqual({
+      origin: { x: 0, y: 0 },
+      size
+    })
+  })
+
+  test('inset crop uses crop origin and page size', () => {
+    expect(
+      pageRenderRect({
+        size,
+        boxes: { crop: { left: 92, bottom: 103, right: 533, top: 748 } }
+      })
+    ).toEqual({
+      origin: { x: 92, y: 103 },
+      size
+    })
   })
 })
 
