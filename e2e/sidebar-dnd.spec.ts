@@ -7,9 +7,7 @@ import { navigateCategory, seedTwoCategories } from './helpers/seed'
 
 async function openCategory(page: Page, categoryId: string): Promise<void> {
   await navigateCategory(page, categoryId)
-  await page
-    .getByRole('heading', { name: /\d+ pdfs/ })
-    .waitFor({ state: 'visible', timeout: 30_000 })
+  await page.getByText(/\d+ PDFs?/).waitFor({ state: 'visible', timeout: 30_000 })
 }
 
 /**
@@ -92,7 +90,7 @@ test('dropping a PDF card onto a sidebar category moves it', async () => {
     await expect(async () => {
       await startDragOntoCategory(page, card, dest)
       await page.mouse.up()
-      await expect(page.getByRole('heading', { name: '0 pdfs' })).toBeVisible({ timeout: 2_000 })
+      await expect(page.getByText('No PDFs', { exact: true })).toBeVisible({ timeout: 2_000 })
     }).toPass({ timeout: 30_000 })
 
     const catalog = JSON.parse(

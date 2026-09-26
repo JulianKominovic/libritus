@@ -27,6 +27,7 @@ import { PageLayout } from '@renderer/lib/pdf-canvas/PageLayout'
 import { PagePool } from '@renderer/lib/pdf-canvas/PagePool'
 import {
   pageWorldScale,
+  readingDensity,
   renderScaleForWorld,
   scaleSessionScene
 } from '@renderer/lib/pdf-canvas/pageWorldScale'
@@ -565,7 +566,9 @@ function PdfCanvasAppInner({
         const documentId = openResp.documentId
         const { scale: worldScale, sizes: worldSizes } = pageWorldScale(doc.pageSizes)
         const layout = new PageLayout(worldSizes, undefined, worldScale)
-        const pool = new PagePool(doc, { renderScale: renderScaleForWorld(worldScale) })
+        const pool = new PagePool(doc, {
+          renderScale: renderScaleForWorld(worldScale, readingDensity(window.devicePixelRatio))
+        })
         const thumbPool = new ThumbPool(doc)
         const next: RuntimeSession = { doc, documentId, layout, pool, thumbPool }
         sessionRef.current = next

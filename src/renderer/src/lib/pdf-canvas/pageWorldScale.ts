@@ -4,16 +4,29 @@ import type { SessionCamera } from './sessionTypes'
 /** US Letter width in PDF points — canonical world page width at zoom 1. */
 export const REFERENCE_PAGE_WIDTH = 612
 
-/** Device pixels per world CSS px at zoom 1 (Letter @ FIXED_RENDER_SCALE). */
+/** Fallback density when the caller does not pass a screen-aware target. */
 export const TARGET_WORLD_DENSITY = 2
+
+/** Canvas zoom where bitmaps are 1:1 with device pixels (150%). */
+export const READING_ZOOM = 1.5
+
+/**
+ * Bitmap pixels per world CSS px so a page is sharp at READING_ZOOM.
+ * Retina (dpr 2) → 3. Below that zoom the bitmap is downscaled; above it, stretched.
+ */
+export function readingDensity(devicePixelRatio = 1): number {
+  const dpr = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1
+  return READING_ZOOM * dpr
+}
 
 /** Render scale bounds relative to native page points. */
 const MIN_RENDER_SCALE = 1
-const MAX_RENDER_SCALE = 4
+/** Covers ~250pt pages at reading density 3 (612/250 * 3 ≈ 7.3). */
+const MAX_RENDER_SCALE = 8
 
 /**
- * Render scale so bitmaps stay ~TARGET_WORLD_DENSITY in world CSS space.
- * Letter worldScale=1 → 2; small pages raise scale; huge pages lower it (clamped).
+ * Render scale so bitmaps stay ~targetDensity in world CSS space.
+ * Letter worldScale=1, density 2 → 2; small pages raise scale; huge pages lower it (clamped).
  */
 export function renderScaleForWorld(
   worldScale: number,
@@ -23,6 +36,27 @@ export function renderScaleForWorld(
   if (raw < MIN_RENDER_SCALE) return MIN_RENDER_SCALE
   if (raw > MAX_RENDER_SCALE) return MAX_RENDER_SCALE
   return raw
+}
+
+type PageCrop = { left: number; bottom: number }
+
+/**
+ * User-space window to raster. Selection and highlights are crop-relative
+ * (EmbedPDF subtracts crop origin). `renderPageRaw` paints (0, 0, size) and
+ * misses that window when the CropBox is inset.
+ */
+export function pageRenderRect(page: {
+  size: PageSize
+  boxes?: { crop?: PageCrop }
+}): { origin: { x: number; y: number }; size: PageSize } {
+  const crop = page.boxes?.crop
+  if (!crop) {
+    return { origin: { x: 0, y: 0 }, size: page.size }
+  }
+  return {
+    origin: { x: crop.left, y: crop.bottom },
+    size: page.size
+  }
 }
 
 export type PageWorldScale = {
