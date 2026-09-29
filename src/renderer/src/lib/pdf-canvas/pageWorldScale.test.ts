@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
   REFERENCE_PAGE_WIDTH,
-  pageRenderRect,
   pageWorldScale,
   readingDensity,
   renderScaleForWorld,
@@ -68,29 +67,6 @@ describe('renderScaleForWorld', () => {
   test('non-positive dpr falls back to 1', () => {
     expect(readingDensity(0)).toBe(1.5)
     expect(readingDensity(Number.NaN)).toBe(1.5)
-  })
-})
-
-describe('pageRenderRect', () => {
-  const size = { width: 441, height: 645 }
-
-  test('no crop paints from the origin', () => {
-    expect(pageRenderRect({ size })).toEqual({
-      origin: { x: 0, y: 0 },
-      size
-    })
-  })
-
-  test('inset crop uses crop origin and page size', () => {
-    expect(
-      pageRenderRect({
-        size,
-        boxes: { crop: { left: 92, bottom: 103, right: 533, top: 748 } }
-      })
-    ).toEqual({
-      origin: { x: 92, y: 103 },
-      size
-    })
   })
 })
 

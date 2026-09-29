@@ -2,10 +2,10 @@ import { BaseEditorKit } from '@renderer/components/editor/editor-base-kit'
 import { NoteEditorKit } from '@renderer/components/editor/note-editor-kit'
 import { Editor, EditorContainer } from '@renderer/components/ui/editor'
 import { EditorStatic } from '@renderer/components/ui/editor-static'
+import { useLang } from '@renderer/i18n/lang-context'
 import { createSlateEditor, type Value } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
 import { memo, useEffect, useMemo, useRef } from 'react'
-import { useLang } from '@renderer/i18n/lang-context'
 import { EmbedActivateHint } from './EmbedActivateHint'
 
 type NoteEmbedProps = {
@@ -17,12 +17,20 @@ type NoteEmbedProps = {
   onExitEdit: () => void
 }
 
+/** 12px body on the 320×240 card. Heading selectors beat the shared node sizes. */
+const noteType =
+  'text-xs [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-xs [&_h4]:text-xs [&_h5]:text-xs [&_h6]:text-xs'
+
 export function NoteStaticBody({ value }: { value: Value }) {
   // usePlateEditor adds NavigationFeedbackPlugin (hooks in transformProps).
   // PlateStatic has no Plate store → crash. createSlateEditor = static-only core.
   const editor = useMemo(() => createSlateEditor({ plugins: BaseEditorKit, value }), [value])
   return (
-    <EditorStatic editor={editor} variant="none" className="h-full overflow-hidden p-4 text-sm" />
+    <EditorStatic
+      editor={editor}
+      variant="none"
+      className={`h-full overflow-hidden p-4 ${noteType}`}
+    />
   )
 }
 
@@ -103,7 +111,7 @@ function NoteEditableBody({
         }}
       >
         <EditorContainer className="h-full min-h-0 overflow-auto">
-          <Editor autoFocus variant="none" className="min-h-full p-4 text-sm" />
+          <Editor autoFocus variant="none" className={`min-h-full p-4 ${noteType}`} />
         </EditorContainer>
       </Plate>
     </div>

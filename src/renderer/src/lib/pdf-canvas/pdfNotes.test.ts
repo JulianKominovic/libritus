@@ -68,6 +68,7 @@ const {
   idsDeletedWithHighlight,
   isPdfNoteArrow,
   normalizePdfNote,
+  pastelNoteColor,
   repairUnvalidatedPdfNotes,
   resolveNoteFill,
   syncPdfNoteColor,
@@ -377,7 +378,8 @@ describe('pdfNotes', () => {
 
     expect(note.x).toBe(80 + NOTE_GAP)
     expect(note.y).toBe(10 - NOTE_HEIGHT / 2)
-    expect(note.backgroundColor).toBe(resolveNoteFill())
+    expect(note.backgroundColor).toBe('transparent')
+    expect(note.customData?.noteColor).toBe('#FFCCFF')
     expect(JSON.stringify(note.customData?.plateValue)).toContain('quoted text')
     expect(note.customData?.sourceHighlightId).toBe('hl-1')
     expect(note.boundElements).toBeFalsy()
@@ -407,6 +409,30 @@ describe('pdfNotes', () => {
     expect(arrowMeta.customData?.startX).toBe(80)
     expect(arrowMeta.customData?.startY).toBe(10)
     expect(Math.hypot(arrowMeta.width, arrowMeta.height)).toBeLessThan(5000)
+  })
+
+  test('pastelNoteColor mixes a highlight fill 80% toward white', () => {
+    expect(pastelNoteColor('#FF00FF')).toBe('#FFCCFF')
+    expect(pastelNoteColor('#22D3EE')).toBe('#D3F6FC')
+    expect(pastelNoteColor('#22c55e')).toBe('#D3F3DF')
+    expect(pastelNoteColor('#F97316')).toBe('#FEE3D0')
+    expect(pastelNoteColor('transparent')).toBeUndefined()
+    expect(pastelNoteColor('#fff')).toBeUndefined()
+  })
+
+  test('createNoteFromHighlight: invalid highlight color keeps the theme fill', () => {
+    const highlight = fakeHighlight({
+      id: 'hl-bad',
+      x: 0,
+      y: 0,
+      width: 80,
+      height: 20,
+      backgroundColor: 'not-a-color'
+    })
+    const { newElements } = createNoteFromHighlight(highlight)
+    const note = newElements.find((el) => isPdfNote(el))!
+    expect(note.backgroundColor).toBe(resolveNoteFill())
+    expect(note.customData?.noteColor).toBeUndefined()
   })
 
   test('createNoteFromHighlight: sourceHighlightId uses groupId', () => {

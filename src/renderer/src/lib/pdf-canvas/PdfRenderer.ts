@@ -1,6 +1,5 @@
 import type { PdfDocumentObject, PdfPageObject, PdfEngine } from '@embedpdf/models'
 import { cancelledReason } from './embedpdfEngine'
-import { pageRenderRect } from './pageWorldScale'
 
 /**
  * Default bitmap density (device px per world CSS px at zoom 1).
@@ -14,7 +13,8 @@ export type AbortableRender = {
 }
 
 /**
- * Render a page into `canvas` via PDFium `renderPageRectRaw` (crop window).
+ * Render a page into `canvas` via PDFium `renderPageRaw` (origin 0,0 + page.size).
+ * CropBox is already the page size; passing its absolute origin shifts the bitmap.
  * Returns an abortable handle (same shape PagePool/ThumbPool expect).
  */
 export function renderPageToCanvas(
@@ -24,7 +24,7 @@ export function renderPageToCanvas(
   canvas: HTMLCanvasElement,
   scale: number = FIXED_RENDER_SCALE
 ): AbortableRender {
-  const task = engine.renderPageRectRaw(doc, page, pageRenderRect(page), {
+  const task = engine.renderPageRaw(doc, page, {
     scaleFactor: scale,
     dpr: 1
   })

@@ -44,6 +44,18 @@ export const NOTE_STROKE = 'transparent'
 /** Custom scheme so validateEmbeddable can whitelist our notes only. */
 export const NOTE_EMBED_LINK = 'libritus://pdf-note'
 const NOTE_GAP = 48
+/** Highlight opacity is 20; 80% white matches that fill on a white page. */
+const PASTEL_WHITE = 0.8
+
+/** Pastel of a `#RRGGBB` highlight fill for a note card. Undefined if the color is not hex. */
+export function pastelNoteColor(color: string): string | undefined {
+  const match = /^#([0-9a-fA-F]{6})$/.exec(color.trim())
+  if (!match) return undefined
+  const n = Number.parseInt(match[1], 16)
+  const mix = (channel: number) => Math.round(channel * (1 - PASTEL_WHITE) + 255 * PASTEL_WHITE)
+  const hex = (channel: number) => mix(channel).toString(16).padStart(2, '0')
+  return `#${hex((n >> 16) & 255)}${hex((n >> 8) & 255)}${hex(n & 255)}`.toUpperCase()
+}
 
 /** Host-managed highlight→note connector (no Excalidraw bindings). */
 export type PdfNoteArrowData = {
@@ -569,6 +581,7 @@ export function createWysiwygNote(opts: {
  * Odd anchored artifacts (1st, 3rd…) go right; even go left (initial placement only).
  * Counts notes + search captures for the same highlight.
  * Arrow ends use shortest AABB segment; sync recomputes both ends on move.
+ * Note card takes a pastel of the highlight fill at creation (`noteColor`).
  *
  * ponytail: one-sided Excalidraw bindings (elbow or straight) explode (~1e5px)
  * when the note embeddable moves. Bindings are not used.
@@ -602,16 +615,23 @@ export function createNoteFromHighlight(
     plateValue: plateValueFromQuote(quoted)
   })
 
+  const noteColor = pastelNoteColor(highlight.backgroundColor)
   const noteData = {
     pdfNote: true as const,
     plateValue: getNotePlateValue(noteBase),
     sourceHighlightId: groupId,
+    ...(noteColor ? { noteColor } : {}),
     ...(typeof noteBase.customData?.createdAt === 'string'
       ? { createdAt: noteBase.customData.createdAt }
       : {})
   } satisfies PdfNoteData
 
-  const geo = arrowBetweenRects(highlight, noteBase)
+  const note = newElementWith(noteBase, {
+    customData: noteData,
+    ...(noteColor ? { backgroundColor: NOTE_COLOR_TRANSPARENT } : {})
+  }) as OrderedExcalidrawElement
+
+  const geo = arrowBetweenRects(highlight, note)
 
   const [arrow] = convertToExcalidrawElements([
     {
@@ -628,14 +648,12 @@ export function createNoteFromHighlight(
   ])
 
   if (!arrow || arrow.type !== 'arrow') {
-    return {
-      newElements: [newElementWith(noteBase, { customData: noteData }) as OrderedExcalidrawElement]
-    }
+    return { newElements: [note] }
   }
 
   const noteArrowData = {
     pdfNoteArrow: true as const,
-    noteId: noteBase.id,
+    noteId: note.id,
     side: geo.side,
     startX: geo.startX,
     startY: geo.startY
@@ -650,12 +668,8 @@ export function createNoteFromHighlight(
     customData: noteArrowData
   } as Parameters<typeof newElementWith>[1])
 
-  const updatedNote = newElementWith(noteBase, {
-    customData: noteData
-  })
-
   return {
-    newElements: [updatedNote, connector] as OrderedExcalidrawElement[]
+    newElements: [note, connector] as OrderedExcalidrawElement[]
   }
 }
 

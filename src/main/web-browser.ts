@@ -160,6 +160,14 @@ function sendToHost(channel: string, payload: unknown): void {
   resolveHost()?.webContents.send(channel, payload)
 }
 
+function focusHostWindow(): void {
+  const win = resolveHost()
+  if (!win) return
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+}
+
 function guestAlive(): boolean {
   return guest != null && !guest.webContents.isDestroyed()
 }
@@ -774,7 +782,9 @@ async function captureNow(): Promise<{
   height: number
   captureId: string | null
 }> {
-  return capturePagePayload(null)
+  const payload = await capturePagePayload(null)
+  focusHostWindow()
+  return payload
 }
 
 /** Replaces the selected search-capture card; no-op without a target. */
@@ -790,6 +800,7 @@ async function updateNow(): Promise<{
     return { fileId: null, url: '', width: 0, height: 0, captureId: null, ok: false }
   }
   const payload = await capturePagePayload(sourceCaptureId)
+  focusHostWindow()
   return { ...payload, ok: Boolean(payload.fileId) }
 }
 
