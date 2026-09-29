@@ -38,27 +38,6 @@ export function renderScaleForWorld(
   return raw
 }
 
-type PageCrop = { left: number; bottom: number }
-
-/**
- * User-space window to raster. Selection and highlights are crop-relative
- * (EmbedPDF subtracts crop origin). `renderPageRaw` paints (0, 0, size) and
- * misses that window when the CropBox is inset.
- */
-export function pageRenderRect(page: {
-  size: PageSize
-  boxes?: { crop?: PageCrop }
-}): { origin: { x: number; y: number }; size: PageSize } {
-  const crop = page.boxes?.crop
-  if (!crop) {
-    return { origin: { x: 0, y: 0 }, size: page.size }
-  }
-  return {
-    origin: { x: crop.left, y: crop.bottom },
-    size: page.size
-  }
-}
-
 export type PageWorldScale = {
   scale: number
   sizes: PageSize[]

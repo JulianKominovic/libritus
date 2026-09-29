@@ -4,7 +4,6 @@ import type {
   OrderedExcalidrawElement
 } from '@excalidraw/excalidraw/element/types'
 import { getPdfEngine } from './embedpdfEngine'
-import { pageRenderRect } from './pageWorldScale'
 
 export const PDF_CLIP_MAX_WIDTH = 280
 export const PDF_CLIP_MAX_HEIGHT = 400
@@ -153,9 +152,7 @@ export async function rasterPdfFirstPagePng(bytes: Uint8Array): Promise<{
   try {
     const page = doc.pages[0]
     if (!page) return null
-    const image = await engine
-      .renderPageRectRaw(doc, page, pageRenderRect(page), { scaleFactor: 1, dpr: 1 })
-      .toPromise()
+    const image = await engine.renderPageRaw(doc, page, { scaleFactor: 1, dpr: 1 }).toPromise()
     const canvas = document.createElement('canvas')
     canvas.width = image.width
     canvas.height = image.height
