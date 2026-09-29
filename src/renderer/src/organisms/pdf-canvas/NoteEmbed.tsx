@@ -17,10 +17,6 @@ type NoteEmbedProps = {
   onExitEdit: () => void
 }
 
-/** 12px body on the 320×240 card. Heading selectors beat the shared node sizes. */
-const noteType =
-  'text-xs [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-xs [&_h4]:text-xs [&_h5]:text-xs [&_h6]:text-xs'
-
 export function NoteStaticBody({ value }: { value: Value }) {
   // usePlateEditor adds NavigationFeedbackPlugin (hooks in transformProps).
   // PlateStatic has no Plate store → crash. createSlateEditor = static-only core.
@@ -29,7 +25,7 @@ export function NoteStaticBody({ value }: { value: Value }) {
     <EditorStatic
       editor={editor}
       variant="none"
-      className={`h-full overflow-hidden p-4 ${noteType}`}
+      className="note-card-type h-full overflow-hidden p-4 text-xs"
     />
   )
 }
@@ -111,7 +107,7 @@ function NoteEditableBody({
         }}
       >
         <EditorContainer className="h-full min-h-0 overflow-auto">
-          <Editor autoFocus variant="none" className={`min-h-full p-4 ${noteType}`} />
+          <Editor autoFocus variant="none" className="min-h-full p-4" />
         </EditorContainer>
       </Plate>
     </div>

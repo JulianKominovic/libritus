@@ -15,3 +15,74 @@
   cursor: pointer;
   user-select: none;
 }
+
+/* Canvas note (320×240). Unlayered so these beat node utilities (text-2xl, h-8).
+   .note-card-type is the sidebar static preview, which sits outside [data-pdf-note].
+   Paragraph padding matches edit mode (py-1). Static nodes only carry slate-p. */
+[data-pdf-note] .slate-editor,
+.note-card-type.slate-editor {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+[data-pdf-note] .slate-h1,
+.note-card-type .slate-h1 {
+  margin-top: 0.35em;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+[data-pdf-note] .slate-h2,
+.note-card-type .slate-h2 {
+  margin-top: 0.35em;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+[data-pdf-note] :is(.slate-h3, .slate-h4, .slate-h5, .slate-h6),
+.note-card-type :is(.slate-h3, .slate-h4, .slate-h5, .slate-h6) {
+  margin-top: 0.35em;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+[data-pdf-note] .slate-p,
+.note-card-type .slate-p {
+  margin-block: 0;
+  padding-block: 0.25rem;
+}
+
+[data-pdf-note] [role='toolbar'] :is(button, [role='radio']) {
+  height: 22px;
+  min-height: 22px;
+  min-width: 22px;
+  padding-inline: 4px;
+  font-size: 11px;
+}
+
+[data-pdf-note] [role='toolbar'] [role='group'] {
+  height: 22px;
+  min-height: 22px;
+}
+
+[data-pdf-note] [role='toolbar'] [role='group'] > span {
+  height: 22px;
+  min-height: 22px;
+  min-width: 22px;
+  padding-inline: 4px;
+}
+
+[data-pdf-note] [role='toolbar'] button[class*='min-w-[125px]'] {
+  min-width: 72px;
+}
+
+[data-pdf-note] [role='toolbar'] svg {
+  width: 12px;
+  height: 12px;
+}
